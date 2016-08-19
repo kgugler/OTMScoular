@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_VGM_INFORMATION" description="BCO VGM Information Not Submitted for Outbound Shipments" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  srn.shipment_refnum_value booking_no,
+  s.shipment_xid shipment_id,
+  cvr1.charter_voyage_refnum_value vgm_cut_date,
+  cvr2.charter_voyage_refnum_value vgm_cut_time, 
+  cvr3.charter_voyage_refnum_value doc_cut_date,  
+  cvr4.charter_voyage_refnum_value ramp_cut_date,  
+  TO_CHAR(s.sail_date,'MM/DD/YY') sail_date,
+  TO_CHAR(s.port_discharge_eta, 'MM/DD/YY') eta_date,
+  glog_util.remove_domain(s.servprov_gid) carrier,
+  loc1.location_xid source_location,
+  loc2.location_xid dest_location,
+  sref1.shipment_refnum_value loc_code
+FROM 
+  shipment s
+INNER JOIN
+  shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND
+  ss.status_type_gid = 'SCOULAR/BCO.VGM_INFORMATION'
+AND
+  ss.status_value_gid = 'SCOULAR/BCO.VGM_INFORMATION_NOT_SUBMITTED'
+INNER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+INNER JOIN
+	order_release orel ON vsob.order_base_gid = orel.order_base_gid
+AND
+  orel.order_release_xid like 'S%'
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VGM CLOSING TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VGM CLOSING TIME_HHMM'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+  cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'    
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  TO_DATE(s.insert_date,'dd-mm-rr') >= TO_DATE('2016-06-15','YYYY-MM-DD')
+AND
+  (cvr1.charter_voyage_refnum_value IS NULL OR
+  (NOT cvr1.charter_voyage_refnum_value IS NULL AND
+  (TO_DATE(TRIM(TRIM(cvr1.charter_voyage_refnum_value) || ' ' || TRIM(cvr2.charter_voyage_refnum_value)),'MM/DD/YY HH24:MI') 
+  <= TO_DATE(TO_CHAR(SYSDATE+3,'dd-mm-rr HH24:MI'),'DD/MM/YY HH24:MI'))))
+ORDER BY
+  TO_DATE(TRIM(TRIM(cvr1.charter_voyage_refnum_value)),'MM/DD/YY') DESC, cvr2.charter_voyage_refnum_value DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="BOOKING_NO" value="BOOKING_NO" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="VGM_CUT_DATE" value="VGM_CUT_DATE" />
+      <element name="VGM_CUT_TIME" value="VGM_CUT_TIME" />
+      <element name="DOC_CUT_DATE" value="DOC_CUT_DATE"></element>
+      <element name="RAMP_CUT_DATE" value="RAMP_CUT_DATE"></element>
+      <element name="SAIL_DATE" value="SAIL_DATE" />
+      <element name="ETA_DATE" value="ETA_DATE" />
+      <element name="CARRIER" value="CARRIER"></element>
+      <element name="SOURCE_LOCATION" value="SOURCE_LOCATION"></element>
+      <element name="DEST_LOCATION" value="DEST_LOCATION"></element>
+      <element name="LOC_CODE" value="LOC_CODE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

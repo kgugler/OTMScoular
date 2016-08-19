@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SALES_DATA" description="BCO Sales Data" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  a.loc,
+  TO_CHAR(a.end_date,'fmMonth YYYY') cont_date,
+  TRIM(TO_CHAR(ROUND(SUM(a.total_net_weight_base) / 2204.5855379,0),'999,999,990')) 
+  orig_quant,
+  TRIM(TO_CHAR(ROUND(SUM(a.total_net_weight_base - 
+  NVL((SELECT SUM(ssu.unit_net_weight_base)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = a.shipment_gid AND sstopd.stop_num = 1),0)) / 2204.5855379,0),'999,999,990'))
+  balance
+FROM
+(SELECT 
+  oref1.ob_refnum_value loc, 
+  TRUNC(TO_DATE(ol.late_delivery_date,'dd-mm-rr'),'MM') end_date,   
+  oob.total_net_weight_base,
+  s.shipment_gid
+FROM
+  shipment s
+INNER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid  
+INNER JOIN
+  ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+INNER JOIN 
+  ob_line ol ON oob.order_base_gid = ol.order_base_gid
+INNER JOIN
+  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid 
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+WHERE
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(ol.late_delivery_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(ol.late_delivery_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))  
+AND 
+  oob.order_base_xid like 'S%'
+AND
+  s.domain_name = 'SCOULAR/BCO') a
+GROUP BY 
+  a.loc, a.end_date  
+ORDER BY
+  a.loc, a.end_date ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC" />
+      <element name="CONT_DATE" value="CONT_DATE" />
+      <element name="ORIG_QUANT" value="ORIG_QUANT" />
+      <element name="BALANCE" value="BALANCE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

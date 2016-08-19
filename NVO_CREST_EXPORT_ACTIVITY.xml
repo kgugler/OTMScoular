@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_CREST_EXPORT_ACTIVITY" description="NVO Crest Export Activity" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="INS_START_DATE" dataType="character"></parameter>
+    <parameter name="INS_END_DATE" dataType="character"></parameter>
+    <parameter name="LOC" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+:INS_START_DATE lc_start_date,
+:INS_END_DATE lc_end_date,
+:LOC office_cd
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  j.job_gid,
+  'TSC' || j.job_xid job_no,
+  TO_CHAR(j.insert_date,'MM/DD/YYYY') job_insert_date,
+  (CASE WHEN js.update_date IS NULL THEN
+    TO_CHAR(js.insert_date,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(j.update_date,'MM/DD/YYYY')
+  END)
+  book_confirm_date,
+  cv.charter_voyage_xid book_no,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER') 
+  shipper_name, 
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') 
+  consignee_name,    
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
+  consignee_country,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','NOTIFY PARTY') 
+  notify_name, 
+  glogowner.xxscou_nvo_report_functions.location_name_value(s.servprov_gid)
+  carrier_name,
+  TO_CHAR(j.attribute_date8,'MM/DD/YYYY') cutoff_dt,
+  TRIM((CASE WHEN cv.voyage_name IS NULL
+  THEN v.vessel_name
+  ELSE cv.voyage_name END) || ' ' || cvr.charter_voyage_refnum_value) vessel_voyage,
+  (CASE WHEN s.source_location_gid = 
+    (SELECT orel.source_location_gid
+    FROM job_order_release_join jorjoin
+    INNER JOIN order_release orel ON jorjoin.order_release_gid = orel.order_release_gid
+    WHERE jorjoin.job_gid = j.job_gid
+    AND ROWNUM = 1)
+  THEN ''
+  ELSE
+  glogowner.xxscou_nvo_report_functions.loc_city_province(
+    (SELECT orel.source_location_gid
+    FROM job_order_release_join jorjoin
+    INNER JOIN order_release orel ON jorjoin.order_release_gid = orel.order_release_gid
+    WHERE jorjoin.job_gid = j.job_gid
+    AND ROWNUM = 1))
+  END) place_of_receipt,
+  glogowner.xxscou_nvo_report_functions.loc_city_province(s.port_of_load_location_gid)
+  port_of_load,
+  TO_CHAR(j.attribute_date7,'MM/DD/YYYY') etd,
+  TO_CHAR(j.attribute_date6,'MM/DD/YYYY') eta,
+  glogowner.xxscou_nvo_report_functions.loc_city_country(s.port_of_dis_location_gid)
+  port_of_discharge,
+  glogowner.xxscou_nvo_report_functions.location_name_value(s.dest_location_gid)
+  place_of_delivery,
+  l1.location_xid agent_code,
+  l1.location_name agent_name,
+  TRIM((SELECT listagg (ssunit.tag_3, ', ')
+  WITHIN GROUP (ORDER BY ssunit.tag_3) 
+  FROM s_ship_unit ssunit
+  INNER JOIN shipment_stop_d ssd ON ssunit.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  WHERE ssd.shipment_gid = s.shipment_gid)) containers,
+  (CASE WHEN cvr1.charter_voyage_refnum_value IS NULL THEN
+    (SELECT qr.quote_refnum_value
+    FROM order_release orel 
+    INNER JOIN quote q ON orel.quote_gid = q.quote_gid
+    INNER JOIN quote_refnum qr ON q.quote_gid = qr.quote_gid
+    AND qr.quote_refnum_qual_gid = 'SCOULAR.ITEM DESCRIPTION'
+    WHERE orel.order_release_gid = jorj.order_release_gid)
+  ELSE
+    cvr1.charter_voyage_refnum_value
+  END) commodity,
+  (CASE WHEN l2.location_xid = 'TSCOP' THEN '51'
+  WHEN l2.location_xid = 'TSCCST' THEN '45'
+  WHEN l2.location_xid = 'TSCDG' THEN '52'
+  ELSE '' END) division,
+  glogowner.xxscou_nvo_report_functions.latest_status(cv.charter_voyage_gid) status,
+  j.attribute3 cust_ref
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+INNER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+AND
+  (loc1.country_code3_gid = 'USA' OR loc1.country_code3_gid = 'CAN')
+INNER JOIN
+  shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+  sip1.involved_party_qual_gid = 'FINAL_DESTINATION_AGENT'
+INNER JOIN
+  contact c1 ON sip1.involved_party_contact_gid = c1.contact_gid
+AND
+  c1.contact_xid IN ('CRESTU','CRESJO','CRESMU','TSCCRST','CRESDU','CRESRA')
+LEFT OUTER JOIN
+  location l1 ON c1.location_gid = l1.location_gid
+LEFT OUTER JOIN
+  shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+  sip2.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
+LEFT OUTER JOIN
+  contact c2 ON sip2.involved_party_contact_gid = c2.contact_gid
+LEFT OUTER JOIN
+  location l2 ON c2.location_gid = l2.location_gid
+LEFT OUTER JOIN
+  job_status js ON j.job_gid = js.job_gid
+AND
+  js.status_type_gid = 'SCOULAR/NVO.SEND BOOKING CONFIRMATION'
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+	cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_COMMODITY'
+WHERE
+  j.domain_name = 'SCOULAR/NVO'   
+AND
+  (TO_DATE(j.insert_date,'dd-mm-rr') >= TO_DATE(:INS_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(j.insert_date,'dd-mm-rr') <= TO_DATE(:INS_END_DATE,'YYYY-MM-DD'))
+AND
+  ((:LOC = 'ALL')
+OR
+  (NOT :LOC = 'ALL'
+AND
+  (:LOC =
+  (SELECT loc.location_xid
+  FROM shipment_involved_party sip
+  INNER JOIN contact con ON sip.involved_party_contact_gid = con.contact_gid
+  INNER JOIN location loc ON con.location_gid = loc.location_gid
+  WHERE sip.shipment_gid = s.shipment_gid
+  AND sip.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'))))
+ORDER BY j.job_gid ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+      <element name="LC_START_DATE" value="LC_START_DATE" />
+      <element name="LC_END_DATE" value="LC_END_DATE"></element>
+      <element name="OFFICE_CD" value="OFFICE_CD"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="JOB_NO" value="JOB_NO" />
+      <element name="JOB_INSERT_DATE" value="JOB_INSERT_DATE"></element>
+      <element name="BOOK_CONFIRM_DATE" value="BOOK_CONFIRM_DATE" />
+      <element name="BOOK_NO" value="BOOK_NO" />
+      <element name="SHIPPER_NAME" value="SHIPPER_NAME" />
+      <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME" />
+      <element name="CONSIGNEE_COUNTRY" value="CONSIGNEE_COUNTRY" />
+      <element name="NOTIFY_NAME" value="NOTIFY_NAME" />
+      <element name="CARRIER_NAME" value="CARRIER_NAME" />
+      <element name="CUTOFF_DT" value="CUTOFF_DT" />
+      <element name="VESSEL_VOYAGE" value="VESSEL_VOYAGE" />
+      <element name="PLACE_OF_RECEIPT" value="PLACE_OF_RECEIPT" />
+      <element name="PORT_OF_LOAD" value="PORT_OF_LOAD"></element>
+      <element name="ETD" value="ETD"></element>
+      <element name="ETA" value="ETA" />
+      <element name="PORT_OF_DISCHARGE" value="PORT_OF_DISCHARGE" />
+      <element name="PLACE_OF_DELIVERY" value="PLACE_OF_DELIVERY"></element>
+      <element name="AGENT_CODE" value="AGENT_CODE" />
+      <element name="AGENT_NAME" value="AGENT_NAME" />
+      <element name="CONTAINERS" value="CONTAINERS" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="DIVISION" value="DIVISION" />
+      <element name="STATUS" value="STATUS" />
+      <element name="CUST_REF" value="CUST_REF" />
+    </group>
+  </dataStructure>
+</dataTemplate>

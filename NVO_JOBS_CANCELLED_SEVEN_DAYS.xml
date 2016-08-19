@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_JOBS_CANCELLED_SEVEN_DAYS" description="NVO Jobs Cancelled in Last Seven Days" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+ j.job_xid job_id,
+ j.move_perspective_gid job_type,
+ j.attribute2 booking_no,
+ oref.order_release_refnum_value loc_code,
+ j.attribute17 shipper,
+ j.attribute18 consignee,
+ j.attribute19 start_loc,
+ j.attribute20 end_loc,
+ j.attribute1 carrier,
+ REPLACE(j.insert_user,'SCOULAR/NVO.','') ops_manager,
+ REPLACE(js.update_user,'SCOULAR/NVO.','') cancelled_by,
+ TO_DATE(TO_CHAR(from_tz(CAST(js.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM-DD-YY') cancel_date,
+ TO_CHAR(from_tz(CAST(js.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YYYY HH:MI PM') cancelled_date
+FROM 
+  job j
+INNER JOIN 
+  job_status js ON j.job_gid = js.job_gid
+AND 
+  js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED' 
+AND 
+  js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+LEFT OUTER JOIN 
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN
+  order_release_refnum oref ON jorj.order_release_gid = oref.order_release_gid
+AND
+  oref.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  TO_DATE(TO_CHAR(from_tz(CAST(js.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM-DD-YY')
+   >= TO_DATE(SYSDATE - 7,'DD-MM-RR')
+ORDER BY
+  TO_DATE(TO_CHAR(from_tz(CAST(js.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM-DD-YY') DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="JOB_ID" value="JOB_ID" />
+      <element name="JOB_TYPE" value="JOB_TYPE" />
+      <element name="BOOKING_NO" value="BOOKING_NO"></element>
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="SHIPPER" value="SHIPPER" />
+      <element name="CONSIGNEE" value="CONSIGNEE"></element>
+      <element name="START_LOC" value="START_LOC" />
+      <element name="END_LOC" value="END_LOC" />
+      <element name="CARRIER" value="CARRIER"></element>
+      <element name="OPS_MANAGER" value="OPS_MANAGER" />
+      <element name="CANCELLED_BY" value="CANCELLED_BY" />
+      <element name="CANCELLED_DATE" value="CANCELLED_DATE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

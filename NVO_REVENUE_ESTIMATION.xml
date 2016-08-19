@@ -1,0 +1,511 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_REVENUE_ESTIMATION" description="NVO Revenue Estimation" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="JOB_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  j.attribute5 master_bl_num,
+  j.job_xid bl_num,
+  j.attribute4 loc_num,
+  c1.first_name || ' ' || c1.last_name manager_name,
+  glogowner.xxscou_nvo_report_functions.loc_city_country(q.origin_location_gid) origin_location,
+  TO_CHAR(s.sail_date,'fmMM/DD/YYYY') sail_date,
+  glogowner.xxscou_nvo_report_functions.loc_city_country(q.destination_location_gid) destination_location,
+  TO_CHAR(cv.arrival_date,'fmMM/DD/YYYY') eta_date,
+  (CASE WHEN j.attribute_date2 IS NULL THEN ''
+  ELSE 'Closed as of' END) open_closed,
+  (CASE WHEN j.attribute_date2 IS NULL THEN 'OPEN'
+  ELSE TO_CHAR(j.attribute_date2,'fmMM/DD/YYYY') END) closed_date,
+  TRIM(TO_CHAR(s.total_ship_unit_count,'999,999,990')) container_count,
+  (SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
+  FROM shipment_stop_d ssd 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+  AND sus.length = 20
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1) twenty_count,
+  (SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
+  FROM shipment_stop_d ssd 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+  AND sus.length = 40
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1) forty_count,
+  (SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
+  FROM shipment_stop_d ssd 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+  AND sus.length = 45
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1) forty_five_count,
+  TRIM(TO_CHAR(s.total_net_weight,'999,999,990.0')) || ' ' || s.total_net_weight_uom_code total_weight,
+  (CASE WHEN s.total_net_volume = 0 THEN 'N/A' ELSE
+  TRIM(TO_CHAR(s.total_net_volume,'999,999,990.0')) || ' ' || s.total_net_volume_uom_code END) total_volume
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+LEFT OUTER JOIN
+	charter_voyage cv ON sr.shipment_refnum_value = cv.charter_voyage_xid
+LEFT OUTER JOIN
+  order_release orel ON jorj.order_release_gid = orel.order_release_gid
+LEFT OUTER JOIN
+  quote q ON orel.quote_gid = q.quote_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
+LEFT OUTER JOIN
+	contact c1 ON	sip.involved_party_contact_gid = c1.contact_gid
+WHERE
+	j.job_gid = :JOB_ID
+AND
+  :P_RUN = 'FINAL'
+UNION
+SELECT DISTINCT
+  NVL(j.attribute5,'Data Missing in System') master_bl_num,
+  NVL(j.job_xid,'Data Missing in System') bl_num,
+  NVL(j.attribute4,'Data Missing in System') loc_num,
+  NVL(TRIM(c1.first_name || ' ' || c1.last_name),'Data Missing in System') manager_name,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(q.origin_location_gid),'Data Missing in System') origin_location,
+  NVL(TO_CHAR(s.sail_date,'fmMM/DD/YYYY'),'Data Missing in System') sail_date,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(q.destination_location_gid),'Data Missing in System') destination_location,
+  NVL(TO_CHAR(cv.arrival_date,'fmMM/DD/YYYY'),'Data Missing in System') eta_date,
+  (CASE WHEN j.attribute_date2 IS NULL THEN ''
+  ELSE 'Closed as of' END) open_closed,
+  (CASE WHEN j.attribute_date2 IS NULL THEN 'OPEN'
+  ELSE NVL(TO_CHAR(j.attribute_date2,'fmMM/DD/YYYY'),'Data Missing in System') END) closed_date,
+  NVL(TRIM(TO_CHAR(s.total_ship_unit_count,'999,999,990')),'Data Missing in System') container_count,
+  NVL((SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
+  FROM shipment_stop_d ssd 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+  AND sus.length = 20
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1),'Data Missing in System') twenty_count,
+  NVL((SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
+  FROM shipment_stop_d ssd 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+  AND sus.length = 40
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1),'Data Missing in System') forty_count,
+  NVL((SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
+  FROM shipment_stop_d ssd 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+  AND sus.length = 45
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1),'Data Missing in System') forty_five_count,
+  NVL(TRIM(TO_CHAR(s.total_net_weight,'999,999,990.0')) || ' ' || s.total_net_weight_uom_code,'Data Missing in System') total_weight,
+  NVL((CASE WHEN s.total_net_volume = 0 THEN 'N/A' ELSE
+  TRIM(TO_CHAR(s.total_net_volume,'999,999,990.0')) || ' ' || s.total_net_volume_uom_code END),'Data Missing in System') total_volume
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+LEFT OUTER JOIN
+	charter_voyage cv ON sr.shipment_refnum_value = cv.charter_voyage_xid
+LEFT OUTER JOIN
+  order_release orel ON jorj.order_release_gid = orel.order_release_gid
+LEFT OUTER JOIN
+  quote q ON orel.quote_gid = q.quote_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
+LEFT OUTER JOIN
+	contact c1 ON	sip.involved_party_contact_gid = c1.contact_gid
+WHERE
+	j.job_gid = :JOB_ID
+AND
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_SUMMARY"><![CDATA[SELECT
+  TRIM(TO_CHAR(ROUND(d.planned_revenue,2),'999,999,990.00')) planned_revenue,
+  TRIM(TO_CHAR(ROUND(d.planned_expense,2),'999,999,990.00')) planned_expense,
+  TRIM(TO_CHAR(ROUND(d.planned_revenue - d.planned_expense,2),'999,999,990.00')) planned_profit,
+  TRIM(TO_CHAR(ROUND(d.approved_revenue,2),'999,999,990.00')) approved_revenue,
+  TRIM(TO_CHAR(ROUND(d.approved_expense,2),'999,999,990.00')) approved_expense,
+  TRIM(TO_CHAR(ROUND(d.approved_revenue - d.approved_expense,2),'999,999,990.00')) approved_profit, 
+  TRIM(TRANSLATE(TO_CHAR(ROUND(d.planned_revenue - d.approved_revenue,2),'999,999,990.00PR'),'<>','()')) revenue_difference,
+  TRIM(TRANSLATE(TO_CHAR(ROUND(d.planned_expense - d.approved_expense,2),'999,999,990.00PR'),'<>','()')) expense_difference,
+  TRIM(TRANSLATE(TO_CHAR(ROUND((d.planned_revenue - d.approved_revenue) - (d.planned_expense - d.approved_expense),2),'999,999,990.00PR'),'<>','()')) profit_difference    
+FROM
+(SELECT
+  SUM(c.planned_revenue) planned_revenue, 
+  SUM(c.approved_revenue) approved_revenue,
+  SUM(c.planned_expense) planned_expense,
+  SUM(c.approved_expense) approved_expense
+FROM
+(SELECT 
+  SUM(a.rev_planned) planned_revenue, 
+  SUM(a.rev_approved) approved_revenue, 
+  0 planned_expense,
+  0 approved_expense
+FROM
+(SELECT DISTINCT
+  sc.shipment_gid,
+  sc.cost rev_planned,
+  (CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT ili.freight_charge
+  FROM invoice_lineitem ili
+  WHERE ili.invoice_gid = inv.invoice_gid
+  AND ili.cost_type_gid = sc.cost_type)
+  ELSE
+  (SELECT ili.freight_charge
+  FROM invoice_lineitem ili
+  WHERE ili.invoice_gid = inv.invoice_gid
+  AND ili.accessorial_code_gid = sc.accessorial_code_gid)
+  END) rev_approved
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+  s.perspective = 'S'
+INNER JOIN
+  shipment_cost sc ON s.shipment_gid = sc.shipment_gid
+INNER JOIN
+  shipment_bill sb ON s.shipment_gid = sb.shipment_gid
+LEFT OUTER JOIN
+  invoice inv ON sb.bill_gid = inv.invoice_gid
+AND
+  inv.servprov_alias_qual_gid = 'GLOG'
+LEFT OUTER JOIN
+  invoice_status invs ON inv.invoice_gid = invs.invoice_gid
+AND
+  invs.status_type_gid = 'SCOULAR/NVO.BILL_APPROVAL'
+AND
+  invs.status_value_gid = 'SCOULAR/NVO.BILL_APPROVAL_APPROVED'
+WHERE
+  j.job_gid = :JOB_ID) a
+UNION
+SELECT
+  0 planned_revenue, 
+  0 approved_revenue, 
+  SUM(b.exp_planned) planned_expense,
+  SUM(b.exp_approved) approved_expense
+FROM
+(SELECT DISTINCT
+  sc.shipment_gid,
+  sc.cost exp_planned,
+  (CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT DISTINCT vilij.amount_paid
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.cost_type_gid = 'B'))
+  ELSE   
+  (SELECT DISTINCT vilij.amount_paid
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.accessorial_code_gid = sc.accessorial_code_gid))
+  END) exp_approved
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+  s.perspective = 'B'
+INNER JOIN
+  shipment_cost sc ON s.shipment_gid = sc.shipment_gid
+INNER JOIN
+  invoice_shipment invs ON sc.shipment_gid = invs.shipment_gid
+INNER JOIN
+  invoice inv ON invs.invoice_gid = inv.invoice_gid
+AND
+  inv.servprov_alias_qual_gid = 'GLOG'   
+WHERE
+  j.job_gid = :JOB_ID) b) c) d]]></sqlStatement>
+    <sqlStatement name="Q_REV"><![CDATA[SELECT DISTINCT
+  s.shipment_xid rev_shipment_id,
+  (CASE WHEN sc.cost_type = 'B' THEN 'BASE' 
+  ELSE 
+  (SELECT ac.accessorial_code_xid
+  FROM accessorial_code ac 
+  WHERE ac.accessorial_code_gid = sc.accessorial_code_gid)
+  END) rev_cost_type,
+  inv.invoice_xid rev_invoice_id,
+  (SELECT location_name
+  FROM location
+  WHERE location_gid = sip.involved_party_contact_gid) rev_customer,
+  (SELECT location_xid
+  FROM location
+  WHERE location_gid = sip.involved_party_contact_gid) rev_customer_id,
+  inv.invoice_number rev_cust_invoice_id,
+  TO_CHAR(inv.invoice_date,'fmMM/DD/YYYY') rev_invoice_date,
+  inv.invoice_xid rev_bill_id, 
+  TRIM(TO_CHAR(sc.cost,'999,999,990.00')) rev_planned,
+  NVL((CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT TRIM(TO_CHAR(ili.freight_charge,'999,999,990.00'))
+  FROM invoice_lineitem ili
+  WHERE ili.invoice_gid = inv.invoice_gid
+  AND ili.cost_type_gid = sc.cost_type)
+  ELSE
+  (SELECT TRIM(TO_CHAR(ili.freight_charge,'999,999,990.00'))
+  FROM invoice_lineitem ili
+  WHERE ili.invoice_gid = inv.invoice_gid
+  AND ili.accessorial_code_gid = sc.accessorial_code_gid)
+  END),'0.00') rev_approved,
+  TRIM(TRANSLATE(TO_CHAR(sc.cost - 
+  NVL((CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT ili.freight_charge
+  FROM invoice_lineitem ili
+  WHERE ili.invoice_gid = inv.invoice_gid
+  AND ili.cost_type_gid = sc.cost_type)
+  ELSE
+  (SELECT ili.freight_charge
+  FROM invoice_lineitem ili
+  WHERE ili.invoice_gid = inv.invoice_gid
+  AND ili.accessorial_code_gid = sc.accessorial_code_gid)
+  END),0),'999,999,990.00PR'),'<>','()')) rev_diff 
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+  s.perspective = 'S'
+INNER JOIN
+  shipment_cost sc ON s.shipment_gid = sc.shipment_gid
+INNER JOIN
+  shipment_bill sb ON s.shipment_gid = sb.shipment_gid
+LEFT OUTER JOIN
+  invoice inv ON sb.bill_gid = inv.invoice_gid
+AND
+  inv.servprov_alias_qual_gid = 'GLOG'
+LEFT OUTER JOIN
+  invoice_status invs ON inv.invoice_gid = invs.invoice_gid
+AND
+  invs.status_type_gid = 'SCOULAR/NVO.BILL_APPROVAL'
+AND
+  invs.status_value_gid = 'SCOULAR/NVO.BILL_APPROVAL_APPROVED'
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'BILL-TO'
+WHERE
+  j.job_gid = :JOB_ID]]></sqlStatement>
+    <sqlStatement name="Q_EXP"><![CDATA[SELECT DISTINCT
+  s.shipment_xid exp_shipment_id,
+  (CASE WHEN sc.cost_type = 'B' THEN 'BASE' 
+  ELSE 
+  (SELECT ac.accessorial_code_xid
+  FROM accessorial_code ac 
+  WHERE ac.accessorial_code_gid = sc.accessorial_code_gid)
+  END) exp_cost_type,
+  inv.invoice_xid exp_invoice_id,
+  (SELECT location_name
+  FROM location
+  WHERE location_gid = inv.servprov_alias_value) exp_servprov,
+  (SELECT location_xid
+  FROM location
+  WHERE location_gid = inv.servprov_alias_value) exp_servprov_id,
+  inv.invoice_number exp_sp_invoice_id,
+  TO_CHAR(inv.invoice_date,'fmMM/DD/YYYY') exp_invoice_date,
+  (CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT DISTINCT v.voucher_xid
+  FROM voucher v
+  WHERE v.voucher_gid IN
+  (SELECT vilij.voucher_gid
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.cost_type_gid = 'B')))  
+  ELSE   
+  (SELECT DISTINCT v.voucher_xid
+  FROM voucher v
+  WHERE v.voucher_gid IN
+  (SELECT vilij.voucher_gid
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.accessorial_code_gid = sc.accessorial_code_gid)))
+  END)
+  exp_voucher_id,
+  TRIM(TO_CHAR(sc.cost,'999,999,990.00')) exp_planned,
+  NVL((CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT DISTINCT TRIM(TO_CHAR(vilij.amount_paid,'999,999,990.00'))
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.cost_type_gid = 'B'))
+  ELSE   
+  (SELECT DISTINCT TRIM(TO_CHAR(vilij.amount_paid,'999,999,990.00'))
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.accessorial_code_gid = sc.accessorial_code_gid))
+  END),'0.00') exp_approved,
+  TRIM(TRANSLATE(TO_CHAR(sc.cost - 
+  NVL((CASE WHEN sc.cost_type = 'B' THEN
+  (SELECT DISTINCT vilij.amount_paid
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.cost_type_gid = 'B'))
+  ELSE 
+  (SELECT DISTINCT vilij.amount_paid
+  FROM voucher_invoice_lineitem_join vilij
+  WHERE vilij.invoice_gid = inv.invoice_gid
+  AND vilij.lineitem_seq_no IN
+  (SELECT invli.lineitem_seq_no
+  FROM invoice_lineitem invli 
+  WHERE invli.invoice_gid = inv.invoice_gid
+  AND invli.accessorial_code_gid = sc.accessorial_code_gid))
+  END),0),'999,999,990.00PR'),'<>','()')) exp_diff 
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+  s.perspective = 'B'
+INNER JOIN
+  shipment_cost sc ON s.shipment_gid = sc.shipment_gid
+INNER JOIN
+  invoice_shipment invs ON sc.shipment_gid = invs.shipment_gid
+INNER JOIN
+  invoice inv ON invs.invoice_gid = inv.invoice_gid
+AND
+  inv.servprov_alias_qual_gid = 'GLOG'   
+WHERE
+  j.job_gid = :JOB_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="MASTER_BL_NUM" value="MASTER_BL_NUM" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="LOC_NUM" value="LOC_NUM" />
+      <element name="MANAGER_NAME" value="MANAGER_NAME" />
+      <element name="ORIGIN_LOCATION" value="ORIGIN_LOCATION" />
+      <element name="SAIL_DATE" value="SAIL_DATE"></element>
+      <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION"></element>
+      <element name="ETA_DATE" value="ETA_DATE"></element>
+      <element name="OPEN_CLOSED" value="OPEN_CLOSED" />
+      <element name="CLOSED_DATE" value="CLOSED_DATE"></element>
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT"></element>
+      <element name="TWENTY_COUNT" value="TWENTY_COUNT" />
+      <element name="FORTY_COUNT" value="FORTY_COUNT"></element>
+      <element name="FORTY_FIVE_COUNT" value="FORTY_FIVE_COUNT" />
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+      <element name="TOTAL_VOLUME" value="TOTAL_VOLUME" />
+    </group>
+    <group name="G_SUMMARY" source="Q_SUMMARY">
+      <element name="PLANNED_REVENUE" value="PLANNED_REVENUE" />
+      <element name="PLANNED_EXPENSE" value="PLANNED_EXPENSE" />
+      <element name="PLANNED_PROFIT" value="PLANNED_PROFIT" />
+      <element name="APPROVED_REVENUE" value="APPROVED_REVENUE" />
+      <element name="APPROVED_EXPENSE" value="APPROVED_EXPENSE" />
+      <element name="APPROVED_PROFIT" value="APPROVED_PROFIT" />
+      <element name="REVENUE_DIFFERENCE" value="REVENUE_DIFFERENCE" />
+      <element name="EXPENSE_DIFFERENCE" value="EXPENSE_DIFFERENCE" />
+      <element name="PROFIT_DIFFERENCE" value="PROFIT_DIFFERENCE" />
+    </group>
+    <group name="G_REV" source="Q_REV">
+      <element name="REV_SHIPMENT_ID" value="REV_SHIPMENT_ID" />
+      <element name="REV_COST_TYPE" value="REV_COST_TYPE" />
+      <element name="REV_INVOICE_ID" value="REV_INVOICE_ID" />
+      <element name="REV_CUSTOMER" value="REV_CUSTOMER"></element>
+      <element name="REV_CUSTOMER_ID" value="REV_CUSTOMER_ID"></element>
+      <element name="REV_CUST_INVOICE_ID" value="REV_CUST_INVOICE_ID"></element>
+      <element name="REV_INVOICE_DATE" value="REV_INVOICE_DATE" />
+      <element name="REV_BILL_ID" value="REV_BILL_ID" />
+      <element name="REV_PLANNED" value="REV_PLANNED" />
+      <element name="REV_APPROVED" value="REV_APPROVED" />
+      <element name="REV_DIFF" value="REV_DIFF" />
+    </group>
+    <group name="G_EXP" source="Q_EXP">
+      <element name="EXP_SHIPMENT_ID" value="EXP_SHIPMENT_ID" />
+      <element name="EXP_COST_TYPE" value="EXP_COST_TYPE" />
+      <element name="EXP_INVOICE_ID" value="EXP_INVOICE_ID" />
+      <element name="EXP_SERVPROV" value="EXP_SERVPROV"></element>
+      <element name="EXP_SERVPROV_ID" value="EXP_SERVPROV_ID"></element>
+      <element name="EXP_SP_INVOICE_ID" value="EXP_SP_INVOICE_ID"></element>
+      <element name="EXP_INVOICE_DATE" value="EXP_INVOICE_DATE" />
+      <element name="EXP_VOUCHER_ID" value="EXP_VOUCHER_ID" />
+      <element name="EXP_PLANNED" value="EXP_PLANNED" />
+      <element name="EXP_APPROVED" value="EXP_APPROVED" />
+      <element name="EXP_DIFF" value="EXP_DIFF" />
+    </group>
+  </dataStructure>
+</dataTemplate>

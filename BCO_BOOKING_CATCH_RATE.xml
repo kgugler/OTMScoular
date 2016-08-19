@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKING_CATCH_RATE" description="BCO Booking Catch Rate Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  cvr2.charter_voyage_refnum_value 
+  loc_code,
+  cvr3.charter_voyage_refnum_value 
+  commodity,
+  (SELECT sref2.shipment_refnum_value
+  FROM shipment sh
+  INNER JOIN shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid 
+  AND sref1.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+  INNER JOIN shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid 
+  AND sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME' 
+  WHERE sref1.shipment_refnum_value = cv.charter_voyage_xid  
+  AND sh.consol_gid IS NULL
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND ROWNUM = 1)
+  transloader,
+  TO_CHAR(TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY'),'MONTH')
+  booking_month,
+  TO_CHAR(TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY'),'YYYY')
+  booking_year,
+  cv.charter_voyage_xid 
+  booking_no,
+  (CASE WHEN
+    NOT cvr4.charter_voyage_gid IS NULL
+  THEN '20'
+  WHEN
+    NOT cvr5.charter_voyage_gid IS NULL OR NOT cvr6.charter_voyage_gid IS NULL
+  THEN '40'
+  ELSE
+    ''
+  END)
+  container_type,
+  loc1.location_xid 
+  shipment_source,
+  REPLACE(REPLACE(cvr8.charter_voyage_refnum_value,CHR(13),' '),CHR(10),' ') 
+  gateway,
+  loc2.city
+  destination_city,
+  loc2.country_code3_gid
+  destination_country,
+  loc3.location_xid
+  ssl,
+  (CASE WHEN
+    NOT cvr4.charter_voyage_gid IS NULL
+  THEN cvr4.charter_voyage_refnum_value
+  WHEN
+    NOT cvr5.charter_voyage_gid IS NULL OR NOT cvr6.charter_voyage_gid IS NULL
+  THEN TO_CHAR(TO_NUMBER(NVL(cvr5.charter_voyage_refnum_value,'0')) + TO_NUMBER(NVL(cvr6.charter_voyage_refnum_value,'0')))
+  ELSE
+    '0'
+  END)
+  ordered_capacity,
+  (SELECT sgr2.ship_group_refnum_value 
+  FROM ship_group_refnum sgr1
+  INNER JOIN ship_group_refnum sgr2 ON sgr1.ship_group_gid = sgr2.ship_group_gid
+  AND sgr2.ship_group_refnum_qual_gid = 'SCOULAR/BCO.NUMBER OF CONTAINERS IN LATEST LOAD ORDER' 
+  WHERE sgr1.ship_group_refnum_qual_gid = 'CHARTER VOYAGE'
+  AND sgr1.ship_group_refnum_value = cv.charter_voyage_xid
+  AND ROWNUM = 1)
+  committed_supply,
+  (SELECT COUNT(ssu.s_ship_unit_gid)  
+  FROM shipment sh
+  INNER JOIN shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid 
+  AND sref2.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+  INNER JOIN shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+  AND ssd.stop_num = 1 
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND NOT ssu.tag_3 IS NULL
+  WHERE sref2.shipment_refnum_value = cv.charter_voyage_xid  
+  AND sh.consol_gid IS NULL
+  AND sh.shipment_type_gid = 'TRANSPORT')
+  container_count,
+  cvr7.charter_voyage_refnum_value
+  shortage_reason
+FROM
+  charter_voyage cv
+INNER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_COMMODITY'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+  cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TEU COUNT'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+  cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FT COUNT'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+  cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTHC COUNT'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr7 ON cv.charter_voyage_gid = cvr7.charter_voyage_gid
+AND
+  cvr7.charter_voyage_refnum_qual_gid = 'SCOULAR.BOOKING SHORTAGE REASON'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr8 ON cv.charter_voyage_gid = cvr8.charter_voyage_gid
+AND
+  cvr8.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DROP OFF LOCATION'  
+LEFT OUTER JOIN
+  location loc1 ON cv.source_location_gid = loc1.location_gid   
+LEFT OUTER JOIN
+  location loc2 ON cv.dest_location_gid = loc2.location_gid      
+LEFT OUTER JOIN
+  location loc3 ON cv.servprov_gid = loc3.location_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND
+  cv.is_cancelled = 'N'
+AND
+  (TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY') DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="TRANSLOADER" value="TRANSLOADER" />
+      <element name="BOOKING_MONTH" value="BOOKING_MONTH" />
+      <element name="BOOKING_YEAR" value="BOOKING_YEAR" />
+      <element name="BOOKING_NO" value="BOOKING_NO" />
+      <element name="CONTAINER_TYPE" value="CONTAINER_TYPE" />
+      <element name="SHIPMENT_SOURCE" value="SHIPMENT_SOURCE"></element>
+      <element name="GATEWAY" value="GATEWAY" />
+      <element name="DESTINATION_CITY" value="DESTINATION_CITY" />
+      <element name="DESTINATION_COUNTRY" value="DESTINATION_COUNTRY"></element>
+      <element name="SSL" value="SSL" />
+      <element name="ORDERED_CAPACITY" value="ORDERED_CAPACITY" />
+      <element name="COMMITTED_SUPPLY" value="COMMITTED_SUPPLY" />
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT" />
+      <element name="SHORTAGE_REASON" value="SHORTAGE_REASON"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

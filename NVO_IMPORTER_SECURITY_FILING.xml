@@ -1,0 +1,557 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_IMPORTER_SECURITY_FILING" description="NVO Importer Security Filing (ISF)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="JOB_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIP TO')
+  ship_to_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIP TO','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIP TO','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIP TO','3'))
+  ship_to_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIP TO',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIP TO') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIP TO') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIP TO'))
+  ship_to_city_state_zip,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','CONTAINER STUFFER') 
+  transloader_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONTAINER STUFFER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONTAINER STUFFER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONTAINER STUFFER','3'))
+  transloader_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','CONTAINER STUFFER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','CONTAINER STUFFER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','CONTAINER STUFFER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','CONTAINER STUFFER'))
+  transloader_city_state_zip,
+  glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'XXX','CONSOLIDATOR') 
+  consolidator_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONSOLIDATOR','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONSOLIDATOR','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONSOLIDATOR','3'))
+  consolidator_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','CONSOLIDATOR',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','CONSOLIDATOR') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','CONSOLIDATOR') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','CONSOLIDATOR'))
+  consolidator_city_state_zip,
+  cc1.country_name source_loc_country,
+  sref1.shipment_refnum_value place_of_delivery,
+  s.attribute2 hs_code,
+  TRIM((SELECT listagg (ssunit.tag_3, ', ')
+  WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
+  INNER JOIN shipment_stop_d ssd ON ssunit.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  WHERE ssd.shipment_gid = s.shipment_gid)) containers,
+  'TSFE' || j.job_xid bill_lading,
+  cont1.company_name carrier,
+  j.attribute5 master_bill_lading,
+  'TSFE' || j.job_xid ams_number,
+	TRIM(cvr1.charter_voyage_refnum_value || ' ' || cvr2.charter_voyage_refnum_value) feeder_vessel_name,
+  glogowner.xxscou_nvo_report_functions.port_place_loc(s.shipment_gid,cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR.VIA_LOCATION_ID', cv.source_location_gid)
+  feeder_vessel_load_port,  
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'fmMM/DD/YY') feeder_vessel_etd,
+	(CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+    sref3.shipment_refnum_value
+  ELSE
+    sref2.shipment_refnum_value
+  END) voyage_name,  
+  (CASE WHEN 
+    (SELECT loc.location_gid                                                                  
+    FROM location loc                                      
+    INNER JOIN country_code cc ON loc.country_code3_gid = cc.country_code3_gid                                                                       
+    WHERE loc.location_gid = 'SCOULAR.' || REPLACE(cvr5.charter_voyage_refnum_value,'SCOULAR.','')) IS NULL THEN
+  cvr5.charter_voyage_refnum_value
+  ELSE
+    (SELECT loc.city || ', ' || cc.country_name                                                                    
+    FROM location loc                                      
+    INNER JOIN country_code cc ON loc.country_code3_gid = cc.country_code3_gid                                                                       
+    WHERE loc.location_gid = 'SCOULAR.' || REPLACE(cvr5.charter_voyage_refnum_value,'SCOULAR.','')) 
+  END) load_port,  
+	cvr3.charter_voyage_refnum_value mother_vessel_etd,  
+	glogowner.xxscou_nvo_report_functions.port_place_loc_pr(s.shipment_gid,cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE', cv.dest_location_gid)
+  discharge_port,
+	TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YY') arrival_date
+FROM
+	job j
+LEFT OUTER JOIN 
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN 
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid 
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.transport_mode_gid = 'VESSEL-CO'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+  s.perspective = 'B'
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER VESSEL NAME'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER VOYAGE NAME'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT DEPARTURE DATE'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+	cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+	cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT' 
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.PLACE OF DELIVERY' 
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/NVO.VESSEL_VOYAGE'  
+LEFT OUTER JOIN
+	shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+	sref3.shipment_refnum_qual_gid = 'SCOULAR/NVO.BOOKING_VESSEL_VOYAGE'      
+LEFT OUTER JOIN
+	contact cont1 ON cv.servprov_gid = cont1.contact_gid   
+LEFT OUTER JOIN
+	location l1 ON s.source_location_gid = l1.location_gid
+LEFT OUTER JOIN
+	country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT DISTINCT
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIP TO'), 'Data Missing in System') 
+  ship_to_name,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIP TO','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIP TO','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIP TO','3')), 'Data Missing in System')
+  ship_to_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIP TO',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIP TO') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIP TO') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIP TO')), 'Data Missing in System')
+  ship_to_city_state_zip,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','CONTAINER STUFFER'), 'Data Missing in System') 
+  transloader_name,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONTAINER STUFFER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONTAINER STUFFER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONTAINER STUFFER','3')), 'Data Missing in System')
+  transloader_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','CONTAINER STUFFER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','CONTAINER STUFFER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','CONTAINER STUFFER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','CONTAINER STUFFER')), 'Data Missing in System')
+  transloader_city_state_zip,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','CONSOLIDATOR'), 'Data Missing in System') 
+  consolidator_name,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONSOLIDATOR','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONSOLIDATOR','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','CONSOLIDATOR','3')), 'Data Missing in System')
+  consolidator_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','CONSOLIDATOR',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','CONSOLIDATOR') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','CONSOLIDATOR') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','CONSOLIDATOR')), 'Data Missing in System')
+  consolidator_city_state_zip,
+  NVL(cc1.country_name, 'Data Missing in System')
+  source_loc_country,
+  NVL(sref1.shipment_refnum_value, 'Data Missing in System')
+  place_of_delivery,  
+  NVL(s.attribute2, 'Data Missing in System') hs_code,
+  NVL(TRIM((SELECT listagg (ssunit.tag_3, ', ')
+  WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
+  INNER JOIN shipment_stop_d ssd ON ssunit.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  WHERE ssd.shipment_gid = s.shipment_gid)), 'Data Missing in System')
+  containers,
+  'TSFE' || NVL(j.job_xid, ' Data Missing in System') bill_lading,
+  NVL(cont1.company_name, 'Data Missing in System') carrier,
+  NVL(j.attribute5, 'Data Missing in System') master_bill_lading,
+  'TSFE' || NVL(j.job_xid, ' Data Missing in System') ams_number,
+	NVL(TRIM(cvr1.charter_voyage_refnum_value || ' ' || cvr2.charter_voyage_refnum_value), 'Data Missing in System')
+  feeder_vessel_name,
+  NVL(glogowner.xxscou_nvo_report_functions.port_place_loc(s.shipment_gid,cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR.VIA_LOCATION_ID', cv.source_location_gid), 'Data Missing in System')
+  feeder_vessel_load_port,
+  NVL(TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'fmMM/DD/YY'), 'Data Missing in System')
+  feeder_vessel_etd,
+	NVL((CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+    sref3.shipment_refnum_value
+  ELSE
+    sref2.shipment_refnum_value
+  END), 'Data Missing in System')
+  voyage_name, 
+  (CASE WHEN cvr5.charter_voyage_refnum_value IS NULL THEN 'Data Missing in System'
+  ELSE
+    (CASE WHEN 
+      (SELECT loc.location_gid                                                                  
+      FROM location loc                                      
+      INNER JOIN country_code cc ON loc.country_code3_gid = cc.country_code3_gid                                                                       
+      WHERE loc.location_gid = 'SCOULAR.' || REPLACE(cvr5.charter_voyage_refnum_value,'SCOULAR.','')) IS NULL THEN
+    cvr5.charter_voyage_refnum_value
+    ELSE
+      (SELECT loc.city || ', ' || cc.country_name                                                                    
+      FROM location loc                                      
+      INNER JOIN country_code cc ON loc.country_code3_gid = cc.country_code3_gid                                                                       
+      WHERE loc.location_gid = 'SCOULAR.' || REPLACE(cvr5.charter_voyage_refnum_value,'SCOULAR.','')) 
+    END)
+  END)
+  load_port,  
+	NVL(cvr3.charter_voyage_refnum_value, 'Data Missing in System')
+  mother_vessel_etd,  
+	NVL(glogowner.xxscou_nvo_report_functions.port_place_loc_pr(s.shipment_gid,cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE', cv.dest_location_gid), 'Data Missing in System')
+  discharge_port,
+	NVL(TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YY'), 'Data Missing in System')
+  arrival_date
+FROM
+	job j
+LEFT OUTER JOIN 
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN 
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.transport_mode_gid = 'VESSEL-CO'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+  s.perspective = 'B'
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER VESSEL NAME'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER VOYAGE NAME'    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT DEPARTURE DATE'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+	cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+	cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT'  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.PLACE OF DELIVERY'  
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/NVO.VESSEL_VOYAGE'  
+LEFT OUTER JOIN
+	shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+	sref3.shipment_refnum_qual_gid = 'SCOULAR/NVO.BOOKING_VESSEL_VOYAGE'     
+LEFT OUTER JOIN
+	contact cont1 ON cv.servprov_gid = cont1.contact_gid   
+LEFT OUTER JOIN
+	location l1 ON s.source_location_gid = l1.location_gid
+LEFT OUTER JOIN
+	country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid    
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ENTITY1"><![CDATA[SELECT DISTINCT
+  TRIM((CASE WHEN glogowner.xxscou_nvo_report_functions.remark_value(s.shipment_gid,'SCOULAR/NVO.HBL_SHIPPER_LINE1') IS NULL THEN
+    (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_contact_desc(s.shipment_gid,'SHIPPER') IS NULL THEN
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER'), 'Data Missing in System')
+      ELSE
+        glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER')
+      END) ||
+      CHR(13) ||
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') IS NULL THEN
+          'Data Missing in System'
+        ELSE
+          (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') IS NULL THEN
+            TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1'))
+          ELSE
+            TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || CHR(13) ||
+            glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2'))
+          END)
+        END)
+      ELSE
+        (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') IS NULL THEN
+          TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1'))
+        ELSE
+          TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || CHR(13) ||
+          glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2'))
+        END)
+      END) ||
+      CHR(13) ||
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER',',') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIPPER')), 'Data Missing in System') 
+      ELSE
+        TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER',',') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIPPER'))
+      END)     
+    ELSE
+      REPLACE(glogowner.xxscou_nvo_report_functions.entity_contact_desc(s.shipment_gid,'SHIPPER'),CHR(13) || CHR(13),CHR(13))
+    END)
+  ELSE
+    REPLACE(glogowner.xxscou_nvo_report_functions.remark_value(s.shipment_gid,'SCOULAR/NVO.HBL_SHIPPER_LINE1'),CHR(13) || CHR(13),CHR(13))
+  END))
+  manufacturer_name,
+  TRIM((CASE WHEN glogowner.xxscou_nvo_report_functions.remark_value(s.shipment_gid,'SCOULAR/NVO.HBL_SHIPPER_LINE1') IS NULL THEN
+    (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_contact_desc(s.shipment_gid,'SHIPPER') IS NULL THEN
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER'), 'Data Missing in System')
+      ELSE
+        glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER')
+      END) ||
+      CHR(13) ||
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') IS NULL THEN
+          'Data Missing in System'
+        ELSE
+          (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') IS NULL THEN
+            TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1'))
+          ELSE
+            TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || CHR(13) ||
+            glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2'))
+          END)
+        END)
+      ELSE
+        (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') IS NULL THEN
+          TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1'))
+        ELSE
+          TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || CHR(13) ||
+          glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2'))
+        END)
+      END) ||
+      CHR(13) ||
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER',',') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIPPER')), 'Data Missing in System') 
+      ELSE
+        TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER',',') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
+        glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIPPER'))
+      END)     
+    ELSE
+      REPLACE(glogowner.xxscou_nvo_report_functions.entity_contact_desc(s.shipment_gid,'SHIPPER'),CHR(13) || CHR(13),CHR(13))
+    END)
+  ELSE
+    REPLACE(glogowner.xxscou_nvo_report_functions.remark_value(s.shipment_gid,'SCOULAR/NVO.HBL_SHIPPER_LINE1'),CHR(13) || CHR(13),CHR(13))
+  END))
+  shipper_name
+FROM
+	job j
+LEFT OUTER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.transport_mode_gid = 'VESSEL-CO'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+WHERE
+	j.job_gid = :JOB_ID]]></sqlStatement>
+    <sqlStatement name="Q_ENTITY2"><![CDATA[SELECT DISTINCT
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.remark_value(s.shipment_gid,'SCOULAR/NVO.HBL_CONSIGNEE_LINE1') IS NULL THEN
+    (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_contact_desc(s.shipment_gid,'ULTIMATE CONSIGNEE') IS NULL THEN
+      (CASE WHEN :P_RUN = 'DRAFT' THEN
+        NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'), 'Data Missing in System')
+      ELSE
+        glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
+      END) ||
+      (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') = 'TO ORDER' 
+      THEN ''
+      ELSE
+        CHR(13) || 
+        (CASE WHEN :P_RUN = 'DRAFT' THEN
+          (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1') IS NULL THEN
+            'Data Missing in System'
+          ELSE
+            (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','2') IS NULL THEN
+              TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1'))
+            ELSE
+              TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1') || CHR(13) ||
+              glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','2')) 
+            END)
+          END)
+        ELSE
+           (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','2') IS NULL THEN
+            TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1'))
+          ELSE
+            TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1') || CHR(13) ||
+            glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','2')) 
+          END)
+        END) ||
+        CHR(13) || 
+        (CASE WHEN :P_RUN = 'DRAFT' THEN
+          NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE',',') || ' ' || 
+          glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') || ' ' || 
+          glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') || ' ' || 
+          glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')), 'Data Missing in System')
+        ELSE
+          TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE',',') || ' ' || 
+          glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') || ' ' || 
+          glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') || ' ' || 
+          glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'))
+        END)
+      END)
+    ELSE
+      REPLACE(glogowner.xxscou_nvo_report_functions.entity_contact_desc(s.shipment_gid,'ULTIMATE CONSIGNEE'), CHR(13) || CHR(13), CHR(13))
+    END)
+  ELSE
+    REPLACE(glogowner.xxscou_nvo_report_functions.remark_value(s.shipment_gid,'SCOULAR/NVO.HBL_CONSIGNEE_LINE1'), CHR(13) || CHR(13), CHR(13))
+  END)
+  consignee_name
+FROM
+	job j
+LEFT OUTER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.transport_mode_gid = 'VESSEL-CO'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+WHERE
+	j.job_gid = :JOB_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SHIP_TO_NAME" value="SHIP_TO_NAME" />
+      <element name="SHIP_TO_ADDRESS" value="SHIP_TO_ADDRESS" />
+      <element name="SHIP_TO_CITY_STATE_ZIP" value="SHIP_TO_CITY_STATE_ZIP" />
+      <element name="TRANSLOADER_NAME" value="TRANSLOADER_NAME"></element>
+      <element name="TRANSLOADER_ADDRESS" value="TRANSLOADER_ADDRESS" />
+      <element name="TRANSLOADER_CITY_STATE_ZIP" value="TRANSLOADER_CITY_STATE_ZIP" />
+      <element name="CONSOLIDATOR_NAME" value="CONSOLIDATOR_NAME"></element>
+      <element name="CONSOLIDATOR_ADDRESS" value="CONSOLIDATOR_ADDRESS"></element>
+      <element name="CONSOLIDATOR_CITY_STATE_ZIP" value="CONSOLIDATOR_CITY_STATE_ZIP"></element>
+      <element name="SOURCE_LOC_COUNTRY" value="SOURCE_LOC_COUNTRY"></element>
+      <element name="PLACE_OF_DELIVERY" value="PLACE_OF_DELIVERY"></element>
+      <element name="HS_CODE" value="HS_CODE" />
+      <element name="CONTAINERS" value="CONTAINERS"></element>
+      <element name="BILL_LADING" value="BILL_LADING" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="MASTER_BILL_LADING" value="MASTER_BILL_LADING" />
+      <element name="AMS_NUMBER" value="AMS_NUMBER" />
+      <element name="FEEDER_VESSEL_NAME" value="FEEDER_VESSEL_NAME"></element>
+      <element name="FEEDER_VESSEL_LOAD_PORT" value="FEEDER_VESSEL_LOAD_PORT"></element>
+      <element name="FEEDER_VESSEL_ETD" value="FEEDER_VESSEL_ETD"></element>
+      <element name="VOYAGE_NAME" value="VOYAGE_NAME"></element>
+      <element name="LOAD_PORT" value="LOAD_PORT" />
+      <element name="MOTHER_VESSEL_ETD" value="MOTHER_VESSEL_ETD" />
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT" />
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE"></element>
+    </group>
+    <group name="G_ENTITY1" source="Q_ENTITY1">
+      <element name="MANUFACTURER_NAME" value="MANUFACTURER_NAME" />
+      <element name="SHIPPER_NAME" value="SHIPPER_NAME" />
+      <group name="G_ENTITY2" source="Q_ENTITY2">
+        <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME" />
+      </group>
+    </group>
+  </dataStructure>
+</dataTemplate>

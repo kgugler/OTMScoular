@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_TRACKING_REPORT" description="NVO Tracking Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="INV_PARTY_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_CURSOR"><![CDATA[OPT_PARAM('_optimizer_extended_cursor_sharing_rel', 'NONE') ]]></sqlStatement>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT :INV_PARTY_ID customer_num FROM Dual]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT a.booking_no, a.job_gid, a.shipment_refnum_value, a.containerno, a.ieseventdate,
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.shipment_xid, 'Data Missing in System') ELSE a.shipment_xid END) shipment_id,  
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.containerno, 'Data Missing in System') ELSE a.containerno END) container_no,  
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(TO_CHAR(a.ieseventdate,'MM/DD/YYYY hh24:mm:ss'), 'Data Missing in System') ELSE TO_CHAR(a.ieseventdate,'MM/DD/YYYY hh24:mm:ss') END) event_date, 
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.mesge, 'Data Missing in System') ELSE a.mesge END) message,   
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.msgtype, 'Data Missing in System') ELSE a.msgtype END) msg_type, 
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.eventlocation, 'Data Missing in System') ELSE a.eventlocation END) event_location,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(TO_CHAR(a.insertdate,'MM/DD/YYYY hh24:mm:ss'), 'Data Missing in System') ELSE TO_CHAR(a.insertdate,'MM/DD/YYYY hh24:mm:ss') END) insert_date
+FROM
+(SELECT DISTINCT
+  j.job_gid,
+  isr.shipment_refnum_value,
+  REPLACE(isr.shipment_refnum_value,'SCOULAR/NVO.','') booking_no,
+  ies.i_transaction_no, 
+  s.shipment_xid, 
+  isrem.remark_text containerno,
+  (CASE WHEN 
+    (SELECT location_gid
+    FROM location
+    WHERE city = iss.event_city
+    AND province_code = iss.event_state
+    AND ROWNUM = 1)
+  IS NULL THEN
+    ies.eventdate
+  ELSE
+    glogowner.utc.get_local_date(ies.eventdate,
+    (SELECT location_gid
+    FROM location
+    WHERE city = iss.event_city
+    AND province_code = iss.event_state
+    AND ROWNUM = 1)) 
+  END)
+  ieseventdate,
+  bss.description mesge,
+  (CASE WHEN ies.insert_user = 'SCOULAR/NVO.INTEGRATION' THEN 'CLM' 
+  WHEN ies.insert_user = 'SCOULAR.INTEGRATION' THEN 'Vessel Message' 
+  ELSE '' 
+  END) msgtype,
+  (CASE WHEN iss.location_gid IS NULL
+  THEN 
+    iss.event_city || ',' || iss.event_state || ' ' || iss.event_country
+  ELSE
+    loc.city || ',' || loc.province_code || ' ' || loc.country_code3_gid
+  END) eventlocation,
+  glogowner.utc.get_local_date(ies.insert_date,
+  (SELECT location_gid
+  FROM location
+  WHERE city = 'OVERLAND PARK'
+  AND province_code = 'KS'
+  AND ROWNUM = 1))
+  insertdate
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+INNER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'SHIPPER'
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'	
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid  
+INNER JOIN 
+  ie_shipment_refnum isr ON isr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+AND
+  isr.shipment_refnum_value = sr.shipment_refnum_value  
+LEFT OUTER JOIN
+  ie_shipmentstatus ies ON isr.i_transaction_no = ies.i_transaction_no
+LEFT OUTER JOIN 
+  bs_status_code bss ON ies.status_code_gid = bss.bs_status_code_gid
+LEFT OUTER JOIN
+  ie_ss_stop iss ON isr.i_transaction_no = iss.i_transaction_no
+LEFT OUTER JOIN
+  location loc ON iss.location_gid = loc.location_gid
+LEFT OUTER JOIN 
+  ie_ss_remark isrem ON isr.i_transaction_no = isrem.i_transaction_no
+WHERE 
+  sip.involved_party_contact_gid = :INV_PARTY_ID
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid) 
+AND
+  TO_DATE(cv.arrival_date,'dd-mm-rr') >= SYSDATE - 15
+) a
+ORDER BY a.job_gid, a.shipment_refnum_value, a.containerno, a.ieseventdate]]></sqlStatement>
+    <sqlStatement name="Q_ROWCOUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (
+SELECT
+  j.job_gid
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+INNER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'SHIPPER'
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'	
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid  
+INNER JOIN 
+  ie_shipment_refnum isr ON isr.shipment_refnum_value = sr.shipment_refnum_value
+AND
+  isr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+WHERE 
+  sip.involved_party_contact_gid = :INV_PARTY_ID
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid) 
+AND
+  TO_DATE(cv.arrival_date,'dd-mm-rr') >= SYSDATE - 15
+)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="CUSTOMER_NUM" value="CUSTOMER_NUM" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="BOOKING_NO" value="BOOKING_NO" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="CONTAINER_NO" value="CONTAINER_NO" />
+      <element name="EVENT_DATE" value="EVENT_DATE" />
+      <element name="MESSAGE" value="MESSAGE"></element>
+      <element name="MSG_TYPE" value="MSG_TYPE"></element>
+      <element name="EVENT_LOCATION" value="EVENT_LOCATION" />
+      <element name="INSERT_DATE" value="INSERT_DATE" />
+    </group>
+    <group name="G_ROWCOUNT" source="Q_ROWCOUNT">
+      <element name="ROW_COUNT" value="ROW_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

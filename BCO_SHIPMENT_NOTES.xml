@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENT_NOTES" description="BCO Shipment Notes Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	sh.shipment_xid shipment_gid,
+	sr.remark_text,
+	gu.gl_user_xid insert_user,
+	TO_CHAR(from_tz(CAST(sr.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI PM') note_time
+FROM
+	shipment sh
+INNER JOIN
+	shipment_remark sr ON sh.shipment_gid = sr.shipment_gid
+AND
+	sr.remark_qual_gid = 'SCOULAR.INTERNAL NOTES'
+INNER JOIN
+	gl_user gu ON sr.insert_user = gu.gl_user_gid
+WHERE
+	sh.shipment_gid = :SHIPMENT_ID
+ORDER BY sr.insert_date ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_GID" value="SHIPMENT_GID" />
+      <element name="REMARK_TEXT" value="REMARK_TEXT" />
+      <element name="INSERT_USER" value="INSERT_USER" />
+      <element name="NOTE_TIME" value="NOTE_TIME" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_GMO_YSB" description="BCO GMO YSB" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	TO_CHAR(SAIL_DATE) as SAIL_DATE,
+	SHIPMENT_GID AS SHIPMENT_NUMBER,
+	CREDIT_NUMBER,
+	CONTAINER_COUNTANDDETAIL,
+	VESSEL
+FROM
+	VIEW_SHIPMENT_SUMMARY VSS
+WHERE
+	SHIPMENT_GID = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(SAIL_DATE), 'Data Missing in System') SAIL_DATE,
+	SHIPMENT_GID AS SHIPMENT_NUMBER,
+	NVL(CREDIT_NUMBER, 'Data Missing in System') CREDIT_NUMBER,
+	NVL(CONTAINER_COUNTANDDETAIL, 'Data Missing in System') CONTAINER_COUNTANDDETAIL,
+	NVL(VESSEL, 'Data Missing in System') VESSEL
+FROM
+	VIEW_SHIPMENT_SUMMARY VSS
+WHERE
+	SHIPMENT_GID = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SAIL_DATE" value="SAIL_DATE" />
+      <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="CONTAINER_COUNTANDDETAIL" value="CONTAINER_COUNTANDDETAIL" />
+      <element name="VESSEL" value="VESSEL"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

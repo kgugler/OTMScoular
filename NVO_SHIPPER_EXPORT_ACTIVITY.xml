@@ -1,0 +1,329 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_SHIPPER_EXPORT_ACTIVITY" description="NVO Shipper Export Activity" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="INS_START_DATE" dataType="character"></parameter>
+    <parameter name="INS_END_DATE" dataType="character"></parameter>
+    <parameter name="INV_PARTY_ID" dataType="character"></parameter>
+    <parameter name="DEST_LOC_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+:INS_START_DATE lc_start_date,
+:INS_END_DATE lc_end_date,
+:INV_PARTY_ID involved_party,
+:DEST_LOC_ID dest_port
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  b.insert_date,
+  b.job_insert_date,
+  b.shipper_name,
+  b.consignee_name,
+  b.job_no,
+  b.book_no,
+  b.cust_ref_no,
+  b.add_cust_ref_no,
+  b.item_description,
+  b.gross_weight,
+  b.place_of_receipt,
+  b.port_of_discharge,
+  b.cut_off_date,
+  b.etd,
+  b.eta,
+  b.exp_transit_time,
+  b.act_depart_date,
+  b.act_arrival_date,
+  b.act_transit_time,
+  b.container_count,
+  b.container_type,
+  (TRIM(TO_CHAR(SUM(b.cost),'999,999,990.00'))) freight_billed,
+  b.exdec_comm_value
+FROM
+(SELECT DISTINCT
+  a.*,
+  sc1.shipment_cost_seqno, 
+  sc1.cost
+FROM
+(SELECT DISTINCT
+  j.insert_date,
+  j.job_gid,
+  TO_CHAR(j.insert_date,'MM/DD/YYYY') job_insert_date,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER') 
+  shipper_name, 
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') 
+  consignee_name,      
+  'TSC' || j.job_xid job_no,
+  cv.charter_voyage_xid book_no,
+  j.attribute3 cust_ref_no,
+  '' add_cust_ref_no,
+	cvr1.charter_voyage_refnum_value item_description,
+  (SELECT TRIM(TO_CHAR(ROUND(SUM(ssu.received_weight),2), '999,999,990.00')) || ' ' || ssu.received_weight_uom
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  GROUP BY ssu.received_weight_uom)
+  gross_weight,
+  glogowner.xxscou_nvo_report_functions.loc_city_province((SELECT ship1.source_location_gid
+  FROM job_order_release_join jorjob1
+  INNER JOIN s_ship_unit_line ssuline1 ON jorjob1.order_release_gid = ssuline1.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessujoin1 ON sessujoin1.s_ship_unit_gid = ssuline1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssejoin1 ON sessujoin1.s_equipment_gid = ssejoin1.s_equipment_gid
+  INNER JOIN shipment shp1 ON ssejoin1.shipment_gid = shp1.shipment_gid
+  AND shp1.shipment_gid IN (
+  SELECT sh1.shipment_gid
+  FROM shipment sh1
+  WHERE shp1.shipment_gid = sh1.shipment_gid
+  AND sh1.shipment_type_gid = 'TRANSPORT'
+  AND sh1.is_primary = 'Y'
+  AND sh1.perspective = 'S')  
+  INNER JOIN shipment ship1 ON shp1.shipment_gid = ship1.shipment_gid  
+  AND ship1.shipment_type_gid = 'TRANSPORT'
+  AND ship1.is_primary = 'Y'
+  AND ship1.perspective = 'S'
+  WHERE jorjob1.job_gid = j.job_gid
+  AND ROWNUM = 1)) place_of_receipt,
+  glogowner.xxscou_nvo_report_functions.loc_city_country((SELECT ship2.dest_location_gid
+  FROM job_order_release_join jorjob2
+  INNER JOIN s_ship_unit_line ssuline2 ON jorjob2.order_release_gid = ssuline2.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessujoin2 ON sessujoin2.s_ship_unit_gid = ssuline2.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssejoin2 ON sessujoin2.s_equipment_gid = ssejoin2.s_equipment_gid
+  INNER JOIN shipment shp2 ON ssejoin2.shipment_gid = shp2.shipment_gid
+  AND shp2.shipment_gid IN (
+  SELECT sh2.shipment_gid
+  FROM shipment sh2
+  WHERE shp2.shipment_gid = sh2.shipment_gid
+  AND sh2.shipment_type_gid = 'TRANSPORT'
+  AND sh2.is_primary = 'Y'
+  AND sh2.perspective = 'S')  
+  INNER JOIN shipment ship2 ON shp2.shipment_gid = ship2.shipment_gid  
+  AND ship2.shipment_type_gid = 'TRANSPORT'
+  AND ship2.is_primary = 'Y'
+  AND ship2.perspective = 'S'
+  WHERE jorjob2.job_gid = j.job_gid
+  AND ROWNUM = 1)) port_of_discharge,  
+  (CASE WHEN cvr2.charter_voyage_refnum_value IS NULL THEN cvr3.charter_voyage_refnum_value
+  ELSE cvr2.charter_voyage_refnum_value END) cut_off_date,
+  TO_CHAR(cv.departure_date,'MM/DD/YYYY') etd,
+  TO_CHAR(cv.arrival_date,'MM/DD/YYYY') eta,
+  (CASE WHEN cv.arrival_date IS NULL OR cv.departure_date IS NULL THEN 
+    ''
+  ELSE
+    TRIM(TO_CHAR((cv.arrival_date - cv.departure_date) + 1,'99990'))
+  END) exp_transit_time,
+  (CASE WHEN cv.actual_departure_date IS NULL THEN
+    ''
+  ELSE
+    (CASE WHEN cv.source_location_gid IS NULL THEN
+      TO_CHAR(cv.actual_departure_date,'MM/DD/YYYY')
+    ELSE
+      TO_CHAR(glogowner.utc.get_local_date(cv.actual_departure_date,cv.source_location_gid),'MM/DD/YYYY')
+    END)
+  END) act_depart_date,  
+  (CASE WHEN cv.actual_arrival_date IS NULL THEN
+    ''
+  ELSE  
+    (CASE WHEN cv.dest_location_gid IS NULL THEN
+      TO_CHAR(cv.actual_arrival_date,'MM/DD/YYYY')
+    ELSE
+      TO_CHAR(glogowner.utc.get_local_date(cv.actual_arrival_date,cv.dest_location_gid),'MM/DD/YYYY')
+    END)
+  END) act_arrival_date,
+  (CASE WHEN (cv.actual_arrival_date IS NULL OR cv.actual_departure_date IS NULL) THEN
+    ''
+  ELSE
+    (CASE WHEN cv.dest_location_gid IS NULL AND cv.source_location_gid IS NULL THEN
+      TRIM(TO_CHAR((glogowner.utc.get_local_date(cv.actual_arrival_date,cv.dest_location_gid) - glogowner.utc.get_local_date(cv.actual_departure_date,cv.source_location_gid)) + 1,'99990'))
+    WHEN NOT cv.dest_location_gid IS NULL AND NOT cv.source_location_gid IS NULL THEN
+      TRIM(TO_CHAR((cv.actual_arrival_date - cv.actual_departure_date) + 1,'99990'))
+    WHEN NOT cv.dest_location_gid IS NULL AND cv.source_location_gid IS NULL THEN
+      TRIM(TO_CHAR((glogowner.utc.get_local_date(cv.actual_arrival_date,cv.dest_location_gid) - cv.actual_departure_date) + 1,'99990'))
+    WHEN cv.dest_location_gid IS NULL AND NOT cv.source_location_gid IS NULL THEN
+      TRIM(TO_CHAR((cv.actual_arrival_date - glogowner.utc.get_local_date(cv.actual_departure_date,cv.source_location_gid)) + 1,'99990'))
+    END)
+  END) act_transit_time,
+  (SELECT LISTAGG(TRIM(TO_CHAR(SUM(TO_NUMBER(cvr.charter_voyage_refnum_value)), '999,999,990')),', ')
+  WITHIN GROUP (ORDER BY cvr.charter_voyage_refnum_qual_gid)
+  FROM charter_voyage_refnum cvr
+  WHERE cvr.charter_voyage_gid = cv.charter_voyage_gid
+  AND LENGTH(TRIM(TRANSLATE(cvr.charter_voyage_refnum_value, ' +-.0123456789',' '))) IS NULL  
+  AND (cvr.charter_voyage_refnum_qual_gid LIKE '%20%COUNT%' 
+  OR cvr.charter_voyage_refnum_qual_gid LIKE '%TEU%COUNT%' 
+  OR cvr.charter_voyage_refnum_qual_gid LIKE '%40%COUNT%'
+  OR cvr.charter_voyage_refnum_qual_gid LIKE '%45%COUNT%')
+  GROUP BY cvr.charter_voyage_refnum_qual_gid) container_count,
+  TRIM((SELECT LISTAGG(
+  (CASE WHEN cvr.charter_voyage_refnum_qual_gid LIKE '%20%' THEN 
+  (CASE WHEN cvr.charter_voyage_refnum_qual_gid LIKE '%RF%' THEN '20FTRF'
+  ELSE '20FT' END)
+  WHEN cvr.charter_voyage_refnum_qual_gid LIKE '%TEU%' THEN '20FT'
+  WHEN cvr.charter_voyage_refnum_qual_gid LIKE '%40%' THEN
+  (CASE WHEN cvr.charter_voyage_refnum_qual_gid LIKE('%HC%') THEN '40FTHC'
+  WHEN cvr.charter_voyage_refnum_qual_gid LIKE('%RF%') THEN '40FTHCRF'
+  ELSE '40FT' END)
+  WHEN cvr.charter_voyage_refnum_qual_gid LIKE '%45%' THEN '45FT' END),' ')
+  WITHIN GROUP (ORDER BY cvr.charter_voyage_refnum_qual_gid) 
+  FROM charter_voyage_refnum cvr
+  WHERE cvr.charter_voyage_gid = cv.charter_voyage_gid
+  AND LENGTH(TRIM(TRANSLATE(cvr.charter_voyage_refnum_value, ' +-.0123456789',' '))) IS NULL  
+  AND (cvr.charter_voyage_refnum_qual_gid LIKE '%20%COUNT%' 
+  OR cvr.charter_voyage_refnum_qual_gid LIKE '%TEU%COUNT%' 
+  OR cvr.charter_voyage_refnum_qual_gid LIKE '%40%COUNT%'
+  OR cvr.charter_voyage_refnum_qual_gid LIKE '%45%COUNT%'))) container_type,
+  TRIM(TO_CHAR((SELECT SUM(currency_value_base) 
+  FROM gtm_trans_line_currency
+  WHERE gtm_value_qualifier_gid = 'TOTAL VALUE' 
+  AND gtm_transaction_line_gid IN 
+  (SELECT gtm_transaction_line_gid
+  FROM gtm_transaction_line 
+  WHERE gtm_transaction_gid IN
+  (SELECT gtm_transaction_gid 
+  FROM gtm_trans_refnum 
+  WHERE gtm_trans_refnum_qual_gid = 'SHIPMENT REFERENCE NUMBER'
+  AND refnum_value = s.shipment_xid))),'999,999,990.00')) exdec_comm_value 
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+LEFT OUTER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+LEFT OUTER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'SHIPPER'
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_COMMODITY'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'
+WHERE
+  j.domain_name = 'SCOULAR/NVO'  
+AND NOT
+  s.shipment_gid IS NULL
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)   
+AND
+  (TO_DATE(j.insert_date,'dd-mm-rr') >= TO_DATE(:INS_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(j.insert_date,'dd-mm-rr') <= TO_DATE(:INS_END_DATE,'YYYY-MM-DD'))
+AND
+  (sip.involved_party_contact_gid IN (SELECT REGEXP_SUBSTR(:INV_PARTY_ID,'[^,]+', 1, LEVEL) items
+            FROM DUAL CONNECT BY REGEXP_SUBSTR(:INV_PARTY_ID, '[^,]+', 1, LEVEL) IS NOT NULL))                                     
+AND
+  ((:DEST_LOC_ID IS NULL)
+OR
+  (NOT :DEST_LOC_ID IS NULL
+AND
+  (cv.dest_location_gid IN (SELECT REGEXP_SUBSTR(:DEST_LOC_ID,'[^,]+', 1, LEVEL) FROM DUAL
+                                      CONNECT BY REGEXP_SUBSTR(:DEST_LOC_ID, '[^,]+', 1, LEVEL) IS NOT NULL))))                                      
+) a
+INNER JOIN 
+  job_order_release_join jorj1 ON a.job_gid = jorj1.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN 
+  shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+AND	
+  s1.shipment_type_gid = 'TRANSPORT'
+AND	
+  s1.is_primary = 'Y'
+AND 
+  s1.perspective = 'S'
+INNER JOIN 
+  shipment_cost sc1 ON sc1.shipment_gid = s1.shipment_gid) b
+GROUP BY
+  b.insert_date,
+  b.job_insert_date,
+  b.shipper_name,
+  b.consignee_name,
+  b.job_no,
+  b.book_no,
+  b.cust_ref_no,
+  b.add_cust_ref_no,
+  b.item_description,
+  b.gross_weight,
+  b.place_of_receipt,
+  b.port_of_discharge,
+  b.cut_off_date,
+  b.etd,
+  b.eta,
+  b.exp_transit_time,
+  b.act_depart_date,
+  b.act_arrival_date,
+  b.act_transit_time,
+  b.container_count,
+  b.container_type,
+  b.exdec_comm_value
+ORDER BY TO_DATE(b.insert_date,'dd-mm-rr')]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+      <element name="LC_START_DATE" value="LC_START_DATE" />
+      <element name="LC_END_DATE" value="LC_END_DATE"></element>
+      <element name="INVOLVED_PARTY" value="INVOLVED_PARTY"></element>
+      <element name="DEST_PORT" value="DEST_PORT"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="JOB_INSERT_DATE" value="JOB_INSERT_DATE"></element>
+      <element name="SHIPPER_NAME" value="SHIPPER_NAME" />
+      <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME" />
+      <element name="JOB_NO" value="JOB_NO" />
+      <element name="BOOK_NO" value="BOOK_NO" />
+      <element name="CUST_REF_NO" value="CUST_REF_NO" />
+      <element name="ADD_CUST_REF_NO" value="ADD_CUST_REF_NO" />
+      <element name="ITEM_DESCRIPTION" value="ITEM_DESCRIPTION" />
+      <element name="GROSS_WEIGHT" value="GROSS_WEIGHT" />
+      <element name="PLACE_OF_RECEIPT" value="PLACE_OF_RECEIPT"></element>
+      <element name="PORT_OF_DISCHARGE" value="PORT_OF_DISCHARGE"></element>
+      <element name="CUT_OFF_DATE" value="CUT_OFF_DATE" />
+      <element name="ETD" value="ETD"></element>
+      <element name="ETA" value="ETA" />
+      <element name="EXP_TRANSIT_TIME" value="EXP_TRANSIT_TIME" />
+      <element name="ACT_DEPART_DATE" value="ACT_DEPART_DATE" />
+      <element name="ACT_ARRIVAL_DATE" value="ACT_ARRIVAL_DATE"></element>
+      <element name="ACT_TRANSIT_TIME" value="ACT_TRANSIT_TIME" />
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT" />
+      <element name="CONTAINER_TYPE" value="CONTAINER_TYPE" />
+      <element name="FREIGHT_BILLED" value="FREIGHT_BILLED" />
+      <element name="EXDEC_COMM_VALUE" value="EXDEC_COMM_VALUE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

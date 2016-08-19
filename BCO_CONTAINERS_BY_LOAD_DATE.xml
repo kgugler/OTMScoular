@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_CONTAINER_BY_LOAD_DATE" description="BCO Containers By Load Date Range" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  ssur1.refnum_value transloader,
+  sref2.shipment_refnum_value loc,
+  EXTRACT(MONTH FROM TO_DATE(ssu.tag_2,'MM/DD/YYYY')) load_month,
+  EXTRACT(YEAR FROM TO_DATE(ssu.tag_2,'MM/DD/YYYY')) load_year,
+  ssu.received_ship_unit_count container_type,
+  loc1.location_xid shipment_source,
+  REPLACE(REPLACE(cvr1.charter_voyage_refnum_value,CHR(13),' '),CHR(10),' ') gateway,
+  loc2.city dest_city,
+  loc2.country_code3_gid dest_country,
+  loc3.location_name ssl,
+  ssu.tag_3 container_id,
+  sref.shipment_refnum_value book_no,
+  sref1.shipment_refnum_value commodity,
+  TO_CHAR(oline.late_delivery_date,'MM/DD/YYYY')
+  contract_end_dt,
+  (CASE WHEN ssu.unit_net_weight_uom_code = 'MTON' OR ssu.unit_net_weight_uom_code = 'MT' THEN
+    ROUND(ssu.unit_net_weight,3) 
+  WHEN ssu.unit_net_weight_uom_code = 'LB' THEN
+    ROUND(ssu.unit_net_weight * 0.0004536,3)
+  ELSE
+    ROUND(ssu.unit_net_weight,3) 
+  END)
+  metric_tons,
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr') - TO_DATE(oline.late_delivery_date,'dd-mm-rr'))
+  days_late,
+  (CASE WHEN cvr2.charter_voyage_refnum_value = 'YES' THEN 'Y' ELSE 'N' END)
+  split_booking
+FROM
+  shipment sh
+INNER JOIN 
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid 
+AND 
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'   
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1  
+INNER JOIN 
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  charter_voyage cv ON CONCAT('SCOULAR/BCO.',sref.shipment_refnum_value) = cv.charter_voyage_gid 
+LEFT OUTER JOIN 
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid 
+AND 
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DROP OFF LOCATION'  
+LEFT OUTER JOIN 
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid 
+AND 
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_SPLIT_BOOKING'    
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+LEFT OUTER JOIN 
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid 
+AND 
+  ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME'  
+LEFT OUTER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  location loc3 ON sh.servprov_gid = loc3.location_gid   
+LEFT OUTER JOIN
+  view_shipment_order_base vsob ON sh.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+  ob_line oline ON vsob.order_base_gid = oline.order_base_gid
+WHERE 
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  ssu.s_ship_unit_gid LIKE 'SCOULAR/BCO.S%'
+AND
+  (TO_DATE(ssu.tag_2,'MM/DD/YYYY') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(ssu.tag_2,'MM/DD/YYYY') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  TO_DATE(ssu.tag_2,'MM/DD/YYYY') DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="TRANSLOADER" value="TRANSLOADER" />
+      <element name="LOC" value="LOC" />
+      <element name="LOAD_MONTH" value="LOAD_MONTH" />
+      <element name="LOAD_YEAR" value="LOAD_YEAR" />
+      <element name="CONTAINER_TYPE" value="CONTAINER_TYPE" />
+      <element name="SHIPMENT_SOURCE" value="SHIPMENT_SOURCE"></element>
+      <element name="GATEWAY" value="GATEWAY"></element>
+      <element name="DEST_CITY" value="DEST_CITY" />
+      <element name="DEST_COUNTRY" value="DEST_COUNTRY" />
+      <element name="SSL" value="SSL"></element>
+      <element name="CONTAINER_ID" value="CONTAINER_ID"></element>
+      <element name="BOOK_NO" value="BOOK_NO" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="CONTRACT_END_DT" value="CONTRACT_END_DT" />
+      <element name="METRIC_TONS" value="METRIC_TONS" />
+      <element name="DAYS_LATE" value="DAYS_LATE" />
+      <element name="SPLIT_BOOKING" value="SPLIT_BOOKING" />
+    </group>
+  </dataStructure>
+</dataTemplate>

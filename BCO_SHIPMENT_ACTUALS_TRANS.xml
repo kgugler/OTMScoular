@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENT_ACTUALS_TRANS" description="BCO Shipment Actuals Transmission to AS400" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT
+  TO_CHAR(SYSDATE -7,'MM/DD/YYYY') start_dt,
+  TO_CHAR(SYSDATE,'MM/DD/YYYY') end_dt
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(TO_CHAR(from_tz(CAST(itrans.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YYYY'),'fmMM/DD/YYYY') insert_date,
+  TO_CHAR(TO_DATE(TO_CHAR(from_tz(CAST(itrans.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI:SS AM'), 'MM/DD/YY HH:MI:SS AM'),'fmHH12:fmMI:SS AM') insert_time,
+  glog_util.remove_domain(itrans.insert_user) user_id,
+  sref.shipment_refnum_value loc_code,
+  glog_util.remove_domain(itr.object_gid) shipment_id
+FROM 
+  i_transmission itrans
+LEFT OUTER JOIN
+  i_transaction itr ON itrans.i_transmission_no = itr.i_transmission_no
+LEFT OUTER JOIN
+  shipment_refnum sref ON itr.object_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  itrans.domain_name = 'SCOULAR/BCO'
+AND
+  itrans.external_system_gid = 'SCOULAR.ACTUAL SHIPMENT'
+AND
+  (TO_DATE(TO_CHAR(from_tz(CAST(itrans.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YYYY'),'MM/DD/YYYY') >= TO_DATE(SYSDATE - 7,'dd-mm-rr')
+AND
+  TO_DATE(TO_CHAR(from_tz(CAST(itrans.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YYYY'),'MM/DD/YYYY') <= TO_DATE(SYSDATE,'dd-mm-rr'))
+ORDER BY
+  itrans.insert_date DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="START_DT" value="START_DT" />
+      <element name="END_DT" value="END_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="INSERT_DATE" value="INSERT_DATE" />
+      <element name="INSERT_TIME" value="INSERT_TIME" />
+      <element name="USER_ID" value="USER_ID" />
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+    </group>
+  </dataStructure>
+</dataTemplate>

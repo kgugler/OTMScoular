@@ -1,0 +1,458 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_DOMESTIC_DELIVERY_ORDER" description="NVO Domestic Delivery Order" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="JOB_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  loc_name,
+	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','3'))
+  loc_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'))
+  loc_city_state_zip,
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'KS' THEN
+  'Phone: 877-905-8525'
+  WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'IL' THEN
+  'Phone: 630-874-2918'
+  ELSE '' END)
+  loc_phone,
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'KS' THEN
+  'Fax: 913-696-9240'
+  WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'IL' THEN
+  'Fax: 630-493-1402'
+  ELSE '' END)
+  loc_fax, 
+  TO_CHAR(SYSDATE, 'fmMM/DD/YYYY') system_date,
+  j.job_xid bill_lading,
+  loc1.location_name agent_name,
+  glogowner.xxscou_nvo_report_functions.loc_address(s.servprov_gid) 
+  agent_address,
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.servprov_gid) 
+  agent_city_state_zip, 
+  glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.servprov_gid,'PHONE:')
+  agent_phone,
+  s.attribute1 booking_number,
+  loc1.location_name carrier_name,
+  REPLACE(srem1.remark_text,'|',CHR(13)) load_references,
+  loc2.location_name pickup_name,
+  glogowner.xxscou_nvo_report_functions.loc_address(s.source_location_gid) 
+  pickup_address,
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.source_location_gid) 
+  pickup_city_state_zip, 
+  glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.source_location_gid,'TEL:')
+  pickup_phone, 
+  TRIM(TO_CHAR(glogowner.utc.get_local_date(s.start_time,s.source_location_gid),'MM/DD/YYYY')
+  || ' ' ||
+  sref1.shipment_refnum_value)
+  pickup_date,  
+  loc3.location_name deliver_name,
+  glogowner.xxscou_nvo_report_functions.loc_address(s.dest_location_gid) 
+  deliver_address,
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.dest_location_gid) 
+  deliver_city_state_zip, 
+  glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.dest_location_gid,'TEL:')
+  deliver_phone,  
+  TRIM(TO_CHAR(glogowner.utc.get_local_date(s.end_time, s.dest_location_gid),'MM/DD/YYYY')
+  || ' ' ||
+  sref2.shipment_refnum_value)
+  deliver_date, 
+  loc4.location_name return_name,
+  glogowner.xxscou_nvo_report_functions.loc_address(s.container_delivery_loc_gid) 
+  return_address,
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.container_delivery_loc_gid) 
+  return_city_state_zip, 
+  glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.container_delivery_loc_gid,'TEL:')
+  return_phone, 
+  REPLACE(srem2.remark_text,'|',CHR(13)) special_load_instructions,
+  s.attribute2 pickup_num,
+  sref3.shipment_refnum_value delivery_num,
+  (CASE WHEN NOT
+  (SELECT ssu.tag_3 
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1
+  AND ROWNUM = 1) IS NULL THEN
+  (SELECT ssu.tag_3 
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1
+  AND ROWNUM = 1)
+  ELSE s.attribute5 END) equipment_num, 
+  (SELECT eg.equipment_group_xid 
+  FROM equipment_group eg
+  INNER JOIN s_equipment seq ON eg.equipment_group_gid = seq.equipment_group_gid
+  INNER JOIN shipment_s_equipment_join ssej ON seq.s_equipment_gid = ssej.s_equipment_gid
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1) equipment_type,   
+  glogowner.xxscou_nvo_report_functions.commodity_cases_dom(s.shipment_gid,'SCOULAR/NVODOM.COMMODITY DESCRIPTION','SCOULAR.COMMODITY')
+  descript_of_cargo,
+  TRIM(TO_CHAR((CASE WHEN s.total_net_weight_uom_code = 'LB' THEN s.total_net_weight * 0.453592
+	WHEN s.total_net_weight_uom_code = 'KG' THEN s.total_net_weight
+	WHEN s.total_net_weight_uom_code = 'TON' THEN (s.total_net_weight * 2000) * 0.453592
+	WHEN s.total_net_weight_uom_code = 'MTON' OR s.total_net_weight_uom_code = 'MT' THEN s.total_net_weight * 1000
+	ELSE s.total_net_weight END),'999,999,990.00')) total_weight_kgs,  
+  TRIM(TO_CHAR((CASE WHEN s.total_net_weight_uom_code = 'LB' THEN s.total_net_weight
+	WHEN s.total_net_weight_uom_code = 'KG' THEN s.total_net_weight * 2.20462262
+	WHEN s.total_net_weight_uom_code = 'TON' THEN s.total_net_weight * 2000
+	WHEN s.total_net_weight_uom_code = 'MTON' OR s.total_net_weight_uom_code = 'MT' THEN s.total_net_weight * 2204.62442018
+	ELSE s.total_net_weight END),'999,999,990.00')) total_weight_lbs,  
+  glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  ops_name,
+  glogowner.xxscou_nvo_report_functions.entity_phone_with_label(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','Tel:')
+  ops_phone,
+	glogowner.xxscou_nvo_report_functions.entity_email_with_label(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','Email:')
+  ops_email
+FROM
+	job j
+LEFT OUTER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVODOM.PICKUPTIME'   
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/NVODOM.DELIVERYTIME'
+LEFT OUTER JOIN
+	shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+	sref3.shipment_refnum_qual_gid = 'SCOULAR/NVODOM.DELIVERY NUMBER'    
+LEFT OUTER JOIN
+	shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+	srem1.remark_qual_gid = 'SCOULAR/NVODOM.LOAD REFERENCES'   
+LEFT OUTER JOIN
+	shipment_remark srem2 ON s.shipment_gid = srem2.shipment_gid
+AND
+	srem2.remark_qual_gid = 'SCOULAR/NVODOM.WORK ORDER SPECIAL INSTRUCTIONS'
+LEFT OUTER JOIN
+  location loc1 ON s.servprov_gid = loc1.location_gid  
+LEFT OUTER JOIN
+  location loc2 ON s.source_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  location loc3 ON s.dest_location_gid = loc3.location_gid 
+LEFT OUTER JOIN
+  location loc4 ON s.container_delivery_loc_gid = loc4.location_gid   
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  loc_name,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','3')), 'Data Missing in System')
+  loc_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')), 'Data Missing in System')
+  loc_city_state_zip,
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'KS' THEN
+  'Phone: 877-905-8525'
+  WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'IL' THEN
+  'Phone: 630-874-2918'
+  ELSE '' END)
+  loc_phone,
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'KS' THEN
+  'Fax: 913-696-9240'
+  WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'IL' THEN
+  'Fax: 630-493-1402'
+  ELSE '' END)
+  loc_fax, 
+  TO_CHAR(SYSDATE, 'fmMM/DD/YYYY') system_date,
+  NVL(j.job_xid, 'Data Missing in System') bill_lading,
+  NVL(loc1.location_name, 'Data Missing in System') agent_name,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_address(s.servprov_gid), 'Data Missing in System') 
+  agent_address,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.servprov_gid), 'Data Missing in System') 
+  agent_city_state_zip, 
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.servprov_gid,'PHONE:'), 'Data Missing in System') 
+  agent_phone,
+  NVL(s.attribute1, 'Data Missing in System') booking_number,
+  NVL(loc1.location_name, 'Data Missing in System') carrier_name,
+  NVL(REPLACE(srem1.remark_text,'|',CHR(13)), 'Data Missing in System') load_references,
+  NVL(loc2.location_name, 'Data Missing in System') pickup_name,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_address(s.source_location_gid), 'Data Missing in System') 
+  pickup_address,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.source_location_gid), 'Data Missing in System') 
+  pickup_city_state_zip, 
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.source_location_gid,'TEL:'), 'Data Missing in System') 
+  pickup_phone,  
+  NVL(TRIM(TO_CHAR(glogowner.utc.get_local_date(s.start_time,s.source_location_gid),'MM/DD/YYYY')
+  || ' ' ||
+  sref1.shipment_refnum_value), 'Data Missing in System')
+  pickup_date,
+  NVL(loc3.location_name, 'Data Missing in System') deliver_name,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_address(s.dest_location_gid), 'Data Missing in System') 
+  deliver_address,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.dest_location_gid), 'Data Missing in System') 
+  deliver_city_state_zip, 
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.dest_location_gid,'TEL:'), 'Data Missing in System') 
+  deliver_phone,  
+  NVL(TRIM(TO_CHAR(glogowner.utc.get_local_date(s.end_time,s.dest_location_gid),'MM/DD/YYYY')
+  || ' ' ||
+  sref2.shipment_refnum_value), 'Data Missing in System') 
+  deliver_date,  
+  NVL(loc4.location_name, 'Data Missing in System') return_name,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_address(s.container_delivery_loc_gid), 'Data Missing in System') 
+  return_address,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(s.container_delivery_loc_gid), 'Data Missing in System') 
+  return_city_state_zip, 
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(s.container_delivery_loc_gid,'TEL:'), 'Data Missing in System') 
+  return_phone, 
+  NVL(REPLACE(srem2.remark_text,'|',CHR(13)), 'Data Missing in System') special_load_instructions,
+  NVL(s.attribute2, 'Data Missing in System') pickup_num,
+  NVL((CASE WHEN NOT
+  (SELECT ssu.tag_3 
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1
+  AND ROWNUM = 1) IS NULL THEN
+  (SELECT ssu.tag_3 
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1
+  AND ROWNUM = 1)
+  ELSE s.attribute5 END), 'Data Missing in System') equipment_num, 
+  NVL(sref3.shipment_refnum_value, 'Data Missing in System') delivery_num,
+  NVL((SELECT eg.equipment_group_xid 
+  FROM equipment_group eg
+  INNER JOIN s_equipment seq ON eg.equipment_group_gid = seq.equipment_group_gid
+  INNER JOIN shipment_s_equipment_join ssej ON seq.s_equipment_gid = ssej.s_equipment_gid
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1), 'Data Missing in System') equipment_type,  
+  NVL(glogowner.xxscou_nvo_report_functions.commodity_cases_dom(s.shipment_gid,'SCOULAR/NVODOM.COMMODITY DESCRIPTION','SCOULAR/COMMODITY'), 'Data Missing in System')
+  descript_of_cargo,
+  NVL(TRIM(TO_CHAR((CASE WHEN s.total_net_weight_uom_code = 'LB' THEN s.total_net_weight * 0.453592
+	WHEN s.total_net_weight_uom_code = 'KG' THEN s.total_net_weight
+	WHEN s.total_net_weight_uom_code = 'TON' THEN (s.total_net_weight * 2000) * 0.453592
+	WHEN s.total_net_weight_uom_code = 'MTON' OR s.total_net_weight_uom_code = 'MT' THEN s.total_net_weight * 1000
+	ELSE s.total_net_weight END),'999,999,990.00')), 'Data Missing in System') total_weight_kgs,  
+  NVL(TRIM(TO_CHAR((CASE WHEN s.total_net_weight_uom_code = 'LB' THEN s.total_net_weight
+	WHEN s.total_net_weight_uom_code = 'KG' THEN s.total_net_weight * 2.20462262
+	WHEN s.total_net_weight_uom_code = 'TON' THEN s.total_net_weight * 2000
+	WHEN s.total_net_weight_uom_code = 'MTON' OR s.total_net_weight_uom_code = 'MT' THEN s.total_net_weight * 2204.62442018
+	ELSE s.total_net_weight END),'999,999,990.00')), 'Data Missing in System') total_weight_lbs,  
+  NVL(glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  ops_name,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_phone_with_label(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','Tel:'), 'Data Missing in System')
+  ops_phone,
+	NVL(glogowner.xxscou_nvo_report_functions.entity_email_with_label(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','Email:'), 'Data Missing in System')
+  ops_email
+FROM
+	job j
+LEFT OUTER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVODOM.PICKUPTIME'   
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/NVODOM.DELIVERYTIME'
+LEFT OUTER JOIN
+	shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+	sref3.shipment_refnum_qual_gid = 'SCOULAR/NVODOM.DELIVERY NUMBER'    
+LEFT OUTER JOIN
+	shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+	srem1.remark_qual_gid = 'SCOULAR/NVODOM.LOAD REFERENCES'   
+LEFT OUTER JOIN
+	shipment_remark srem2 ON s.shipment_gid = srem2.shipment_gid
+AND
+	srem2.remark_qual_gid = 'SCOULAR/NVODOM.WORK ORDER SPECIAL INSTRUCTIONS'     
+LEFT OUTER JOIN
+  location loc1 ON s.servprov_gid = loc1.location_gid  
+LEFT OUTER JOIN
+  location loc2 ON s.source_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  location loc3 ON s.dest_location_gid = loc3.location_gid 
+LEFT OUTER JOIN
+  location loc4 ON s.container_delivery_loc_gid = loc4.location_gid   
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_RATES"><![CDATA[SELECT TRIM(a.rates) rates, a.base
+FROM
+(SELECT DISTINCT
+  sc.shipment_cost_seqno,
+  (CASE WHEN sc.cost_type = 'A' THEN
+  (SELECT ac.accessorial_code_xid
+  FROM accessorial_code ac
+  WHERE ac.accessorial_code_gid = sc.accessorial_code_gid)
+  ELSE '   LINE HAUL' END) rates,
+  '$' || TRIM(TO_CHAR(sc.cost, '999,999,990.00'))
+  base
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+INNER JOIN 
+  shipment_cost sc ON sc.shipment_gid = s.shipment_gid
+WHERE
+  j.job_gid = :JOB_ID
+ORDER BY rates) a]]></sqlStatement>
+    <sqlStatement name="Q_TOTALS"><![CDATA[SELECT TRIM(TO_CHAR(SUM(a.total_cost), '$999,999,990.00')) total_amount
+FROM 
+(SELECT DISTINCT
+  sc.shipment_cost_seqno,
+  sc.cost total_cost 
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'  
+INNER JOIN
+  shipment_cost sc ON s.shipment_gid = sc.shipment_gid
+WHERE
+  j.job_gid = :JOB_ID) a]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="LOC_NAME" value="LOC_NAME" />
+      <element name="LOC_ADDRESS" value="LOC_ADDRESS"></element>
+      <element name="LOC_CITY_STATE_ZIP" value="LOC_CITY_STATE_ZIP"></element>
+      <element name="LOC_PHONE" value="LOC_PHONE"></element>
+      <element name="LOC_FAX" value="LOC_FAX"></element>
+      <element name="SYSTEM_DATE" value="SYSTEM_DATE"></element>
+      <element name="BILL_LADING" value="BILL_LADING" />
+      <element name="AGENT_NAME" value="AGENT_NAME"></element>
+      <element name="AGENT_ADDRESS" value="AGENT_ADDRESS"></element>
+      <element name="AGENT_CITY_STATE_ZIP" value="AGENT_CITY_STATE_ZIP"></element>
+      <element name="AGENT_PHONE" value="AGENT_PHONE"></element>
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="CARRIER_NAME" value="CARRIER_NAME" />
+      <element name="LOAD_REFERENCES" value="LOAD_REFERENCES" />
+      <element name="PICKUP_NAME" value="PICKUP_NAME"></element>
+      <element name="PICKUP_ADDRESS" value="PICKUP_ADDRESS" />
+      <element name="PICKUP_CITY_STATE_ZIP" value="PICKUP_CITY_STATE_ZIP" />
+      <element name="PICKUP_PHONE" value="PICKUP_PHONE"></element>
+      <element name="PICKUP_DATE" value="PICKUP_DATE"></element>
+      <element name="DELIVER_NAME" value="DELIVER_NAME"></element>
+      <element name="DELIVER_ADDRESS" value="DELIVER_ADDRESS"></element>
+      <element name="DELIVER_CITY_STATE_ZIP" value="DELIVER_CITY_STATE_ZIP"></element>
+      <element name="DELIVER_PHONE" value="DELIVER_PHONE"></element>
+      <element name="DELIVER_DATE" value="DELIVER_DATE"></element>
+      <element name="RETURN_NAME" value="RETURN_NAME"></element>
+      <element name="RETURN_ADDRESS" value="RETURN_ADDRESS"></element>
+      <element name="RETURN_CITY_STATE_ZIP" value="RETURN_CITY_STATE_ZIP"></element>
+      <element name="RETURN_PHONE" value="RETURN_PHONE"></element>
+      <element name="SPECIAL_LOAD_INSTRUCTIONS" value="SPECIAL_LOAD_INSTRUCTIONS"></element>
+      <element name="PICKUP_NUM" value="PICKUP_NUM"></element>
+      <element name="DELIVERY_NUM" value="DELIVERY_NUM"></element>
+      <element name="EQUIPMENT_NUM" value="EQUIPMENT_NUM"></element>
+      <element name="EQUIPMENT_TYPE" value="EQUIPMENT_TYPE"></element>
+      <element name="DESCRIPT_OF_CARGO" value="DESCRIPT_OF_CARGO"></element>
+      <element name="TOTAL_WEIGHT_KGS" value="TOTAL_WEIGHT_KGS"></element>
+      <element name="TOTAL_WEIGHT_LBS" value="TOTAL_WEIGHT_LBS"></element>
+      <element name="OPS_NAME" value="OPS_NAME"></element>
+      <element name="OPS_PHONE" value="OPS_PHONE"></element>
+      <element name="OPS_EMAIL" value="OPS_EMAIL"></element>
+    </group>
+    <group name="G_RATES" source="Q_RATES">
+      <element name="RATES" value="RATES"></element>
+      <element name="BASE" value="BASE"></element>
+    </group>
+    <group name="G_TOTALS" source="Q_TOTALS">
+      <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

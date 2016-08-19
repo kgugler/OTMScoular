@@ -1,0 +1,177 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKINGS_APPLIED_TO_CONTRACTS" description="BCO BOOKINGS APPLIED TO CONTRACTS" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="LOC" dataType="character" />
+    <parameter name="CAK_STATUS" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_CONTRACT_ROWS"><![CDATA[
+		SELECT
+			ORDER_BASE_GID,
+			"Loc",
+			"Contract #",
+			"Commodity",
+			"Destination Port",
+			TO_CHAR("MT Weight", '999,999,990.999') "MT Weight",
+			TO_CHAR("MT Applied", '999,999,990.999') "MT Applied",
+			TO_CHAR("# Boxes", '999,999,990') "# Boxes",
+			"Customer",
+			"Begin Sail",
+			"End Sail",
+			"CAK Status"
+		FROM
+			VIEW_BOOK_APPLIED_CAKS
+		WHERE
+			"Loc" IN (SELECT TO_NUMBER(xt.column_value)
+				FROM XMLTABLE
+				(LTRIM(RTRIM(REGEXP_REPLACE
+				(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt) AND
+			"CAK Status" = :CAK_Status AND
+			:P_RUN = 'FINAL'
+		UNION
+		SELECT
+			NVL(ORDER_BASE_GID, 'Data Missing in System') ORDER_BASE_GID,
+			NVL("Loc", 'Data Missing in System') "Loc",
+			NVL("Contract #", 'Data Missing in System') "Contract #",
+			NVL("Commodity", 'Data Missing in System') "Commodity",
+			NVL("Destination Port", 'Data Missing in System') "Destination Port",
+			NVL(TO_CHAR("MT Weight", '999,999,990.999'), 'Data Missing in System') "MT Weight",
+			NVL(TO_CHAR("MT Applied", '999,999,990.999'), 'Data Missing in System') "MT Applied",
+			NVL(TO_CHAR("# Boxes", '999,999,990'), 'Data Missing in System') "# Boxes",
+			NVL("Customer", 'Data Missing in System') "Customer",
+			NVL("Begin Sail", 'Data Missing in System') "Begin Sail",
+			NVL("End Sail", 'Data Missing in System') "End Sail",
+			NVL("CAK Status", 'Data Missing in System') "CAK Status"
+		FROM
+			VIEW_BOOK_APPLIED_CAKS
+		WHERE
+			"Loc" IN (SELECT TO_NUMBER(xt.column_value)
+				FROM XMLTABLE
+				(LTRIM(RTRIM(REGEXP_REPLACE
+				(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt) AND
+			"CAK Status" = :CAK_Status AND
+			:P_RUN = 'DRAFT'
+]]></sqlStatement>
+    <sqlStatement name="Q_BOOKING_ROWS"><![CDATA[
+		SELECT
+			ORDER_BASE_GID,
+			"Booking #",
+			"Shipment #",
+			"Inland Date",
+			TO_CHAR("Est MT Weight", '999,999,990.999') "Est MT Weight",
+			TO_CHAR("Est # Boxes", '999,999,990') "Est # Boxes",
+			TO_CHAR("Applied MT", '999,999,990.999') "Applied MT",
+			TO_CHAR("Applied # Boxes", '999,999,990') "Applied # Boxes",
+			"Ship Date",
+			"Arrival Date",
+			"Booking Status"
+		FROM
+			VIEW_BKS_APPLIED_CAKS_BOOKINGS
+		WHERE
+			:P_RUN = 'FINAL'
+		UNION
+		SELECT
+			NVL(ORDER_BASE_GID, 'Data Missing in System') ORDER_BASE_GID,
+			NVL("Booking #", 'Data Missing in System') "Booking #",
+			NVL("Shipment #", 'Data Missing in System') "Shipment #",
+			NVL("Inland Date", 'Data Missing in System') "Inland Date",
+			NVL(TO_CHAR("Est MT Weight", '999,999,990.999'), 'Data Missing in System') "Est MT Weight",
+			NVL(TO_CHAR("Est # Boxes", '999,999,990'), 'Data Missing in System') "Est # Boxes",
+			NVL(TO_CHAR("Applied MT", '999,999,990.999'), 'Data Missing in System') "Applied MT",
+			NVL(TO_CHAR("Applied # Boxes", '999,999,990'), 'Data Missing in System') "Applied # Boxes",
+			NVL("Ship Date", 'Data Missing in System') "Ship Date",
+			NVL("Arrival Date", 'Data Missing in System') "Arrival Date",
+			NVL("Booking Status", 'Data Missing in System') "Booking Status"
+		FROM
+			VIEW_BKS_APPLIED_CAKS_BOOKINGS
+		WHERE
+			:P_RUN = 'DRAFT'
+]]></sqlStatement>
+    <sqlStatement name="Q_SUMMARY_ROWS"><![CDATA[
+		SELECT
+			ORDER_BASE_GID,
+			TO_CHAR("CAK MT", '999,999,990') "CAK MT",
+			TO_CHAR("Booking MT", '999,999,990') "Booking MT",
+			TO_CHAR("MT Remaining", '999,999,990') "MT Remaining",
+			"%"
+		FROM
+			VIEW_BOOK_APPLIED_CAKS_SUMMARY
+		WHERE
+			:P_RUN = 'FINAL'
+		UNION
+		SELECT
+			ORDER_BASE_GID,
+			NVL(TO_CHAR("CAK MT", '999,999,990'), 'Data Missing in System') "CAK MT",
+			NVL(TO_CHAR("Booking MT", '999,999,990'), 'Data Missing in System') "Booking MT",
+			NVL(TO_CHAR("MT Remaining", '999,999,990'), 'Data Missing in System') "MT Remaining",
+			"%"
+		FROM
+			VIEW_BOOK_APPLIED_CAKS_SUMMARY
+		WHERE
+			:P_RUN = 'DRAFT'
+]]></sqlStatement>
+    <sqlStatement name="Q_NOTES_ROWS"><![CDATA[
+		SELECT
+			order_base_gid,
+			"Note",
+			TO_CHAR("Note Order", '999999990') "Note Order"
+		FROM
+			VIEW_CONTRACT_NOTES
+		WHERE
+			:P_RUN = 'FINAL'
+		UNION
+		SELECT
+			order_base_gid,
+			NVL("Note", 'Data Missing in System') "Note",
+			NVL(TO_CHAR("Note Order", '999999990'), 'Data Missing in System') "Note Order"
+		FROM
+			VIEW_CONTRACT_NOTES
+		WHERE
+			:P_RUN = 'DRAFT'
+]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_CONTRACT_ROWS" source="Q_CONTRACT_ROWS">
+      <element name="ORDER_BASE_GID" value="ORDER_BASE_GID"></element>
+      <element name="Loc" value="Loc"></element>
+      <element name="Contract #" value="Contract #"></element>
+      <element name="Commodity" value="Commodity"></element>
+      <element name="Destination Port" value="Destination Port"></element>
+      <element name="MT Weight" value="MT Weight"></element>
+      <element name="MT Applied" value="MT Applied"></element>
+      <element name="# Boxes" value="# Boxes"></element>
+      <element name="Customer" value="Customer"></element>
+      <element name="Begin Sail" value="Begin Sail"></element>
+      <element name="End Sail" value="End Sail"></element>
+      <element name="CAK Status" value="CAK Status"></element>
+    </group>
+    <group name="G_BOOKING_ROWS" source="Q_BOOKING_ROWS">
+      <element name="ORDER_BASE_GID" value="ORDER_BASE_GID"></element>
+      <element name="Booking #" value="Booking #"></element>
+      <element name="Shipment #" value="Shipment #"></element>
+      <element name="Inland Date" value="Inland Date"></element>
+      <element name="Est MT Weight" value="Est MT Weight"></element>
+      <element name="Est # Boxes" value="Est # Boxes"></element>
+      <element name="Applied MT" value="Applied MT"></element>
+      <element name="Applied # Boxes" value="Applied # Boxes"></element>
+      <element name="Ship Date" value="Ship Date"></element>
+      <element name="Arrival Date" value="Arrival Date"></element>
+      <element name="Booking Status" value="Booking Status"></element>
+    </group>
+    <group name="G_SUMMARY_ROWS" source="Q_SUMMARY_ROWS">
+      <element name="ORDER_BASE_GID" value="ORDER_BASE_GID"></element>
+      <element name="CAK MT" value="CAK MT"></element>
+      <element name="Booking MT" value="Booking MT"></element>
+      <element name="MT Remaining" value="MT Remaining"></element>
+      <element name="%" value="%"></element>
+    </group>
+    <group name="G_NOTES_ROWS" source="Q_NOTES_ROWS">
+      <element name="ORDER_BASE_GID" value="ORDER_BASE_GID"></element>
+      <element name="Note" value="Note"></element>
+      <element name="Note Order" value="Note Order"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

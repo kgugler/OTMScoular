@@ -1,0 +1,981 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_ELECTRONIC_EXPORT_INFORMATION" description="NVO Electronic Export Information (EEI)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  j.attribute5 bill_lading,
+  glogowner.xxscou_nvo_report_functions.number_with_japan_tsc(cv.charter_voyage_gid,'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE',cv.dest_location_gid,'SCOULAR.CHARVOY_TRANSHIP PORT')
+  || j.job_xid house_bill_lading,
+  j.attribute3 ref_num,
+  TO_CHAR(SYSDATE,'MM/DD/YY  /  HH:MIPM') system_date, 
+  sref1.shipment_refnum_value itn,
+  (SELECT TO_CHAR(gtd.transaction_date,'fmMM/DD/YYYY')
+  FROM gtm_transaction_date gtd
+  WHERE gtd.date_qualifier_gid = 'EXPORT DATE'
+  AND gtd.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))) 
+  departure_date, 
+  (SELECT loc1.province_code
+  FROM job_order_release_join jorj1
+  INNER JOIN s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+  INNER JOIN shipment ship1 ON ssej1.shipment_gid = ship1.shipment_gid
+  AND	ship1.perspective = 'S'
+  AND	ship1.shipment_type_gid = 'TRANSPORT'
+  AND	ship1.transport_mode_gid = 'VESSEL-CO'
+  AND	ship1.is_primary = 'Y'
+  INNER JOIN location loc1 ON ship1.source_location_gid = loc1.location_gid
+  WHERE jorj1.job_gid = j.job_gid
+  AND ROWNUM = 1)
+  origin_location,
+  glogowner.xxscou_nvo_report_functions.origin_entity(s.shipment_gid,'XXX',s.dest_location_gid,'COUNTRY')
+  dest_location, 
+  glogowner.xxscou_nvo_report_functions.port_place_loc(s.shipment_gid, cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR.VIA_LOCATION_ID',
+  (SELECT DISTINCT gtp.location_gid
+  FROM gtm_transaction_port gtp
+  WHERE gtp.gtm_port_qualifier_gid = 'PORT OF EXPORT'
+  AND gtp.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))
+  export_port,
+  (SELECT tm.transport_mode_name
+  FROM transport_mode tm
+  WHERE tm.transport_mode_gid 
+  IN (
+  SELECT gtrans1.transport_mode_gid 
+  FROM gtm_transaction gtrans1
+  WHERE  gtrans1.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))
+  transport_mode_gid,
+  (SELECT LISTAGG(sa.alias,', ')
+  WITHIN GROUP(ORDER BY sa.alias)
+  FROM servprov_alias sa
+  WHERE sa.servprov_alias_qual_gid = 'SC'
+  AND sa.servprov_gid
+  IN
+  (SELECT gtip.involved_party_contact_gid
+  FROM gtm_transaction_involved_party gtip
+  WHERE gtip.involved_party_qual_gid = 'CARRIER' 
+  AND gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))) sp_alias,
+  (SELECT gtrans2.conveyance_name
+  FROM gtm_transaction gtrans2
+  WHERE gtrans2.gtm_transaction_type = 'SHIPMENT'
+  AND gtrans2.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))
+  conveyance_name,
+  (CASE WHEN
+  (SELECT gtr.remark_text
+  FROM gtm_transaction_remark gtr
+  WHERE gtr.remark_qual_gid = 'ROUTED EXPORT TRANSACTION'
+  AND gtr.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))) = 'YES' THEN 'X' ELSE '' END) is_routed_yes,
+  (CASE WHEN
+  (SELECT gtr.remark_text
+  FROM gtm_transaction_remark gtr
+  WHERE gtr.remark_qual_gid = 'ROUTED EXPORT TRANSACTION'
+  AND gtr.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))) = 'YES' THEN '' ELSE 'X' END) is_routed_no,  
+  (SELECT gtr.remark_text
+  FROM gtm_transaction_remark gtr
+  WHERE gtr.remark_qual_gid = 'RELATED COMPANY'
+  AND gtr.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))) related_companies,  
+  (CASE WHEN s.is_hazardous = 'Y' THEN 'X' ELSE '' END) is_hazardous_yes,    
+  (CASE WHEN s.is_hazardous = 'N' THEN 'X' ELSE '' END) is_hazardous_no,
+  glogowner.xxscou_nvo_report_functions.port_place(s.shipment_gid,'XXX',cv.dest_location_gid)
+  destination_location,
+  (SELECT DISTINCT gpr.refnum_value
+  FROM gtm_party_refnum gpr
+  INNER JOIN gtm_transaction_involved_party gtip ON gpr.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))
+  AND gpr.gtm_party_refnum_qual_gid = 'EIN'
+  AND ROWNUM = 1) gtm_refnum,
+  (SELECT loc2.province_code
+  FROM job_order_release_join jorj2
+  INNER JOIN s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+  INNER JOIN shipment ship2 ON ssej2.shipment_gid = ship2.shipment_gid
+  AND	ship2.perspective = 'S'
+  AND	ship2.shipment_type_gid = 'TRANSPORT'
+  AND	ship2.transport_mode_gid = 'VESSEL-CO'
+  AND	ship2.is_primary = 'Y'
+  INNER JOIN location loc2 ON ship2.source_location_gid = loc2.location_gid
+  WHERE jorj2.job_gid = j.job_gid
+  AND ROWNUM = 1)
+  point_origin, 
+  sref1.shipment_refnum_value itn_number
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'	
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'ITN'	  
+LEFT OUTER JOIN
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj ON ssul.order_release_gid = jorj.order_release_gid
+LEFT OUTER JOIN
+  job j ON jorj.job_gid = j.job_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+  NVL(j.attribute5, 'Data Missing in System') bill_lading,
+  glogowner.xxscou_nvo_report_functions.number_with_japan_tsc(cv.charter_voyage_gid,'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE',cv.dest_location_gid,'SCOULAR.CHARVOY_TRANSHIP PORT')
+  || NVL(j.job_xid, ' Data Missing in System') house_bill_lading,
+  NVL(j.attribute3, 'Data Missing in System') ref_num,
+  TO_CHAR(SYSDATE,'MM/DD/YY  /  HH:MIPM') system_date, 
+  NVL(sref1.shipment_refnum_value, 'Data Missing in System') itn,
+  NVL((SELECT TO_CHAR(gtd.transaction_date,'fmMM/DD/YYYY')
+  FROM gtm_transaction_date gtd
+  WHERE gtd.date_qualifier_gid = 'EXPORT DATE'
+  AND gtd.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System') 
+  departure_date, 
+  NVL((SELECT loc1.province_code
+  FROM job_order_release_join jorj1
+  INNER JOIN s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+  INNER JOIN shipment ship1 ON ssej1.shipment_gid = ship1.shipment_gid
+  AND	ship1.perspective = 'S'
+  AND	ship1.shipment_type_gid = 'TRANSPORT'
+  AND	ship1.transport_mode_gid = 'VESSEL-CO'
+  AND	ship1.is_primary = 'Y'
+  INNER JOIN location loc1 ON ship1.source_location_gid = loc1.location_gid
+  WHERE jorj1.job_gid = j.job_gid
+  AND ROWNUM = 1), 'Data Missing in System')
+  origin_location,
+  NVL(glogowner.xxscou_nvo_report_functions.origin_entity(s.shipment_gid,'XXX',s.dest_location_gid,'COUNTRY'), 'Data Missing in System')
+  dest_location, 
+  NVL(glogowner.xxscou_nvo_report_functions.port_place_loc(s.shipment_gid, cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR.VIA_LOCATION_ID',
+  (SELECT gtp.location_gid
+  FROM gtm_transaction_port gtp
+  WHERE gtp.gtm_port_qualifier_gid = 'PORT OF EXPORT'
+  AND gtp.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))), 'Data Missing in System')
+  export_port,
+  NVL((SELECT tm.transport_mode_name
+  FROM transport_mode tm
+  WHERE tm.transport_mode_gid 
+  IN (
+  SELECT gtrans1.transport_mode_gid 
+  FROM gtm_transaction gtrans1
+  WHERE  gtrans1.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))), 'Data Missing in System') 
+  transport_mode_gid,
+  NVL((SELECT LISTAGG(sa.alias,', ')
+  WITHIN GROUP(ORDER BY sa.alias)
+  FROM servprov_alias sa
+  WHERE sa.servprov_alias_qual_gid = 'SC'
+  AND sa.servprov_gid
+  IN
+  (SELECT gtip.involved_party_contact_gid
+  FROM gtm_transaction_involved_party gtip
+  WHERE gtip.involved_party_qual_gid = 'CARRIER' 
+  AND gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))), 'Data Missing in System') 
+  sp_alias,
+  NVL((SELECT gtrans2.conveyance_name
+  FROM gtm_transaction gtrans2
+  WHERE gtrans2.gtm_transaction_type = 'SHIPMENT'
+  AND gtrans2.gtm_transaction_gid 
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System') 
+  conveyance_name,
+  (CASE WHEN
+  (SELECT gtr.remark_text
+  FROM gtm_transaction_remark gtr
+  WHERE gtr.remark_qual_gid = 'ROUTED EXPORT TRANSACTION'
+  AND gtr.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))) = 'YES' THEN 'X' ELSE '' END) is_routed_yes,
+  (CASE WHEN
+  (SELECT gtr.remark_text
+  FROM gtm_transaction_remark gtr
+  WHERE gtr.remark_qual_gid = 'ROUTED EXPORT TRANSACTION'
+  AND gtr.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))) = 'YES' THEN '' ELSE 'X' END) is_routed_no,
+  NVL((SELECT gtr.remark_text
+  FROM gtm_transaction_remark gtr
+  WHERE gtr.remark_qual_gid = 'RELATED COMPANY'
+  AND gtr.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System') related_companies,
+  (CASE WHEN s.is_hazardous = 'Y' THEN 'X' ELSE '' END) is_hazardous_yes,    
+  (CASE WHEN s.is_hazardous = 'N' THEN 'X' ELSE '' END) is_hazardous_no,
+  NVL(glogowner.xxscou_nvo_report_functions.port_place(s.shipment_gid,'XXX',cv.dest_location_gid), 'Data Missing in System')
+  destination_location,
+  NVL((SELECT DISTINCT gpr.refnum_value
+  FROM gtm_party_refnum gpr
+  INNER JOIN gtm_transaction_involved_party gtip ON gpr.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))
+  AND gpr.gtm_party_refnum_qual_gid = 'EIN'
+  AND ROWNUM = 1), 'Data Missing in System')
+  gtm_refnum,
+  NVL((SELECT loc2.province_code
+  FROM job_order_release_join jorj2
+  INNER JOIN s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+  INNER JOIN shipment ship2 ON ssej2.shipment_gid = ship2.shipment_gid
+  AND	ship2.perspective = 'S'
+  AND	ship2.shipment_type_gid = 'TRANSPORT'
+  AND	ship2.transport_mode_gid = 'VESSEL-CO'
+  AND	ship2.is_primary = 'Y'
+  INNER JOIN location loc2 ON ship2.source_location_gid = loc2.location_gid
+  WHERE jorj2.job_gid = j.job_gid
+  AND ROWNUM = 1), 'Data Missing in System')
+  point_origin,
+  NVL(sref1.shipment_refnum_value, 'Data Missing in System')
+  itn_number
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'	
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'ITN'	   
+LEFT OUTER JOIN
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj ON ssul.order_release_gid = jorj.order_release_gid
+LEFT OUTER JOIN
+  job j ON jorj.job_gid = j.job_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ENTITY"><![CDATA[SELECT
+  (SELECT DISTINCT con.company_name
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))
+  usppi_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  usppi_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  usppi_city_state_zip,
+  (SELECT DISTINCT con.company_name
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))
+  consignee_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  consignee_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  consignee_city_state_zip,
+  (SELECT DISTINCT loc.location_name
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))
+  agent_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  agent_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  agent_city_state_zip,  
+  glogowner.xxscou_nvo_report_functions.contact_phone_with_label(
+  (SELECT DISTINCT con.contact_gid
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))),'TEL:')
+  agent_phone,
+  (SELECT DISTINCT con.company_name
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))
+  intermed_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  intermed_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid)))))
+  intermed_city_state_zip,
+  glogowner.xxscou_nvo_report_functions.contact_fullname_with_label(
+  (SELECT DISTINCT con.contact_gid
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))),'ATTN:')
+  intermed_contact,
+  glogowner.xxscou_nvo_report_functions.contact_phone_with_label(
+  (SELECT DISTINCT con.contact_gid
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))),'TEL:')
+  intermed_phone,
+  glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')
+  ops_manager_name
+FROM
+	shipment s
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL((SELECT DISTINCT con.company_name
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System')
+  usppi_name,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  usppi_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  usppi_city_state_zip,
+  NVL((SELECT DISTINCT con.company_name
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System')
+  consignee_name,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  consignee_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  consignee_city_state_zip,
+	NVL((SELECT DISTINCT loc.location_name
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System')
+  agent_name,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  agent_address,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System') 
+  agent_city_state_zip,
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(
+  (SELECT DISTINCT con.contact_gid
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'FORWARDING AGENT'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))),'TEL:'), 'Data Missing in System')
+  agent_phone,
+	NVL((SELECT DISTINCT con.company_name
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))), 'Data Missing in System')
+  intermed_name,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_address(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  intermed_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(
+  (SELECT DISTINCT loc.location_gid
+  FROM location loc
+  INNER JOIN gtm_transaction_involved_party gtip ON loc.location_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))))), 'Data Missing in System')
+  intermed_city_state_zip,
+  NVL(glogowner.xxscou_nvo_report_functions.contact_fullname_with_label(
+  (SELECT DISTINCT con.contact_gid
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))),'ATTN:'), 'Data Missing in System')  
+  intermed_contact,
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(
+  (SELECT DISTINCT con.contact_gid
+  FROM contact con
+  INNER JOIN gtm_transaction_involved_party gtip ON con.contact_gid = gtip.involved_party_contact_gid
+  AND gtip.involved_party_qual_gid = 'SCOULAR/NVO.ALSO_NOTIFY_PARTY'
+  WHERE gtip.gtm_transaction_gid
+  IN (
+  SELECT gtref.gtm_transaction_gid 
+  FROM gtm_trans_refnum gtref 
+  WHERE gtref.gtm_trans_refnum_qual_gid='SHIPMENT REFERENCE NUMBER'
+  AND gtref.refnum_value =
+  (SELECT s1.shipment_xid 
+  FROM shipment s1 
+  WHERE shipment_gid = s.shipment_gid))),'TEL:'), 'Data Missing in System')
+  intermed_phone,  
+  NVL(glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System')
+  ops_manager_name
+FROM
+	shipment s  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  a.classification_code classification_code,
+  a.description,
+  TRIM(TO_CHAR(SUM(a.total_gross_weight),'999,999,990.000')) || ' ' || a.gross_weight_uom_code total_gross_weight,
+  TRIM(TO_CHAR(SUM(a.total_net_weight),'999,999,990.000')) || ' ' || a.net_weight_uom_code total_net_weight,
+  '$' || TRIM(TO_CHAR(SUM(a.total_value),'999,999,990.00')) total_amount
+FROM
+(SELECT
+	gpcc.classification_code,
+  (SELECT description FROM gtm_prod_class_code_desc WHERE gtm_prod_class_code_gid = gpcc.gtm_prod_class_code_gid) description,
+  (SELECT (CASE 
+  WHEN gtlq.uom_code = 'KG' THEN gtlq.quantity_value
+  WHEN gtlq.uom_code = 'G'  THEN gtlq.quantity_value * .001
+  WHEN gtlq.uom_code = 'LB' THEN gtlq.quantity_value * 0.45359237
+  WHEN gtlq.uom_code = 'TON' THEN (gtlq.quantity_value * 2000) * 0.45359237
+  WHEN gtlq.uom_code = 'MTON' OR gtlq.uom_code = 'MT' OR gtlq.uom_code = 'T' THEN gtlq.quantity_value * 1000
+  END)
+  FROM gtm_trans_line_quantity gtlq
+  WHERE gtlq.gtm_quantity_type_gid = 'TOTAL GROSS WEIGHT' 
+  AND gtlq.gtm_transaction_line_gid = gtl.gtm_transaction_line_gid) total_gross_weight,
+  'KG' gross_weight_uom_code,
+  (SELECT gtlrq.quantity_value
+  FROM gtm_trans_line_report_quantity gtlrq
+  WHERE gtlrq.gtm_quantity_type_gid = 'NET_WEIGHT' 
+  AND gtlrq.gtm_transaction_line_gid = gtl.gtm_transaction_line_gid) total_net_weight, 
+  (SELECT gtlrq.uom_code
+  FROM gtm_trans_line_report_quantity gtlrq
+  WHERE gtlrq.gtm_quantity_type_gid = 'NET_WEIGHT' 
+  AND gtlrq.gtm_transaction_line_gid = gtl.gtm_transaction_line_gid) 
+  net_weight_uom_code,
+  (SELECT SUM(gtlc.currency_value)
+	FROM gtm_trans_line_currency gtlc
+	WHERE gtlc.gtm_value_qualifier_gid = 'TOTAL VALUE'
+  AND gtlc.gtm_transaction_line_gid = gtl.gtm_transaction_line_gid) total_value
+FROM 
+  gtm_prod_class_code gpcc 
+INNER JOIN 
+  gtm_tr_prod_classification gtpc ON gpcc.gtm_prod_class_code_gid = gtpc.gtm_prod_class_code_gid
+INNER JOIN
+  gtm_transaction_line gtl ON gtpc.gtm_transaction_line_gid = gtl.gtm_transaction_line_gid 
+WHERE 
+  gtl.gtm_transaction_gid =  
+(SELECT 
+  gtr.gtm_transaction_gid 
+FROM 
+  gtm_trans_refnum gtr 
+WHERE 
+  gtr.gtm_trans_refnum_qual_gid = 'SHIPMENT REFERENCE NUMBER'
+AND 
+  gtr.refnum_value =
+(SELECT 
+  sh.shipment_xid 
+FROM 
+  shipment sh
+WHERE 
+  sh.shipment_gid = :SHIPMENT_ID))) a
+GROUP BY a.classification_code, a.description, a.gross_weight_uom_code, a.net_weight_uom_code
+ORDER BY a.classification_code]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BILL_LADING" value="BILL_LADING" />
+      <element name="HOUSE_BILL_LADING" value="HOUSE_BILL_LADING" />
+      <element name="REF_NUM" value="REF_NUM"></element>
+      <element name="SYSTEM_DATE" value="SYSTEM_DATE" />
+      <element name="ITN" value="ITN" />
+      <element name="DEPARTURE_DATE" value="DEPARTURE_DATE" />
+      <element name="ORIGIN_LOCATION" value="ORIGIN_LOCATION" />
+      <element name="DEST_LOCATION" value="DEST_LOCATION" />
+      <element name="EXPORT_PORT" value="EXPORT_PORT" />
+      <element name="TRANSPORT_MODE_GID" value="TRANSPORT_MODE_GID" />
+      <element name="SP_ALIAS" value="SP_ALIAS" />
+      <element name="CONVEYANCE_NAME" value="CONVEYANCE_NAME" />
+      <element name="IS_ROUTED_YES" value="IS_ROUTED_YES" />
+      <element name="IS_ROUTED_NO" value="IS_ROUTED_NO"></element>
+      <element name="RELATED_COMPANIES" value="RELATED_COMPANIES"></element>
+      <element name="IS_HAZARDOUS_YES" value="IS_HAZARDOUS_YES" />
+      <element name="IS_HAZARDOUS_NO" value="IS_HAZARDOUS_NO" />
+      <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION" />
+      <element name="GTM_REFNUM" value="GTM_REFNUM" />
+      <element name="POINT_ORIGIN" value="POINT_ORIGIN" />
+      <element name="ITN_NUMBER" value="ITN_NUMBER" />
+    </group>
+    <group name="G_ENTITY" source="Q_ENTITY">
+      <element name="USPPI_NAME" value="USPPI_NAME" />
+      <element name="USPPI_ADDRESS" value="USPPI_ADDRESS" />
+      <element name="USPPI_CITY_STATE_ZIP" value="USPPI_CITY_STATE_ZIP" />
+      <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME" />
+      <element name="CONSIGNEE_ADDRESS" value="CONSIGNEE_ADDRESS" />
+      <element name="CONSIGNEE_CITY_STATE_ZIP" value="CONSIGNEE_CITY_STATE_ZIP" />
+      <element name="AGENT_NAME" value="AGENT_NAME" />
+      <element name="AGENT_ADDRESS" value="AGENT_ADDRESS" />
+      <element name="AGENT_CITY_STATE_ZIP" value="AGENT_CITY_STATE_ZIP" />
+      <element name="AGENT_PHONE" value="AGENT_PHONE" />
+      <element name="INTERMED_NAME" value="INTERMED_NAME"></element>
+      <element name="INTERMED_ADDRESS" value="INTERMED_ADDRESS" />
+      <element name="INTERMED_CITY_STATE_ZIP" value="INTERMED_CITY_STATE_ZIP" />
+      <element name="INTERMED_CONTACT" value="INTERMED_CONTACT" />
+      <element name="INTERMED_PHONE" value="INTERMED_PHONE" />
+      <element name="OPS_MANAGER_NAME" value="OPS_MANAGER_NAME" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CLASSIFICATION_CODE" value="CLASSIFICATION_CODE" />
+      <element name="DESCRIPTION" value="DESCRIPTION"></element>
+      <element name="TOTAL_GROSS_WEIGHT" value="TOTAL_GROSS_WEIGHT" />
+      <element name="TOTAL_NET_WEIGHT" value="TOTAL_NET_WEIGHT" />
+      <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENT_ADVICE_AUTO" description="BCO Shipment Advice Auto" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') booking_date,
+	(SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = s.shipment_gid
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER') invoice_number,
+	COALESCE(obr4.remark_text,
+  (SELECT it.item_name
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ) commodity,
+	obrn1.ob_refnum_value customer_name,
+	cv.charter_voyage_xid booking_number,
+	oob.order_base_xid contract_number,
+	TO_CHAR(TO_DATE(obr1.remark_text,'rrrr-mm-dd'), 'fmDay, Month DD, YYYY') last_ship_date,
+	'$' || TRIM(TO_CHAR(REGEXP_REPLACE(obr2.remark_text, '[^0-9,.]+', ''), '999,999,990.00')) price,
+	'$' || TRIM(TO_CHAR((SELECT SUM(ROUND(ssunit.unit_net_weight_base / 2204.5855379,3)) FROM shipment_stop_d sstopdd
+  JOIN s_ship_unit ssunit ON sstopdd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+	AND NOT ssunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1) * REGEXP_REPLACE(obr2.remark_text, '[^0-9,.]+', ''),'999,999,990.00')) invoice_amount,
+	TRIM(con2.first_name || ' ' || con2.last_name || ' mplsdoc@scoular.com') assigned_to,
+	obr3.remark_text credit_number,
+  (CASE WHEN loc3.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(loc3.city || ', ' || loc3.province_code || ' ' || cc3.country_name)
+  ELSE
+    TRIM(loc3.city || ' ' || cc3.country_name)
+  END)
+  destination,
+	TO_CHAR(s.sail_date, 'fmDay, Month DD, YYYY') departure,
+	TO_CHAR(TO_DATE(glogowner.utc.get_local_date(cv.arrival_date,cv.dest_location_gid),'dd-mm-rr'), 'fmDay, Month DD, YYYY') arrival,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) vessel,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1) bl_num,
+	loc1.location_name ssl,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) quantity,
+  TRIM(TO_CHAR((SELECT SUM(ROUND(ssunit.unit_net_weight_base / 2204.5855379,3)) FROM shipment_stop_d sstopdd
+  JOIN s_ship_unit ssunit ON sstopdd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+	AND NOT ssunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1),'999,999,990.000')) || ' MT' weight,
+  (CASE WHEN loc2.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(loc2.city || ', ' || loc2.province_code || ' ' || cc2.country_name)
+  ELSE
+    TRIM(loc2.city || ' ' || cc2.country_name)
+  END)
+  port_of_lading,
+  (CASE WHEN sref.shipment_refnum_value IN ('5334','5335') THEN
+    'YES'
+  ELSE
+    'NO'
+  END)
+  one_column
+FROM
+	shipment s
+LEFT OUTER JOIN
+	location loc1 ON s.servprov_gid = loc1.location_gid
+LEFT OUTER JOIN
+	location loc2 ON s.port_of_load_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  country_code cc2 ON loc2.country_code3_gid = cc2.country_code3_gid    
+LEFT OUTER JOIN
+	location loc3 ON s.port_of_dis_location_gid = loc3.location_gid
+LEFT OUTER JOIN
+  country_code cc3 ON loc3.country_code3_gid = cc3.country_code3_gid   
+LEFT OUTER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+AND
+	oob.order_type_gid = 'SCOULAR.SALES_ORDER'
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+LEFT OUTER JOIN
+	contact con2 ON sip2.involved_party_contact_gid = con2.contact_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LAST SHIP DATE'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
+LEFT OUTER JOIN
+	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr4 ON oob.order_base_gid = obr4.order_base_gid
+AND
+	obr4.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+	sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	ROWNUM rnum, a.*
+FROM
+(SELECT
+	ssu.tag_3 container_number,
+	TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base / 2204.5855379,3), '999,999,990.000')) unit_weight
+FROM
+	shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+ORDER BY container_number
+) a
+ORDER BY rnum ]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+	TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)), '999,999,990.000')) || ' MT' total_weight
+FROM
+	shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="CUSTOMER_NAME" value="CUSTOMER_NAME" />
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER" />
+      <element name="LAST_SHIP_DATE" value="LAST_SHIP_DATE" />
+      <element name="PRICE" value="PRICE" />
+      <element name="INVOICE_AMOUNT" value="INVOICE_AMOUNT" />
+      <element name="ASSIGNED_TO" value="ASSIGNED_TO" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="DESTINATION" value="DESTINATION" />
+      <element name="DEPARTURE" value="DEPARTURE" />
+      <element name="ARRIVAL" value="ARRIVAL" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="SSL" value="SSL" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="WEIGHT" value="WEIGHT" />
+      <element name="PORT_OF_LADING" value="PORT_OF_LADING" />
+      <element name="ONE_COLUMN" value="ONE_COLUMN" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="RNUM" value="RNUM" />
+      <element name="CONTAINER_NUMBER" value="CONTAINER_NUMBER" />
+      <element name="UNIT_WEIGHT" value="UNIT_WEIGHT" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

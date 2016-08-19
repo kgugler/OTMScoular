@@ -1,0 +1,435 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENT_CHECKLIST_FISH" description="BCO Shipment Checklist (FISH)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  s.shipment_xid,
+  sref1.shipment_refnum_value 
+  commodity,
+  loc1.location_name 
+  customer_name,
+  con1.contact_xid 
+  customer_code,
+  l1.location_name
+  discharge_port,
+  l2.location_name
+  destination_location,
+  cv.charter_voyage_xid 
+  booking_number,  
+  TO_CHAR(s.sail_date, 'fmMONTH DD, YYYY')
+  sail_date,
+  TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value) 
+  vessel_voyage,
+  cvr2.charter_voyage_refnum_value
+  ship_line,
+  l3.location_name 
+  servprov_name,
+  TRIM(TO_CHAR(ROUND(s.total_net_weight_base / 2204.5855379,3), '999,999,990.000')) || ' MT' 
+  quantity,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' || 
+  TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1),'999,999')) || '''' 
+  container_count,  
+  (CASE WHEN s.dest_location_gid IS NULL THEN
+    TO_CHAR(cv.arrival_date, 'fmMONTH DD, YYYY')
+  ELSE
+    TO_CHAR(glogowner.utc.get_local_date(cv.arrival_date,s.dest_location_gid), 'fmMONTH DD, YYYY')
+  END)
+  eta,  
+	sref2.shipment_refnum_value 
+  bol_number,  
+  sref3.shipment_refnum_value
+  freight_rate,   
+  l4.location_name
+  load_port,  
+  TO_CHAR(s.sail_date + 21, 'fmMONTH DD, YYYY')
+  sales_due_date 
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON s.shipment_gid = srn.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con1 ON sip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  location loc1 ON con1.location_gid = loc1.location_gid  
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'   
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.COST PER CONTAINER'     
+LEFT OUTER JOIN
+	location l1 ON s.port_of_load_location_gid = l1.location_gid  
+LEFT OUTER JOIN
+  location l2 ON cv.dest_location_gid = l2.location_gid  
+LEFT OUTER JOIN
+  location l3 ON cv.servprov_gid = l3.location_gid  
+LEFT OUTER JOIN
+  location l4 ON cv.source_location_gid = l4.location_gid  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_REMARKS'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+  s.shipment_xid,
+  NVL(sref1.shipment_refnum_value, 'Data Missing in System') 
+  commodity,
+  NVL(loc1.location_name, 'Data Missing in System') 
+  customer_name,
+  NVL(con1.contact_xid, 'Data Missing in System') 
+  customer_code,
+  NVL(l1.location_name, 'Data Missing in System') 
+  discharge_port,
+  NVL(l2.location_name, 'Data Missing in System') 
+  destination_location,
+  NVL(cv.charter_voyage_xid, 'Data Missing in System')  
+  booking_number,  
+  NVL(TO_CHAR(s.sail_date, 'fmMONTH DD, YYYY'), 'Data Missing in System') 
+  sail_date,
+  NVL(TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value), 'Data Missing in System')  
+  vessel_voyage,
+  NVL(cvr2.charter_voyage_refnum_value, 'Data Missing in System') 
+  ship_line,
+  NVL(l3.location_name, 'Data Missing in System') 
+  servprov_name,
+  NVL(TRIM(TO_CHAR(ROUND(s.total_net_weight_base / 2204.5855379,3), '999,999,990.000')), 'Data Missing in System') || ' MT'
+  quantity,
+	NVL(TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')), 'Data Missing in System') 
+  || ' X ' || 
+  NVL(TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1),'999,999')) || '''', 'Data Missing in System') 
+  container_count,  
+  NVL((CASE WHEN s.dest_location_gid IS NULL THEN
+    TO_CHAR(cv.arrival_date, 'fmMONTH DD, YYYY')
+  ELSE
+    TO_CHAR(glogowner.utc.get_local_date(cv.arrival_date,s.dest_location_gid), 'fmMONTH DD, YYYY')
+  END), 'Data Missing in System') 
+  eta,  
+	NVL(sref2.shipment_refnum_value, 'Data Missing in System') 
+  bol_number,  
+	NVL(sref3.shipment_refnum_value, 'Data Missing in System') 
+  freight_rate,    
+  NVL(l4.location_name, 'Data Missing in System') 
+  load_port,  
+  NVL(TO_CHAR(s.sail_date + 21, 'fmMONTH DD, YYYY'), 'Data Missing in System') 
+  sales_due_date
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON s.shipment_gid = srn.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con1 ON sip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  location loc1 ON con1.location_gid = loc1.location_gid  
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'  
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.COST PER CONTAINER'    
+LEFT OUTER JOIN
+	location l1 ON s.port_of_load_location_gid = l1.location_gid  
+LEFT OUTER JOIN
+  location l2 ON cv.dest_location_gid = l2.location_gid  
+LEFT OUTER JOIN
+  location l3 ON cv.servprov_gid = l3.location_gid  
+LEFT OUTER JOIN
+  location l4 ON cv.source_location_gid = l4.location_gid  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_REMARKS'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    loc1.location_name
+  ELSE
+    NVL(loc1.location_name, 'Data Missing in System')
+  END)
+  sales_broker_name,
+	(CASE WHEN :P_RUN = 'FINAL' THEN
+    oob.order_base_xid
+  ELSE
+    NVL(oob.order_base_xid, 'Data Missing in System')
+  END)
+  sales_contract_number,
+	(CASE WHEN :P_RUN = 'FINAL' THEN
+    oref1.ob_refnum_value
+  ELSE
+    NVL(oref1.ob_refnum_value, 'Data Missing in System')
+  END)
+  customer_broker_id, 
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    iterm.inco_term_xid || ' ' || oob.term_location_text
+  ELSE
+    NVL(TRIM(iterm.inco_term_xid || ' ' || oob.term_location_text), 'Data Missing in System')
+  END)
+  sales_inco_term,
+  	(CASE WHEN :P_RUN = 'FINAL' THEN
+    oref2.ob_refnum_value
+  ELSE
+    NVL(oref2.ob_refnum_value, 'Data Missing in System')
+  END)
+  sales_payment_terms,
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obr1.remark_text
+  ELSE
+    NVL(obr1.remark_text, 'Data Missing in System')
+  END)
+  sales_lc_number,  
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obr2.remark_text
+  ELSE
+    NVL(obr2.remark_text, 'Data Missing in System')
+  END)
+  latest_ship_date
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  ob_involved_party oip ON oob.order_base_gid = oip.order_base_gid
+AND
+  oip.involved_party_qual_gid = 'BROKER ID'
+LEFT OUTER JOIN
+  location loc1 ON oip.involved_party_contact_gid = loc1.location_gid
+LEFT OUTER JOIN
+  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.SHIPPER_PURCHASE_ORDER_NUMBER'
+LEFT OUTER JOIN
+  ob_refnum oref2 ON oob.order_base_gid = oref2.order_base_gid
+AND
+  oref2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'
+LEFT OUTER JOIN
+  inco_term iterm ON oob.inco_term_gid = iterm.inco_term_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'    
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LAST SHIP DATE'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND NOT
+  sessuj.s_equipment_gid IS NULL
+UNION ALL
+SELECT
+  'Data Missing in System'
+  sales_broker_name,
+  'Data Missing in System'
+  sales_contract_number,
+  'Data Missing in System'
+  customer_broker_id,  
+  'Data Missing in System'
+  sales_inco_term,  
+  'Data Missing in System'  
+  sales_payment_terms,
+  'Data Missing in System'
+  sales_lc_number,    
+  'Data Missing in System'
+  last_ship_date
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND NOT
+  sessuj.s_equipment_gid IS NULL)]]></sqlStatement>
+    <sqlStatement name="Q_PURCH"><![CDATA[SELECT
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    loc1.location_name
+  ELSE
+    NVL(loc1.location_name, 'Data Missing in System')
+  END)
+  supplier_name,
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    con1.contact_xid
+  ELSE
+    NVL(con1.contact_xid, 'Data Missing in System')
+  END)
+  supplier_id,  
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    loc2.location_name
+  ELSE
+    NVL(loc2.location_name, 'Data Missing in System')
+  END)
+  purch_broker_name,
+	(CASE WHEN :P_RUN = 'FINAL' THEN
+    oob.order_base_xid
+  ELSE
+    NVL(oob.order_base_xid, 'Data Missing in System')
+  END)
+  purch_contract_number, 
+	(CASE WHEN :P_RUN = 'FINAL' THEN
+    oref1.ob_refnum_value
+  ELSE
+    NVL(oref1.ob_refnum_value, 'Data Missing in System')
+  END)
+  supplier_broker_id, 
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    iterm.inco_term_xid || ' ' || oob.term_location_text
+  ELSE
+    NVL(TRIM(iterm.inco_term_xid || ' ' || oob.term_location_text), 'Data Missing in System')
+  END)
+  purch_inco_term,
+  	(CASE WHEN :P_RUN = 'FINAL' THEN
+    oref2.ob_refnum_value
+  ELSE
+    NVL(oref2.ob_refnum_value, 'Data Missing in System')
+  END)
+  purch_payment_terms
+FROM
+  ob_order_base oob
+LEFT OUTER JOIN
+  ob_involved_party oip1 ON oob.order_base_gid = oip1.order_base_gid
+AND
+  oip1.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con1 ON oip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  location loc1 ON con1.location_gid = loc1.location_gid    
+LEFT OUTER JOIN
+  ob_involved_party oip2 ON oob.order_base_gid = oip2.order_base_gid
+AND
+  oip2.involved_party_qual_gid = 'BROKER ID'
+LEFT OUTER JOIN
+  location loc2 ON oip2.involved_party_contact_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.SHIPPER_PURCHASE_ORDER_NUMBER'  
+LEFT OUTER JOIN
+  ob_refnum oref2 ON oob.order_base_gid = oref2.order_base_gid
+AND
+  oref2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'
+LEFT OUTER JOIN
+  inco_term iterm ON oob.inco_term_gid = iterm.inco_term_gid    
+WHERE 
+  oob.order_base_gid = 'SCOULAR/BCO.' ||
+  (SELECT ssur.refnum_value 
+  FROM s_ship_unit_refnum ssur
+  WHERE ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+  AND ssur.s_ship_unit_gid = 
+  (SELECT ssd.s_ship_unit_gid 
+  FROM shipment_stop_d ssd
+  WHERE ROWNUM = 1 
+  AND ssd.stop_num = 1
+  AND ssd.shipment_gid = :SHIPMENT_ID))
+UNION ALL
+SELECT
+  'Data Missing in System'
+  supplier_name,
+  'Data Missing in System'
+  supplier_id,
+  'Data Missing in System'
+  purch_broker_name,
+  'Data Missing in System'
+  purch_contract_number,
+  'Data Missing in System'
+  purch_broker_id,  
+  'Data Missing in System'
+  purch_inco_term,  
+  'Data Missing in System'  
+  purch_payment_terms
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  oob.order_base_gid
+FROM
+  ob_order_base oob
+WHERE 
+  oob.order_base_gid = 'SCOULAR/BCO.' ||
+  (SELECT ssur.refnum_value 
+  FROM s_ship_unit_refnum ssur
+  WHERE ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+  AND ssur.s_ship_unit_gid = 
+  (SELECT ssd.s_ship_unit_gid 
+  FROM shipment_stop_d ssd
+  WHERE ROWNUM = 1 
+  AND ssd.stop_num = 1
+  AND ssd.shipment_gid = :SHIPMENT_ID)))]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

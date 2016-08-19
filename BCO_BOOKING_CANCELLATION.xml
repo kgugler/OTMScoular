@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKING_CANCELLATION" description="BCO Booking Cancellation Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  cvr2.charter_voyage_refnum_value 
+  loc_code,
+  cvr3.charter_voyage_refnum_value 
+  commodity,
+  cv.charter_voyage_xid 
+  booking_no,
+  loc1.location_xid 
+  origin,
+  cvr1.charter_voyage_refnum_value 
+  rail_cut,
+  TO_CHAR(cv.departure_date,'MM/DD/YY') 
+  etd,
+  loc2.location_xid 
+  ship_line,
+  (CASE WHEN 
+    cvr4.charter_voyage_refnum_value = '0' THEN ''
+  ELSE
+    cvr4.charter_voyage_refnum_value
+  END) 
+  twenty_cnt,
+  (CASE WHEN
+    TO_NUMBER(NVL(cvr5.charter_voyage_refnum_value,'0')) + TO_NUMBER(NVL(cvr6.charter_voyage_refnum_value,'0')) = 0 THEN ''
+  ELSE
+    TO_CHAR(TO_NUMBER(NVL(cvr5.charter_voyage_refnum_value,'0')) + TO_NUMBER(NVL(cvr6.charter_voyage_refnum_value,'0')))
+  END) 
+  forty_cnt,
+  (CASE WHEN NOT cvr7.charter_voyage_refnum_value IS NULL THEN
+    TO_CHAR(cvr7.insert_date,'MM/DD/YY')
+  ELSE
+    TO_CHAR(from_tz(CAST(cv.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central','MM/DD/YY')
+  END)
+  date_cancelled,
+  cvr7.charter_voyage_refnum_value
+  cancel_reason,
+  TO_CHAR((CASE WHEN NOT cvr7.charter_voyage_refnum_value IS NULL THEN
+    TO_DATE(cvr7.insert_date,'DD-MM-RR')
+  ELSE
+    TO_DATE(TO_CHAR(from_tz(CAST(cv.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central','MM/DD/YY'),'MM/DD/YY')
+  END) - TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY'))
+  days_cancelled
+FROM
+  charter_voyage cv
+INNER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_COMMODITY'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+  cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TEU COUNT'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+  cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FT COUNT'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+  cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTHC COUNT'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr7 ON cv.charter_voyage_gid = cvr7.charter_voyage_gid
+AND
+  cvr7.charter_voyage_refnum_qual_gid = 'SCOULAR.BOOKING CANCELLATION NOTES'  
+LEFT OUTER JOIN
+  location loc1 ON cv.source_location_gid = loc1.location_gid    
+LEFT OUTER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND
+  cv.is_cancelled = 'Y'
+AND
+  (TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cvr1.charter_voyage_refnum_value,'MM/DD/YY') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  (CASE WHEN NOT cvr7.charter_voyage_refnum_value IS NULL THEN
+    cvr7.insert_date
+  ELSE
+    TO_DATE(TO_CHAR(from_tz(CAST(cv.update_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central','MM/DD/YY'),'MM/DD/YY')
+  END) DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="BOOKING_NO" value="BOOKING_NO" />
+      <element name="ORIGIN" value="ORIGIN" />
+      <element name="RAIL_CUT" value="RAIL_CUT" />
+      <element name="ETD" value="ETD" />
+      <element name="SHIP_LINE" value="SHIP_LINE" />
+      <element name="TWENTY_CNT" value="TWENTY_CNT" />
+      <element name="FORTY_CNT" value="FORTY_CNT" />
+      <element name="DATE_CANCELLED" value="DATE_CANCELLED"></element>
+      <element name="CANCEL_REASON" value="CANCEL_REASON" />
+      <element name="DAYS_CANCELLED" value="DAYS_CANCELLED" />
+    </group>
+  </dataStructure>
+</dataTemplate>

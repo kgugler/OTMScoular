@@ -1,0 +1,497 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_DOMESTIC_PROFIT_LOSS_BL" description="NVO Domestic Profit Loss By B/L Date" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="OP_START_DATE" dataType="character"></parameter>
+    <parameter name="OP_END_DATE" dataType="character"></parameter>
+    <parameter name="INV_PARTY_ID" dataType="character"></parameter>
+    <parameter name="LOC" dataType="character"></parameter>
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+:OP_START_DATE bl_start_date,
+:OP_END_DATE bl_end_date,
+REPLACE(:INV_PARTY_ID,'SCOULAR.','') bill_to_cust,
+:LOC loc_string
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  d.load_number,
+  d.billto_name,
+  LISTAGG(d.origin_id,', ') WITHIN GROUP (ORDER BY d.origin_id) origin_id,
+  LISTAGG(d.dest_id,', ') WITHIN GROUP (ORDER BY d.dest_id) dest_id,
+  LISTAGG(d.origin_city,', ') WITHIN GROUP (ORDER BY d.origin_city) origin_city,
+  LISTAGG(d.origin_state,', ') WITHIN GROUP (ORDER BY d.origin_state) origin_state,
+  LISTAGG(d.dest_city,', ') WITHIN GROUP (ORDER BY d.dest_city) dest_city,
+  LISTAGG(d.dest_state,', ') WITHIN GROUP (ORDER BY d.dest_state) dest_state,  
+  d.bl_date,
+  d.carrier,
+  d.revenue,
+  d.expense,
+  d.profit,
+  d.loc_num,
+  d.manager_name
+FROM
+(SELECT
+  c.load_number,
+  c.billto_name,
+  c.origin_id,
+  c.dest_id,
+  c.origin_city,
+  c.origin_state,
+  c.dest_city,
+  c.dest_state,
+  c.bl_date,
+  c.carrier,
+  TRIM(TO_CHAR(ROUND(SUM(c.revenue),2),'999,999,990.00')) revenue,
+  TRIM(TO_CHAR(ROUND(SUM(c.expense),2),'999,999,990.00')) expense,
+  TRIM(TO_CHAR(ROUND((SUM(c.revenue) - SUM(c.expense)),2),'999,999,990.00')) profit,
+  c.loc_num,
+  c.manager_name
+FROM
+(SELECT
+  b.*,
+  (CASE WHEN b.perspective = 'S' THEN (SELECT SUM(sca.cost)
+  FROM shipment_cost sca
+  WHERE sca.shipment_gid = b.shipment_gid
+  AND b.perspective = 'S') ELSE 0 END) revenue, 
+  (CASE WHEN b.perspective = 'B' THEN (SELECT SUM(scb.cost)
+  FROM shipment_cost scb
+  WHERE scb.shipment_gid = b.shipment_gid
+  AND b.perspective = 'B') ELSE 0 END) expense
+FROM
+(SELECT DISTINCT
+  a.*
+FROM
+(SELECT DISTINCT
+  j.job_gid,
+  ship.shipment_gid,
+  ship.shipment_type_gid, 
+  ship.transport_mode_gid, 
+  ship.is_primary, 
+  ship.perspective,   
+  j.job_xid load_number,
+  loc1.location_xid billto_name,
+  loc2.location_xid origin_id,
+  loc3.location_xid dest_id,
+  loc2.city origin_city,
+  loc2.province_code origin_state,
+  loc3.city dest_city,
+  loc3.province_code dest_state,
+  TO_CHAR(TO_DATE(j.attribute_date1,'dd-mm-rr'),'fmMM/DD/YYYY') bl_date,  
+  loc4.location_xid carrier,
+  j.attribute4 loc_num,
+  con1.contact_xid manager_name 
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN
+  shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+AND
+  s1.is_primary='Y' 
+AND
+  s1.perspective='B' 
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s2 ON ssej2.shipment_gid = s2.shipment_gid
+AND
+  s2.is_primary='Y' 
+AND
+  s2.perspective='S' 
+LEFT OUTER JOIN
+	shipment_involved_party sip1 ON s1.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+	location loc1 ON	sip1.involved_party_contact_gid = loc1.location_gid 
+LEFT OUTER JOIN
+  shipment_s_equipment_join ssej3 ON s1.shipment_gid = ssej3.shipment_gid
+LEFT OUTER JOIN
+  s_equipment_s_ship_unit_join sessuj3 ON ssej3.s_equipment_gid = sessuj3.s_equipment_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul3 ON ssul3.s_ship_unit_gid = sessuj3.s_ship_unit_gid
+LEFT OUTER JOIN
+  order_release orel1 ON ssul3.order_release_gid = orel1.order_release_gid
+LEFT OUTER JOIN
+	location loc2 ON orel1.source_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+	location loc3 ON orel1.dest_location_gid = loc3.location_gid
+LEFT OUTER JOIN
+	location loc4 ON s1.servprov_gid = loc4.location_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s1.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'SCOULAR/NVODOM.OPS MANAGER'
+LEFT OUTER JOIN
+  contact con1 ON sip2.involved_party_contact_gid = con1.contact_gid
+INNER JOIN 
+  s_ship_unit_line ssul4 ON jorj.order_release_gid = ssul4.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj4 ON sessuj4.s_ship_unit_gid = ssul4.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej4 ON sessuj4.s_equipment_gid = ssej4.s_equipment_gid
+INNER JOIN
+  shipment ship ON ssej4.shipment_gid = ship.shipment_gid
+WHERE
+  j.domain_name = 'SCOULAR/NVODOM'
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)  
+AND
+  (TO_DATE(j.attribute_date1,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(j.attribute_date1,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD')) 
+AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)
+UNION
+SELECT DISTINCT
+  j.job_gid,
+  ship.shipment_gid,
+  ship.shipment_type_gid, 
+  ship.transport_mode_gid, 
+  ship.is_primary, 
+  ship.perspective,   
+  j.job_xid load_number,
+  loc1.location_xid billto_name,
+  loc2.location_xid origin_id,
+  loc3.location_xid dest_id,
+  loc2.city origin_city,
+  loc2.province_code origin_state,
+  loc3.city dest_city,
+  loc3.province_code dest_state,
+  TO_CHAR(TO_DATE(j.attribute_date1,'dd-mm-rr'),'fmMM/DD/YYYY') bl_date,  
+  loc4.location_xid carrier,
+  j.attribute4 loc_num,
+  con1.contact_xid manager_name
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN
+  shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+AND
+  s1.is_primary='Y' 
+AND
+  s1.perspective='B' 
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s2 ON ssej2.shipment_gid = s2.shipment_gid
+AND
+  s2.is_primary='Y' 
+AND
+  s2.perspective='S' 
+LEFT OUTER JOIN
+	shipment_involved_party sip1 ON s1.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+	location loc1 ON	sip1.involved_party_contact_gid = loc1.location_gid     
+LEFT OUTER JOIN
+  shipment_s_equipment_join ssej3 ON s1.shipment_gid = ssej3.shipment_gid
+LEFT OUTER JOIN
+  s_equipment_s_ship_unit_join sessuj3 ON ssej3.s_equipment_gid = sessuj3.s_equipment_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul3 ON ssul3.s_ship_unit_gid = sessuj3.s_ship_unit_gid
+LEFT OUTER JOIN
+  order_release orel1 ON ssul3.order_release_gid = orel1.order_release_gid
+LEFT OUTER JOIN
+	location loc2 ON orel1.source_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+	location loc3 ON orel1.dest_location_gid = loc3.location_gid
+LEFT OUTER JOIN
+	location loc4 ON s1.servprov_gid = loc4.location_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s1.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'SCOULAR/NVODOM.OPS MANAGER'
+LEFT OUTER JOIN
+  contact con1 ON sip2.involved_party_contact_gid = con1.contact_gid
+INNER JOIN
+  shipment ship ON s1.shipment_gid = ship.original_shipment_gid OR s2.shipment_gid = ship.original_shipment_gid
+AND
+  ship.shipment_type_gid = 'SECONDARY CHARGE'
+WHERE
+  j.domain_name = 'SCOULAR/NVODOM'
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)  
+AND
+  (TO_DATE(j.attribute_date1,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(j.attribute_date1,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
+AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)) a
+LEFT OUTER JOIN
+  job_order_release_join jorj3 ON a.job_gid = jorj3.job_gid
+LEFT OUTER JOIN 
+  s_ship_unit_line ssula ON jorj3.order_release_gid = ssula.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuja ON sessuja.s_ship_unit_gid = ssula.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join sseja ON sessuja.s_equipment_gid = sseja.s_equipment_gid
+LEFT OUTER JOIN
+  shipment s3 ON sseja.shipment_gid = s3.shipment_gid
+AND
+  s3.shipment_type_gid ='TRANSPORT'  
+AND
+  s3.is_primary='Y' 
+AND
+  s3.perspective='S'
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s3.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'BILL-TO'    
+WHERE
+  ((:INV_PARTY_ID IS NULL)
+OR
+  (NOT :INV_PARTY_ID IS NULL AND sip.involved_party_contact_gid = :INV_PARTY_ID))
+AND 
+  NOT s3.shipment_gid IS NULL) b) c
+GROUP BY 
+  c.load_number,
+  c.billto_name,
+  c.origin_id,
+  c.dest_id,
+  c.origin_city,
+  c.origin_state,
+  c.dest_city,
+  c.dest_state,
+  c.bl_date,
+  c.carrier,
+  c.loc_num,
+  c.manager_name  
+ORDER BY c.load_number) d
+GROUP BY
+  d.load_number,
+  d.billto_name,  
+  d.bl_date,
+  d.carrier,
+  d.revenue,
+  d.expense,
+  d.profit,
+  d.loc_num,
+  d.manager_name]]></sqlStatement>
+    <sqlStatement name="Q_TOTALS"><![CDATA[SELECT
+  COUNT(DISTINCT c.job_gid) file_count,
+  TRIM(TO_CHAR(SUM(c.revenue),'999,999,990.00')) tot_revenue,
+  TRIM(TO_CHAR(SUM(c.expense),'999,999,990.00')) tot_expense,
+  TRIM(TO_CHAR((SUM(c.revenue) - SUM(c.expense)),'999,999,990.00')) tot_profit
+FROM
+(SELECT
+  b.job_gid,
+  (CASE WHEN b.perspective = 'S' THEN (SELECT SUM(sca.cost)
+  FROM shipment_cost sca
+  WHERE sca.shipment_gid = b.shipment_gid
+  AND b.perspective = 'S') ELSE 0 END) revenue, 
+  (CASE WHEN b.perspective = 'B' THEN (SELECT SUM(scb.cost)
+  FROM shipment_cost scb
+  WHERE scb.shipment_gid = b.shipment_gid
+  AND b.perspective = 'B') ELSE 0 END) expense
+FROM
+(SELECT 
+  a.*
+FROM
+(SELECT DISTINCT
+  j.job_gid,
+  ship.shipment_gid,
+  ship.perspective
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN
+  shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+AND
+  s1.is_primary='Y' 
+AND
+  s1.perspective='B' 
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s2 ON ssej2.shipment_gid = s2.shipment_gid
+AND
+  s2.is_primary='Y' 
+AND
+  s2.perspective='S' 
+INNER JOIN 
+  s_ship_unit_line ssul3 ON jorj.order_release_gid = ssul3.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj3 ON sessuj3.s_ship_unit_gid = ssul3.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej3 ON sessuj3.s_equipment_gid = ssej3.s_equipment_gid
+INNER JOIN
+  shipment ship ON ssej3.shipment_gid = ship.shipment_gid
+WHERE
+  j.domain_name = 'SCOULAR/NVODOM'
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)   
+AND
+  (TO_DATE(j.attribute_date1,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(j.attribute_date1,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD')) 
+AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)
+UNION
+SELECT DISTINCT
+  j.job_gid,
+  ship.shipment_gid,
+  ship.perspective
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN
+  shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+AND
+  s1.is_primary='Y' 
+AND
+  s1.perspective='B' 
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s2 ON ssej2.shipment_gid = s2.shipment_gid
+AND
+  s2.is_primary='Y' 
+AND
+  s2.perspective='S'
+INNER JOIN
+  shipment ship ON s1.shipment_gid = ship.original_shipment_gid OR s2.shipment_gid = ship.original_shipment_gid
+AND
+  ship.shipment_type_gid = 'SECONDARY CHARGE'
+WHERE
+  j.domain_name = 'SCOULAR/NVODOM'
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVODOM.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)   
+AND
+  (TO_DATE(j.attribute_date1,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(j.attribute_date1,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
+AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)) a
+LEFT OUTER JOIN
+  job_order_release_join jorj3 ON a.job_gid = jorj3.job_gid
+LEFT OUTER JOIN 
+  s_ship_unit_line ssul4 ON jorj3.order_release_gid = ssul4.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuj4 ON sessuj4.s_ship_unit_gid = ssul4.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join ssej4 ON sessuj4.s_equipment_gid = ssej4.s_equipment_gid
+LEFT OUTER JOIN
+  shipment s3 ON ssej4.shipment_gid = s3.shipment_gid
+AND
+  s3.shipment_type_gid ='TRANSPORT'  
+AND
+  s3.is_primary='Y' 
+AND
+  s3.perspective='S'
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s3.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'BILL-TO'    
+WHERE
+  ((:INV_PARTY_ID IS NULL)
+OR
+  (NOT :INV_PARTY_ID IS NULL AND sip.involved_party_contact_gid = :INV_PARTY_ID))
+AND 
+  NOT s3.shipment_gid IS NULL) b) c]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+      <element name="BL_START_DATE" value="BL_START_DATE" />
+      <element name="BL_END_DATE" value="BL_END_DATE" />
+      <element name="BILL_TO_CUST" value="BILL_TO_CUST"></element>
+      <element name="LOC_STRING" value="LOC_STRING"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOAD_NUMBER" value="LOAD_NUMBER" />
+      <element name="BILLTO_NAME" value="BILLTO_NAME"></element>
+      <element name="ORIGIN_ID" value="ORIGIN_ID" />
+      <element name="DEST_ID" value="DEST_ID" />
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY" />
+      <element name="ORIGIN_STATE" value="ORIGIN_STATE" />
+      <element name="DEST_CITY" value="DEST_CITY" />
+      <element name="DEST_STATE" value="DEST_STATE" />
+      <element name="BL_DATE" value="BL_DATE" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="REVENUE" value="REVENUE" />
+      <element name="EXPENSE" value="EXPENSE" />
+      <element name="PROFIT" value="PROFIT"></element>
+      <element name="LOC_NUM" value="LOC_NUM"></element>
+      <element name="MANAGER_NAME" value="MANAGER_NAME" />
+    </group>
+    <group name="G_TOTALS" source="Q_TOTALS">
+      <element name="FILE_COUNT" value="FILE_COUNT" />
+      <element name="TOT_REVENUE" value="TOT_REVENUE" />
+      <element name="TOT_EXPENSE" value="TOT_EXPENSE" />
+      <element name="TOT_PROFIT" value="TOT_PROFIT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

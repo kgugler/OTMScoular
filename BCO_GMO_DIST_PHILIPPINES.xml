@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_GMO_DIST_PHILIPPINES" description="BCO GMO DIST PHILIPPINES" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	TO_CHAR(SAIL_DATE),
+	SHIPMENT_XID AS SHIPMENT_NUMBER,
+	CREDIT_NUMBER,
+	CONTAINER_COUNTANDDETAIL,
+	VESSEL,
+	CONTRACT_NUMBER,
+	TO_CHAR(ROUND(MT_WEIGHT_NUMONLY,3),'999,999,990.000') || ' MT' MT_WEIGHT_NUMONLY,
+	COMMODITY_DETAIL,
+	NOTIFY_PARTY
+FROM
+	VIEW_SHIPMENT_SUMMARY VSS
+WHERE
+	SHIPMENT_GID = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(SAIL_DATE),'Data Missing in System') SAIL_DATE,
+	'TBD' AS SHIPMENT_NUMBER,
+	NVL(CREDIT_NUMBER, 'Data Missing in System') CREDIT_NUMBER,
+	NVL(CONTAINER_COUNTANDDETAIL, 'Data Missing in System') CONTAINER_COUNTANDDETAIL,
+	NVL(VESSEL, 'Data Missing in System') VESSEL,
+	NVL(CONTRACT_NUMBER, 'Data Missing in System') CONTRACT_NUMBER,
+	NVL(TO_CHAR(ROUND(MT_WEIGHT_NUMONLY,3),'999,999,990.000'), 'Data Missing in System') || ' MT' MT_WEIGHT_NUMONLY,
+	NVL(COMMODITY_DETAIL, 'Data Missing in System') COMMODITY_DETAIL,
+	NVL(NOTIFY_PARTY, 'Data Missing in System') NOTIFY_PARTY
+FROM
+	VIEW_SHIPMENT_SUMMARY VSS
+WHERE
+	SHIPMENT_GID = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SAIL_DATE" value="SAIL_DATE" />
+      <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="CONTAINER_COUNTANDDETAIL" value="CONTAINER_COUNTANDDETAIL" />
+      <element name="VESSEL" value="VESSEL"></element>
+      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER" />
+      <element name="MT_WEIGHT_NUMONLY" value="MT_WEIGHT_NUMONLY" />
+      <element name="COMMODITY_DETAIL" value="COMMODITY_DETAIL" />
+      <element name="NOTIFY_PARTY" value="NOTIFY_PARTY" />
+    </group>
+  </dataStructure>
+</dataTemplate>

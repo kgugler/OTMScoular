@@ -1,0 +1,245 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENT_APPLIED_CONTRACT" description="BCO Shipment Applied to Contract" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="DEST_LOC_ID" dataType="character" />
+    <parameter name="DEST_COUNTRY" dataType="character"></parameter>
+    <parameter name="LOC_NUM" dataType="character" />
+    <parameter name="COMMOD" dataType="character" />
+    <parameter name="CONTRACT_NO" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  oob.order_base_xid contract,
+  con.contact_xid customer,
+  obr2.ob_refnum_value commodity,
+  TRIM(TO_CHAR(ROUND(obl.weight_base / 2204.5855379,0))) cak_weight,
+  TRIM(TO_CHAR(ROUND((SELECT SUM(ssu1.unit_net_weight_base)
+  FROM view_shipment_order_base vsob1
+  INNER JOIN shipment sh1 ON vsob1.shipment_gid = sh1.shipment_gid
+  INNER JOIN shipment_stop_d sstopd1 ON sh1.shipment_gid = sstopd1.shipment_gid
+  AND	sstopd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON sstopd1.s_ship_unit_gid = ssu1.s_ship_unit_gid
+  AND	NOT ssu1.tag_3 IS NULL	
+  WHERE vsob1.order_base_gid = oob.order_base_gid
+  AND sh1.shipment_type_gid = 'TRANSPORT') / 2204.5855379,3))) applied_weight,
+  obrem.remark_text price,
+  obr3.ob_refnum_value payment,
+  TO_CHAR((CASE WHEN obl.source_location_gid IS NULL THEN
+    obl.early_pickup_date
+  ELSE
+    glogowner.utc.get_local_date(obl.early_pickup_date,obl.source_location_gid)
+  END),'MM/DD/YYYY') begin_sail,
+  TO_CHAR((CASE WHEN obl.source_location_gid IS NULL THEN
+    obl.late_delivery_date
+  ELSE
+    glogowner.utc.get_local_date(obl.late_delivery_date,obl.source_location_gid)
+  END),'MM/DD/YYYY') end_sail, 
+  srn.shipment_refnum_value booking,
+  s.shipment_xid shipment,
+  loc1.location_xid load_port,
+  loc2.location_xid dest_port,
+  spr.servprov_xid carrier,
+  TRIM(sref1.shipment_refnum_value || ' ' || sref2.shipment_refnum_value) voyage,
+  TO_CHAR(s.sail_date,'MM/DD/YYYY') etd_date,
+  TO_CHAR(port_discharge_eta,'MM/DD/YYYY') eta_date,
+  TRIM(TO_CHAR(ROUND((SELECT SUM(ssu2.unit_net_weight_base)
+  FROM shipment_stop_d sstopd2
+  INNER JOIN s_ship_unit ssu2 ON sstopd2.s_ship_unit_gid = ssu2.s_ship_unit_gid
+  AND	NOT ssu2.tag_3 IS NULL	
+  WHERE sstopd2.stop_num = 1
+  AND sstopd2.shipment_gid = s.shipment_gid) / 2204.5855379,3)))        
+  shipped_qty,
+  TRIM(TO_CHAR(ROUND((SELECT SUM(ssu3.unit_net_weight_base)
+  FROM shipment_stop_d sstopd3
+  INNER JOIN s_ship_unit ssu3 ON sstopd3.s_ship_unit_gid = ssu3.s_ship_unit_gid
+  AND	ssu3.tag_3 IS NULL	
+  WHERE sstopd3.stop_num = 1
+  AND sstopd3.shipment_gid = s.shipment_gid) / 2204.5855379,3)))   
+  planned_qty,
+  (SELECT COUNT(ssu4.s_ship_unit_gid)
+  FROM shipment_stop_d sstopd4
+  INNER JOIN s_ship_unit ssu4 ON sstopd4.s_ship_unit_gid = ssu4.s_ship_unit_gid
+  AND	NOT ssu4.tag_3 IS NULL	
+  WHERE sstopd4.stop_num = 1
+  AND sstopd4.shipment_gid = s.shipment_gid) containers,
+  (CASE WHEN cvr1.charter_voyage_refnum_value IS NULL THEN
+    (CASE WHEN cvr2.charter_voyage_refnum_value IS NULL THEN
+      (CASE WHEN cvr3.charter_voyage_refnum_value IS NULL THEN
+        (CASE WHEN cvr4.charter_voyage_refnum_value IS NULL THEN
+          ''
+        ELSE
+          cvr4.charter_voyage_refnum_value
+        END)
+      ELSE
+        cvr3.charter_voyage_refnum_value
+      END)
+    ELSE
+      cvr2.charter_voyage_refnum_value
+    END)
+  ELSE
+    cvr1.charter_voyage_refnum_value
+  END) per_container
+FROM
+  ob_order_base oob
+INNER JOIN
+  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
+INNER JOIN
+  shipment s ON vsob.shipment_gid = s.shipment_gid
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON sref1.shipment_gid = s.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NAME'
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON sref2.shipment_gid = s.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+  ob_line obl ON oob.order_base_gid = obl.order_base_gid
+LEFT OUTER JOIN
+  ob_involved_party oib ON oob.order_base_gid = oib.order_base_gid
+AND
+  oib.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con ON oib.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+  ob_refnum obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+  obr1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  ob_refnum obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+  obr2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'  
+LEFT OUTER JOIN
+  ob_refnum obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+  obr3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'   
+LEFT OUTER JOIN
+  ob_remark obrem ON oob.order_base_gid = obrem.order_base_gid
+AND
+  obrem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
+LEFT OUTER JOIN
+  location loc1 ON s.port_of_load_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.port_of_dis_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  location loc3 ON obl.dest_location_gid = loc3.location_gid
+LEFT OUTER JOIN
+  servprov spr ON s.servprov_gid = spr.servprov_gid
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_SYSTEM'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_SYSTEM'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_USER'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+  cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_USER'  
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  oob.order_base_xid LIKE 'S%'
+AND
+  s.shipment_type_gid = 'TRANSPORT'    
+AND
+  ((:START_DATE IS NULL)
+OR
+  (NOT :START_DATE IS NULL
+AND
+  (TO_DATE(
+  (CASE WHEN obl.source_location_gid IS NULL THEN
+    obl.early_pickup_date
+  ELSE
+    glogowner.utc.get_local_date(obl.early_pickup_date,obl.source_location_gid)
+  END),'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD'))))
+AND
+  ((:END_DATE IS NULL)
+OR
+  (NOT :END_DATE IS NULL
+AND
+  (TO_DATE(
+  (CASE WHEN obl.source_location_gid IS NULL THEN
+    obl.late_delivery_date
+  ELSE
+    glogowner.utc.get_local_date(obl.late_delivery_date,obl.source_location_gid)
+  END),'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))))                                  
+AND
+  ((:DEST_LOC_ID IS NULL)
+OR
+  (NOT :DEST_LOC_ID IS NULL
+AND
+  (obl.dest_location_gid IN (SELECT REGEXP_SUBSTR(:DEST_LOC_ID,'[^,]+', 1, LEVEL) FROM DUAL
+                                      CONNECT BY REGEXP_SUBSTR(:DEST_LOC_ID, '[^,]+', 1, LEVEL) IS NOT NULL))))
+AND
+  ((:DEST_COUNTRY IS NULL)
+OR
+  (NOT :DEST_COUNTRY IS NULL
+AND
+  (loc3.country_code3_gid IN (SELECT REGEXP_SUBSTR(:DEST_COUNTRY,'[^,]+', 1, LEVEL) FROM DUAL
+                                      CONNECT BY REGEXP_SUBSTR(:DEST_COUNTRY, '[^,]+', 1, LEVEL) IS NOT NULL))))                                      
+AND
+  ((:LOC_NUM IS NULL)
+OR
+  (NOT :LOC_NUM IS NULL
+AND
+  (obr1.ob_refnum_value IN (SELECT REGEXP_SUBSTR(:LOC_NUM,'[^,]+', 1, LEVEL) FROM DUAL
+                                      CONNECT BY REGEXP_SUBSTR(:LOC_NUM, '[^,]+', 1, LEVEL) IS NOT NULL))))
+AND
+  ((:COMMOD IS NULL)
+OR
+  (NOT :COMMOD IS NULL
+AND
+  (obr2.ob_refnum_value IN (SELECT REGEXP_SUBSTR(:COMMOD,'[^,]+', 1, LEVEL) FROM DUAL
+                                      CONNECT BY REGEXP_SUBSTR(:COMMOD, '[^,]+', 1, LEVEL) IS NOT NULL))))
+AND
+  ((:CONTRACT_NO IS NULL)
+OR
+  (NOT :CONTRACT_NO IS NULL
+AND
+  (oob.order_base_gid = :CONTRACT_NO)))
+ORDER BY
+  oob.order_base_xid, s.shipment_xid]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CONTRACT" value="CONTRACT"></element>
+      <element name="CUSTOMER" value="CUSTOMER"></element>
+      <element name="COMMODITY" value="COMMODITY"></element>
+      <element name="CAK_WEIGHT" value="CAK_WEIGHT"></element>
+      <element name="APPLIED_WEIGHT" value="APPLIED_WEIGHT"></element>
+      <element name="PRICE" value="PRICE"></element>
+      <element name="PAYMENT" value="PAYMENT"></element>
+      <element name="BEGIN_SAIL" value="BEGIN_SAIL"></element>
+      <element name="END_SAIL" value="END_SAIL"></element>
+      <element name="BOOKING" value="BOOKING"></element>
+      <element name="SHIPMENT" value="SHIPMENT"></element>
+      <element name="LOAD_PORT" value="LOAD_PORT"></element>
+      <element name="DEST_PORT" value="DEST_PORT"></element>
+      <element name="CARRIER" value="CARRIER"></element>
+      <element name="VOYAGE" value="VOYAGE"></element>
+      <element name="ETD_DATE" value="ETD_DATE"></element>
+      <element name="ETA_DATE" value="ETA_DATE"></element>
+      <element name="SHIPPED_QTY" value="SHIPPED_QTY"></element>
+      <element name="PLANNED_QTY" value="PLANNED_QTY"></element>
+      <element name="CONTAINERS" value="CONTAINERS"></element>
+      <element name="PER_CONTAINER" value="PER_CONTAINER"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

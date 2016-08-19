@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_CONTRACT_NOTES" description="BCO Contract Notes Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="CONTRACT_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	ob.order_base_xid order_base_id,
+	obr.remark_text,
+	gu.gl_user_xid insert_user,
+	TO_CHAR(from_tz(CAST(obr.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI PM') note_time
+FROM
+	ob_order_base ob
+INNER JOIN
+	ob_remark obr ON ob.order_base_gid = obr.order_base_gid
+AND
+	obr.remark_qual_gid = 'SCOULAR.INTERNAL NOTES'
+INNER JOIN
+	gl_user gu ON obr.insert_user = gu.gl_user_gid
+WHERE
+	ob.order_base_gid = :CONTRACT_ID
+ORDER BY obr.insert_date ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="ORDER_BASE_ID" value="ORDER_BASE_ID" />
+      <element name="REMARK_TEXT" value="REMARK_TEXT" />
+      <element name="INSERT_USER" value="INSERT_USER" />
+      <element name="NOTE_TIME" value="NOTE_TIME" />
+    </group>
+  </dataStructure>
+</dataTemplate>

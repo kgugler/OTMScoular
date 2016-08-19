@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENTS_MISSING_921-2" description="BCO SHIPMENTS MISSING 921-2" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters></parameters>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  s.shipment_xid,
+  dm.first_name || ' ' || dm.last_name AS document_mgr,
+  sref.shipment_refnum_value AS booking_confirmation
+FROM
+  shipment s 
+LEFT OUTER JOIN
+  VIEW_SHIPMENT_DOCUMENT_MANAGER dm ON dm.shipment_gid = s.shipment_gid 
+INNER JOIN
+  shipment_refnum sref ON	sref.shipment_gid = s.shipment_gid 
+AND
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+WHERE
+  s.ATTRIBUTE_DATE10 <= SYSDATE + 7
+AND
+  (SELECT
+     COUNT(s_ship_unit_gid)
+   FROM
+     s_ship_unit
+   WHERE
+     s_ship_unit_gid IN
+       (SELECT
+          s_ship_unit_gid
+        FROM
+          shipment_stop_d
+        WHERE
+          shipment_gid = s.shipment_gid 
+        AND
+          stop_num=1)) >
+    (SELECT
+       COUNT(s_ship_unit_gid)
+     FROM
+       s_ship_unit_refnum
+     WHERE
+       s_ship_unit_refnum_qual_gid='SCOULAR/BCO.921-2 REPORT NUMBER'
+      AND
+       s_ship_unit_gid IN
+         (SELECT
+            s_ship_unit_gid
+          FROM
+            shipment_stop_d
+          WHERE
+            shipment_gid = s.shipment_gid
+          AND
+            stop_num=1))]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="DOCUMENT_MGR" value="DOCUMENT_MGR" />
+      <element name="BOOKING_CONFIRMATION" value="BOOKING_CONFIRMATION" />
+    </group>
+  </dataStructure>
+</dataTemplate>

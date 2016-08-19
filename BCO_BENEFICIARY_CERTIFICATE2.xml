@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BENEFICIARY_CERTIFICATE2" description="BCO Beneficiary's Certificate 2" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') booking_date,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999'))  || ' X ' || 
+  TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  ,'999,999')) || ' FT CONTAINERS' quantity,
+	cv.voyage_name vessel,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1) bl_num
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') booking_date,
+	(CASE WHEN (SELECT COUNT(sstopdd.s_ship_unit_gid)	FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1) = 0 THEN 'Data Missing in System'
+	ELSE TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' || 
+  NVL(TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  ,'999,999')), 'Data Missing in System') || ' FT CONTAINERS' END) quantity,
+	NVL(cv.voyage_name, 'Data Missing in System') vessel,
+	NVL((SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1), 'Data Missing in System') bl_num
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obr1.remark_text   
+  ELSE
+    NVL(obr1.remark_text, 'Data Missing in System')
+  END)
+  credit_number,
+  (CASE WHEN :P_RUN = 'FINAL' THEN 
+    COALESCE(obr2.remark_text, 
+    (SELECT it.description
+    FROM shipment_stop_d sstopd
+    INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND	NOT ssu.tag_3 IS NULL
+    INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+    INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
+    INNER JOIN item it ON pi.item_gid = it.item_gid
+    WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)) 
+  ELSE
+    NVL(COALESCE(obr2.remark_text, 
+    (SELECT it.description
+    FROM shipment_stop_d sstopd
+    INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND	NOT ssu.tag_3 IS NULL
+    INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+    INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
+    INNER JOIN item it ON pi.item_gid = it.item_gid
+    WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)), 'Data Missing in System')   
+  END)
+  description,
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obr3.remark_text   
+  ELSE
+    NVL(obr3.remark_text, 'Data Missing in System')
+  END)  
+  cert_remark
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_BENEFICIARY CERTS2'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND NOT
+  sessuj.s_equipment_gid IS NULL  
+UNION ALL
+SELECT
+  'Data Missing in System'
+  credit_number,
+  'Data Missing in System'
+  description,
+  'Data Missing in System'
+  cert_remark
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND NOT
+  sessuj.s_equipment_gid IS NULL)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="BL_NUM" value="BL_NUM" />
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="CERT_REMARK" value="CERT_REMARK" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,387 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_ORIGIN_CERT_SCOULAR_LOGO" description="BCO Origin Certificate Scoular Logo" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') booking_date,
+	obrns1.ob_refnum_value shipper,
+	(CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrns4.ob_refnum_value END) shipper_address,
+	(CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns8.ob_refnum_value END) s_city_state_zip,
+	obr1.remark_text lc_num,
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') on_board_date,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) vessel,
+	obrn1.ob_refnum_value party,
+	(CASE WHEN NVL(TRIM(obrn2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrn4.ob_refnum_value END) address,
+	(CASE WHEN NVL(TRIM(obrn5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || 
+  (SELECT country_name 
+  FROM country_code 
+  WHERE country_code3_gid =  obrn8.ob_refnum_value)  
+  END) city_state_zip,
+	(SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = s.shipment_gid
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER') ref_num,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1) bl_num,
+  (CASE WHEN l1.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(l1.city || ', ' || l1.province_code || ' ' || cc1.country_name) 
+  ELSE
+    TRIM(l1.city || ' ' || cc1.country_name) 
+  END)
+  load_port,
+  (CASE WHEN l2.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(l2.city || ', ' || l2.province_code || ' ' || cc2.country_name) 
+  ELSE
+    TRIM(l2.city || ' ' || cc2.country_name) 
+  END)  
+  discharge_port,
+	obr3.remark_text delivery_port,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' 
+  || TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'999,999')) || ' FT CONTAINERS' quantity,
+	obr2.remark_text description,
+	TRIM(TO_CHAR(
+  (SELECT SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3))
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1)
+  , '999,999,990.000') || 'MT') net_weight
+FROM
+	shipment s
+LEFT OUTER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'   
+LEFT OUTER JOIN
+	ob_refnum obrns1 ON oob.order_base_gid = obrns1.order_base_gid
+AND
+	obrns1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER NAME'
+LEFT OUTER JOIN
+	ob_refnum obrns2 ON oob.order_base_gid = obrns2.order_base_gid
+AND
+	obrns2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrns3 ON oob.order_base_gid = obrns3.order_base_gid
+AND
+	obrns3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrns4 ON oob.order_base_gid = obrns4.order_base_gid
+AND
+	obrns4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrns5 ON oob.order_base_gid = obrns5.order_base_gid
+AND
+	obrns5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER CITY'
+LEFT OUTER JOIN
+	ob_refnum obrns6 ON oob.order_base_gid = obrns6.order_base_gid
+AND
+	obrns6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrns7 ON oob.order_base_gid = obrns7.order_base_gid
+AND
+	obrns7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrns8 ON oob.order_base_gid = obrns8.order_base_gid
+AND
+	obrns8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrn4 ON oob.order_base_gid = obrn4.order_base_gid
+AND
+	obrn4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrn5 ON oob.order_base_gid = obrn5.order_base_gid
+AND
+	obrn5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP CITY'
+LEFT OUTER JOIN
+	ob_refnum obrn6 ON oob.order_base_gid = obrn6.order_base_gid
+AND
+	obrn6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrn7 ON oob.order_base_gid = obrn7.order_base_gid
+AND
+	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn8 ON oob.order_base_gid = obrn8.order_base_gid
+AND
+	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESTINATION PORT'
+LEFT OUTER JOIN
+	location l1 ON s.port_of_load_location_gid = l1.location_gid
+LEFT OUTER JOIN
+  country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid
+LEFT OUTER JOIN
+	location l2 ON s.port_of_dis_location_gid = l2.location_gid
+LEFT OUTER JOIN
+  country_code cc2 ON l2.country_code3_gid = cc2.country_code3_gid  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') booking_date,
+	NVL(obrns1.ob_refnum_value, 'Data Missing in System') shipper,
+	(CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
+	((CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrns4.ob_refnum_value END))
+	 END) shipper_address,
+	(CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
+	((CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns8.ob_refnum_value END))
+	 END) s_city_state_zip,
+	NVL(obr1.remark_text, 'Data Missing in System') lc_num,
+	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') on_board_date,
+	NVL(TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value), 'Data Missing in System') vessel,
+	NVL(obrn1.ob_refnum_value, 'Data Missing in System') party,
+	(CASE WHEN NVL(TRIM(obrn2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
+	((CASE WHEN NVL(TRIM(obrn2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrn4.ob_refnum_value END))
+	 END) address,
+	(CASE WHEN NVL(TRIM(obrn5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
+	((CASE WHEN NVL(TRIM(obrn5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || 
+  (SELECT country_name 
+  FROM country_code 
+  WHERE country_code3_gid =  obrn8.ob_refnum_value)  
+  END))
+	 END) city_state_zip,
+	NVL((SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = s.shipment_gid
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'), 'Data Missing in System') ref_num,
+	NVL((SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1), 'Data Missing in System') bl_num,
+  (CASE WHEN l1.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(NVL(l1.city, 'Data Missing in System')  || ', ' || NVL(l1.province_code, 'Data Missing in System')  || ' ' || cc1.country_name)
+  ELSE
+    NVL(TRIM(l1.city || ' ' || cc1.country_name), 'Data Missing in System')
+  END)
+  load_port,
+  (CASE WHEN l2.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(NVL(l2.city, 'Data Missing in System') || ', ' || NVL(l2.province_code, 'Data Missing in System') || ' ' || cc2.country_name) 
+  ELSE
+    NVL(TRIM(l2.city || ' ' || cc2.country_name), 'Data Missing in System')  
+  END)
+  discharge_port,
+	NVL(obr3.remark_text, 'Data Missing in System') delivery_port,
+	(CASE WHEN (SELECT COUNT(sstopdd.s_ship_unit_gid)	FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1) = 0 THEN 'Data Missing in System'
+	ELSE TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' 
+  || NVL(TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'999,999')), 'Data Missing in System') || ' FT CONTAINERS' END) quantity,
+	NVL(obr2.remark_text, 'Data Missing in System') description,
+	TRIM(NVL(TO_CHAR(
+  (SELECT SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3))
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1)  
+  , '999,999,990.000'), 'Data Missing in System') || 'MT') net_weight
+FROM
+	shipment s
+LEFT OUTER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'   
+LEFT OUTER JOIN
+	ob_refnum obrns1 ON oob.order_base_gid = obrns1.order_base_gid
+AND
+	obrns1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER NAME'
+LEFT OUTER JOIN
+	ob_refnum obrns2 ON oob.order_base_gid = obrns2.order_base_gid
+AND
+	obrns2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrns3 ON oob.order_base_gid = obrns3.order_base_gid
+AND
+	obrns3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrns4 ON oob.order_base_gid = obrns4.order_base_gid
+AND
+	obrns4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrns5 ON oob.order_base_gid = obrns5.order_base_gid
+AND
+	obrns5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER CITY'
+LEFT OUTER JOIN
+	ob_refnum obrns6 ON oob.order_base_gid = obrns6.order_base_gid
+AND
+	obrns6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrns7 ON oob.order_base_gid = obrns7.order_base_gid
+AND
+	obrns7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrns8 ON oob.order_base_gid = obrns8.order_base_gid
+AND
+	obrns8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrn4 ON oob.order_base_gid = obrn4.order_base_gid
+AND
+	obrn4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrn5 ON oob.order_base_gid = obrn5.order_base_gid
+AND
+	obrn5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP CITY'
+LEFT OUTER JOIN
+	ob_refnum obrn6 ON oob.order_base_gid = obrn6.order_base_gid
+AND
+	obrn6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrn7 ON oob.order_base_gid = obrn7.order_base_gid
+AND
+	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn8 ON oob.order_base_gid = obrn8.order_base_gid
+AND
+	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESTINATION PORT'
+LEFT OUTER JOIN
+	location l1 ON s.port_of_load_location_gid = l1.location_gid
+LEFT OUTER JOIN
+  country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid
+LEFT OUTER JOIN
+	location l2 ON s.port_of_dis_location_gid = l2.location_gid
+LEFT OUTER JOIN
+  country_code cc2 ON l2.country_code3_gid = cc2.country_code3_gid  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+      <element name="SHIPPER" value="SHIPPER" />
+      <element name="SHIPPER_ADDRESS" value="SHIPPER_ADDRESS" />
+      <element name="S_CITY_STATE_ZIP" value="S_CITY_STATE_ZIP" />
+      <element name="LC_NUM" value="LC_NUM" />
+      <element name="ON_BOARD_DATE" value="ON_BOARD_DATE" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="PARTY" value="PARTY" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
+      <element name="REF_NUM" value="REF_NUM" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="LOAD_PORT" value="LOAD_PORT" />
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT" />
+      <element name="DELIVERY_PORT" value="DELIVERY_PORT" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="NET_WEIGHT" value="NET_WEIGHT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

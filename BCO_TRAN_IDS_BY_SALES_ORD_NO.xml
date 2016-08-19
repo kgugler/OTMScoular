@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_TRAN_IDS_BY_SALES_ORD_NO" description="BCO Tran IDs by Sales Order Number" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_BCO_TRAN_ID_VALID" version="1.0">
+  <parameters>
+    <parameter name="ORDER_BASE_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  oref1.ob_refnum_value loc,
+  s.shipment_xid shipment_id,
+  oob.order_base_xid contract_no,
+  ssu.tag_3 tran_id,
+  ssu.tag_2 tran_id_date,
+  TRIM(TO_CHAR(ROUND(ssu.unit_net_weight,3), '999,999,990.000')) tran_id_weight,
+  ssu.unit_net_weight_uom_code weight_uom
+FROM
+  ob_order_base oob
+INNER JOIN
+  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
+INNER JOIN
+  shipment s ON vsob.shipment_gid = s.shipment_gid
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+LEFT OUTER JOIN
+  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  oob.order_base_gid = :ORDER_BASE_ID
+ORDER BY
+  TO_DATE(ssu.tag_2,'MM/DD/YYYY') DESC]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_BCO_TRAN_ID_VALID.before_report2" />
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="CONTRACT_NO" value="CONTRACT_NO" />
+      <element name="TRAN_ID" value="TRAN_ID" />
+      <element name="TRAN_ID_DATE" value="TRAN_ID_DATE"></element>
+      <element name="TRAN_ID_WEIGHT" value="TRAN_ID_WEIGHT"></element>
+      <element name="WEIGHT_UOM" value="WEIGHT_UOM"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

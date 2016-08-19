@@ -1,0 +1,190 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENT_DATA" description="BCO Shipment Data Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  s.shipment_gid,
+  obrn1.ob_refnum_value loc,
+  con.contact_xid customer,
+  oob.order_base_xid contract_no,
+	sref1.shipment_refnum_value commodity,
+  loc2.city dest_city,
+  loc2.country_code3_gid dest_country,
+  obrn3.ob_refnum_value payment_terms,
+  con1.first_name || ' '|| con1.last_name doc_manager,
+  s.shipment_xid shipment_id,
+  TO_CHAR(s.attribute_date4,'MM/DD/YY') payment_date,
+  TRIM(TO_CHAR(TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'dd-mm-rr'), 'Month')) || ' ' ||
+  TRIM(EXTRACT(YEAR FROM TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'dd-mm-rr'))) charvoy_m_y,
+  TO_CHAR(TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'dd-mm-rr'), 'MM/DD/YY') charvoy_etd,
+  TO_CHAR(TO_DATE(
+  (CASE WHEN cv.dest_location_gid IS NULL THEN
+    cv.arrival_date
+  ELSE
+    glogowner.utc.get_local_date(cv.arrival_date,cv.dest_location_gid)
+  END),'dd-mm-rr'), 'MM/DD/YY') charvoy_eta,
+  TRIM(TO_CHAR((SELECT COUNT(ssu.s_ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1),'999990'))
+  container_count,
+  TRIM(st.mt_weight_numonly_formatted) weight_mt,
+  (CASE WHEN obrn4.ob_refnum_value = 'P' THEN
+    TO_CHAR(ROUND(TO_NUMBER(REGEXP_REPLACE(obrn5.ob_refnum_value, '[^0-9,.]+', '')),2),'999,999,990.00')
+    || ' ' || obrn6.ob_refnum_value
+  WHEN obrn4.ob_refnum_value = 'U' THEN
+    TO_CHAR(ROUND(TO_NUMBER(REGEXP_REPLACE(obrn7.ob_refnum_value, '[^0-9,.]+', '')),2),'999,999,990.00')
+    || ' ' || obrn8.ob_refnum_value
+  ELSE
+    ''
+  END)
+  contract_price,
+  TO_CHAR(s.attribute_date7,'MM/DD/YY') presented_date,
+  REPLACE(s.servprov_gid, 'SCOULAR.','') carrier,
+  sref2.shipment_refnum_value transloader,  
+  loc1.city source_city,
+  loc1.province_code source_state
+FROM
+	shipment s
+INNER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+INNER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value  
+LEFT OUTER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid  
+LEFT OUTER JOIN
+	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  ob_involved_party oip ON oob.order_base_gid = oip.order_base_gid
+AND
+  oip.involved_party_qual_gid LIKE '%CUSTOMER%'
+LEFT OUTER JOIN
+  contact con ON oip.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+  obrn1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'
+LEFT OUTER JOIN
+	ob_refnum obrn4 ON oob.order_base_gid = obrn4.order_base_gid
+AND
+	obrn4.ob_refnum_qual_gid = 'SCOULAR.PRICING'  
+LEFT OUTER JOIN
+	ob_refnum obrn5 ON oob.order_base_gid = obrn5.order_base_gid
+AND
+	obrn5.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'  
+LEFT OUTER JOIN
+	ob_refnum obrn6 ON oob.order_base_gid = obrn6.order_base_gid
+AND
+	obrn6.ob_refnum_qual_gid = 'SCOULAR.PRICE_UOM'    
+LEFT OUTER JOIN
+	ob_refnum obrn7 ON oob.order_base_gid = obrn7.order_base_gid
+AND
+	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.PROVISIONAL PRICE'  
+LEFT OUTER JOIN
+	ob_refnum obrn8 ON oob.order_base_gid = obrn8.order_base_gid
+AND
+	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.PROVISIONAL PRICE UOM' 
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+	shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+LEFT OUTER JOIN
+	contact con1 ON sip1.involved_party_contact_gid = con1.contact_gid  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON sref1.shipment_gid = s.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON sref2.shipment_gid = s.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME'      
+LEFT OUTER JOIN
+	VIEW_SHIPMENT_TOTALS st ON s.shipment_gid = st.shipment_gid 
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  oob.order_base_xid like 'S%'
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'dd-mm-rr') ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC" />
+      <element name="CUSTOMER" value="CUSTOMER" />
+      <element name="CONTRACT_NO" value="CONTRACT_NO" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="DEST_CITY" value="DEST_CITY" />
+      <element name="DEST_COUNTRY" value="DEST_COUNTRY" />
+      <element name="PAYMENT_TERMS" value="PAYMENT_TERMS" />
+      <element name="DOC_MANAGER" value="DOC_MANAGER" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="PAYMENT_DATE" value="PAYMENT_DATE"></element>
+      <element name="CHARVOY_M_Y" value="CHARVOY_M_Y" />
+      <element name="CHARVOY_ETD" value="CHARVOY_ETD" />
+      <element name="CHARVOY_ETA" value="CHARVOY_ETA" />
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT" />
+      <element name="WEIGHT_MT" value="WEIGHT_MT" />
+      <element name="CONTRACT_PRICE" value="CONTRACT_PRICE" />
+      <element name="PRESENTED_DATE" value="PRESENTED_DATE" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="TRANSLOADER" value="TRANSLOADER"></element>
+      <element name="SOURCE_CITY" value="SOURCE_CITY" />
+      <element name="SOURCE_STATE" value="SOURCE_STATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

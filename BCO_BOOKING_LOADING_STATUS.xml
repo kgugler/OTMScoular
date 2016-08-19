@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKING_LOADING_STATUS" description="BCO Booking Loading Status Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOC" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  TO_CHAR(SYSDATE - 7, 'MM/DD/YYYY') rc_start,
+  TO_CHAR(SYSDATE + 14, 'MM/DD/YYYY') rc_end,
+  :LOC locs
+FROM
+  DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  s.shipment_xid,
+  (SELECT indicator
+  FROM ship_group
+  WHERE ship_group_gid = 
+  (SELECT ship_group_gid 
+  FROM ship_group_refnum 
+  WHERE ship_group_refnum_qual_gid = 'CHARTER VOYAGE' 
+  AND ship_group_refnum_value = cv.charter_voyage_xid
+  AND ROWNUM = 1)
+  AND ROWNUM = 1) load_order_flag,
+  sp.servprov_xid carrier_code,
+  cvr1.charter_voyage_refnum_value loc_code,
+  (SELECT srefnum.shipment_refnum_value
+  FROM shipment_refnum srefnum
+  WHERE srefnum.shipment_gid = s.shipment_gid  
+  AND srefnum.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY')
+  comm_id,
+  cv.charter_voyage_xid booking_number,
+  (SELECT DISTINCT oob.order_base_xid
+  FROM ob_order_base oob
+  INNER JOIN view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
+  WHERE vsob.shipment_gid = s.shipment_gid)
+  contract_number,
+  (SELECT LISTAGG(c.contact_xid,', ')
+  WITHIN GROUP (ORDER BY a.order_base_xid)
+  FROM
+  (SELECT DISTINCT oob.order_base_xid, oob.order_base_gid, vsob.shipment_gid
+  FROM ob_order_base oob
+  INNER JOIN view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid) a
+  INNER JOIN ob_involved_party obp ON a.order_base_gid = obp.order_base_gid
+  AND obp.involved_party_qual_gid = 'CUSTOMER'
+  INNER JOIN contact c ON obp.involved_party_contact_gid = c.contact_gid
+  WHERE a.shipment_gid = s.shipment_gid)
+  customer_id,  
+  (SELECT LISTAGG(srefnm.shipment_refnum_value,', ')
+  WITHIN GROUP (ORDER BY srefnm.shipment_refnum_value)
+  FROM shipment_refnum srefnm
+  WHERE srefnm.shipment_gid = s.shipment_gid
+  AND srefnm.shipment_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME') transloader,
+  loc1.location_xid origin,
+  loc2.location_xid destination,
+  cvr3.charter_voyage_refnum_value doc_cut,
+  cvr4.charter_voyage_refnum_value ramp_cut,
+  cvr5.charter_voyage_refnum_value port_cut,
+  TO_CHAR((CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+      glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
+  END),'MM/DD/YYYY') etd,
+  TO_CHAR((CASE WHEN cv.dest_location_gid IS NULL THEN
+    cv.arrival_date
+  ELSE
+    glogowner.utc.get_local_date(cv.arrival_date,cv.dest_location_gid)
+  END),'MM/DD/YYYY') eta,  
+  (SELECT COUNT(ssu.ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1
+  AND ssu.received_ship_unit_count = 20)
+  teu,
+  (SELECT COUNT(ssu.ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1
+  AND ssu.received_ship_unit_count = 40)
+  feu,
+  (SELECT COUNT(ssu.ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1
+  AND NOT ssu.tag_3 IS NULL)
+  units_populated,
+  (SELECT COUNT(ssu.ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1)
+  units_total
+FROM 
+  charter_voyage cv
+INNER JOIN 
+  shipment_refnum sref ON cv.charter_voyage_xid = sref.shipment_refnum_value
+AND 
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'    
+INNER JOIN
+  shipment s ON sref.shipment_gid = s.shipment_gid
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  servprov sp ON cv.servprov_gid = sp.servprov_gid
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+  cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+  cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'
+LEFT OUTER JOIN
+  location loc1 ON cv.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON cv.dest_location_gid = loc2.location_gid
+WHERE 
+  cv.domain_name = 'SCOULAR/BCO'
+AND
+  NOT cv.is_cancelled = 'Y'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  sref1.shipment_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))  
+AND
+  EXISTS(SELECT ssu.ship_unit_gid
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1) 
+AND
+  cv.charter_voyage_gid IN (
+  SELECT cvr.charter_voyage_gid
+  FROM charter_voyage_refnum cvr 
+  WHERE cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME' 
+  AND cvr.domain_name = 'SCOULAR/BCO' 
+  AND (LENGTH(TRIM(cvr.charter_voyage_refnum_value)) = 8
+  AND (TO_DATE(cvr.charter_voyage_refnum_value, 'MM-DD-YY') >= TO_DATE(SYSDATE - 7,'dd-mm-rr')
+  AND (TO_DATE(cvr.charter_voyage_refnum_value, 'MM-DD-YY') <= TO_DATE(SYSDATE + 14,'dd-mm-rr')))))
+ORDER BY
+  TO_DATE(cvr4.charter_voyage_refnum_value, 'MM-DD-YY') ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="RC_START" value="RC_START" />
+      <element name="RC_END" value="RC_END"></element>
+      <element name="LOCS" value="LOCS"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="LOAD_ORDER_FLAG" value="LOAD_ORDER_FLAG"></element>
+      <element name="CARRIER_CODE" value="CARRIER_CODE" />
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="COMM_ID" value="COMM_ID" />
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER"></element>
+      <element name="CUSTOMER_ID" value="CUSTOMER_ID"></element>
+      <element name="TRANSLOADER" value="TRANSLOADER"></element>
+      <element name="ORIGIN" value="ORIGIN"></element>
+      <element name="DESTINATION" value="DESTINATION"></element>
+      <element name="DOC_CUT" value="DOC_CUT"></element>
+      <element name="RAMP_CUT" value="RAMP_CUT"></element>
+      <element name="PORT_CUT" value="PORT_CUT"></element>
+      <element name="ETD" value="ETD"></element>
+      <element name="ETA" value="ETA" />
+      <element name="TEU" value="TEU"></element>
+      <element name="FEU" value="FEU" />
+      <element name="UNITS_POPULATED" value="UNITS_POPULATED" />
+      <element name="UNITS_TOTAL" value="UNITS_TOTAL"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

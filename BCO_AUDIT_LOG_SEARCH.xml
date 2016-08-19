@@ -1,0 +1,504 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_AUDIT_LOG_SEARCH" description="BCO Audit Log Search" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SAIL_DATE_START" dataType="character"></parameter>
+    <parameter name="SAIL_DATE_END" dataType="character" />
+    <parameter name="AUDIT_FIELD" dataType="character"></parameter>
+    <parameter name="ETA_DATE_START" dataType="character"></parameter>
+    <parameter name="ETA_DATE_END" dataType="character"></parameter>
+    <parameter name="CHARTER_VOYAGE_GID" dataType="character"></parameter>
+    <parameter name="SERVPROV_GID" dataType="character"></parameter>
+    <parameter name="IS_CANCELLED" dataType="character"></parameter>
+    <parameter name="VESSEL_NAME" dataType="character"></parameter>
+    <parameter name="VOYAGE_NUMBER" dataType="character"></parameter>
+    <parameter name="RAMP_CUTOFF_START" dataType="character"></parameter>
+    <parameter name="RAMP_CUTOFF_END" dataType="character"></parameter>
+    <parameter name="DOC_CUTOFF_START" dataType="character"></parameter>
+    <parameter name="DOC_CUTOFF_END" dataType="character"></parameter>
+    <parameter name="PORT_CUTOFF_START" dataType="character"></parameter>
+    <parameter name="PORT_CUTOFF_END" dataType="character"></parameter>
+    <parameter name="SOURCE_LOCATION" dataType="character"></parameter>
+    <parameter name="DEST_LOCATION" dataType="character"></parameter>
+    <parameter name="LOC_CODE" dataType="character"></parameter>
+    <parameter name="LOAD_PORT" dataType="character"></parameter>
+    <parameter name="DISCHARGE_PORT" dataType="character"></parameter>
+    <parameter name="TRANSHIP_PORT" dataType="character"></parameter>
+    <parameter name="COUNT_TEU_START" dataType="character"></parameter>
+    <parameter name="COUNT_TEU_END" dataType="character"></parameter>
+    <parameter name="COUNT_FORTY_START" dataType="character"></parameter>
+    <parameter name="COUNT_FORTY_END" dataType="character"></parameter>
+    <parameter name="COUNT_FORTYRF_START" dataType="character"></parameter>
+    <parameter name="COUNT_FORTYRF_END" dataType="character"></parameter>
+    <parameter name="COUNT_FORTYHC_START" dataType="character"></parameter>
+    <parameter name="COUNT_FORTYHC_END" dataType="character"></parameter>
+    <parameter name="COUNT_FORTYFIVE_START" dataType="character"></parameter>
+    <parameter name="COUNT_FORTYFIVE_END" dataType="character"></parameter>
+    <parameter name="COUNT_TWENTYRF_START" dataType="character"></parameter>
+    <parameter name="COUNT_TWENTYRF_END" dataType="character"></parameter>
+    <parameter name="TEU_SYSTEM_START" dataType="character"></parameter>
+    <parameter name="TEU_SYSTEM_END" dataType="character"></parameter>
+    <parameter name="TEU_USER_START" dataType="character"></parameter>
+    <parameter name="TEU_USER_END" dataType="character"></parameter>
+    <parameter name="FEU_SYSTEM_START" dataType="character"></parameter>
+    <parameter name="FEU_SYSTEM_END" dataType="character"></parameter>
+    <parameter name="FEU_USER_START" dataType="character"></parameter>
+    <parameter name="FEU_USER_END" dataType="character"></parameter>
+    <parameter name="AUDIT_START" dataType="character"></parameter>
+    <parameter name="AUDIT_END" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT 
+  TO_CHAR(SYSDATE,'MM/DD/YYYY') sys_date,
+  TO_CHAR(TO_DATE(:SAIL_DATE_START,'YYYY-MM-DD'),'MM/DD/YYYY') date_st,
+  TO_CHAR(TO_DATE(:SAIL_DATE_END,'YYYY-MM-DD'),'MM/DD/YYYY') date_end
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  glog_util.remove_domain(atr.object_gid) 
+  booking_id,
+  did.column_name, di.pk_value,
+  TRIM(CASE WHEN SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100) = atr.object_gid
+    THEN 
+      DECODE(UPPER(did.column_name),'ARRIVALDATE','ARRIVAL_DATE','DEPARTUREDATE','DEPARTURE_DATE','ACTUALARRIVALDATE',
+      'ACTUAL_ARRIVAL_DATE','ACTUALDEPARTUREDATE','ACTUAL_DEPARTURE_DATE','SOURCELOCATIONGID','SOURCE_LOCATION_GID',
+      'DESTLOCATIONGID','DEST_LOCATION_GID','UNITNETWEIGHT','UNIT_WEIGHT','VOYAGENAME','VOYAGE_NAME',
+      'CAPACITYCOMMITTIME','CAPACITY_COMMIT_TIME','BOOKINGFREEZETIME','BOOKING_FREEZE_TIME',UPPER(did.column_name))
+    ELSE 
+      DECODE((CASE WHEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) = di.pk_value
+      THEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,' ',1,1)+1,100)) 
+      ELSE UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) 
+      END),'CHARVOY_DOC CLOSING TIME','DOC CUTOFF DATE',(CASE WHEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) = di.pk_value
+      THEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,' ',1,1)+1,100)) 
+      ELSE UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) 
+      END))
+  END) 
+  field_name,
+  did.before_value,
+  did.after_value,
+  TO_CHAR(from_tz(CAST(atr.audit_time AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'YYYY-MM-DD HH24:MI:SS') 
+  audit_date,
+  glog_util.remove_domain(atr.gl_user_gid) 
+  audit_user
+FROM 
+(SELECT DISTINCT
+  cv.charter_voyage_gid
+FROM
+  charter_voyage cv
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND
+  ((TO_DATE(:SAIL_DATE_END,'YYYY-MM-DD') - TO_DATE(:SAIL_DATE_START,'YYYY-MM-DD') <= 180))
+AND
+  (TO_DATE(cv.departure_date,'DD-MM-RR') >= TO_DATE(:SAIL_DATE_START,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.departure_date,'DD-MM-RR') <= TO_DATE(:SAIL_DATE_END,'YYYY-MM-DD'))
+AND  
+  (:ETA_DATE_START IS NULL 
+OR
+  (NOT :ETA_DATE_START IS NULL
+AND
+  (TO_DATE(cv.arrival_date,'DD-MM-RR') >= TO_DATE(:ETA_DATE_START,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.arrival_date,'DD-MM-RR') <= 
+  (CASE WHEN :ETA_DATE_END IS NULL 
+  THEN TO_DATE(:ETA_DATE_START,'YYYY-MM-DD')
+  ELSE TO_DATE(:ETA_DATE_END,'YYYY-MM-DD')
+  END))))
+AND
+  (:CHARTER_VOYAGE_GID IS NULL
+OR
+  (NOT :CHARTER_VOYAGE_GID IS NULL
+AND
+  cv.charter_voyage_gid 
+  IN (SELECT REGEXP_SUBSTR(:CHARTER_VOYAGE_GID,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:CHARTER_VOYAGE_GID, '[^,]+', 1, LEVEL) IS NOT NULL)))
+AND
+  (:SERVPROV_GID IS NULL
+OR
+  (NOT :SERVPROV_GID IS NULL
+AND
+  cv.servprov_gid 
+  IN (SELECT REGEXP_SUBSTR(:SERVPROV_GID,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:SERVPROV_GID, '[^,]+', 1, LEVEL) IS NOT NULL)))
+AND
+  (:IS_CANCELLED = 'BOTH'
+OR
+  cv.is_cancelled = :IS_CANCELLED)
+AND
+  (:VESSEL_NAME IS NULL
+OR
+  (NOT :VESSEL_NAME IS NULL
+AND
+  cv.voyage_name LIKE '%' || :VESSEL_NAME || '%'))  
+AND
+  (:VOYAGE_NUMBER IS NULL
+OR
+  (NOT :VOYAGE_NUMBER IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+  AND cref.charter_voyage_refnum_value LIKE '%' || :VOYAGE_NUMBER || '%')))
+AND  
+  (:RAMP_CUTOFF_START IS NULL 
+OR
+  (NOT :RAMP_CUTOFF_START IS NULL
+AND EXISTS  
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+  AND (TO_DATE(cref.charter_voyage_refnum_value,'MM/DD/YY') >= TO_DATE(:RAMP_CUTOFF_START,'YYYY-MM-DD')
+  AND 
+  TO_DATE(cref.charter_voyage_refnum_value,'MM/DD/YY') <= 
+  (CASE WHEN :RAMP_CUTOFF_END IS NULL 
+  THEN TO_DATE(:RAMP_CUTOFF_START,'YYYY-MM-DD')
+  ELSE TO_DATE(:RAMP_CUTOFF_END,'YYYY-MM-DD')
+  END)))))
+AND  
+  (:DOC_CUTOFF_START IS NULL 
+OR
+  (NOT :DOC_CUTOFF_START IS NULL
+AND EXISTS  
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME' 
+  AND (TO_DATE(cref.charter_voyage_refnum_value,'MM/DD/YY') >= TO_DATE(:DOC_CUTOFF_START,'YYYY-MM-DD')
+  AND 
+  TO_DATE(cref.charter_voyage_refnum_value,'MM/DD/YY') <= 
+  (CASE WHEN :DOC_CUTOFF_END IS NULL 
+  THEN TO_DATE(:DOC_CUTOFF_START,'YYYY-MM-DD')
+  ELSE TO_DATE(:DOC_CUTOFF_END,'YYYY-MM-DD')
+  END)))))  
+AND  
+  (:PORT_CUTOFF_START IS NULL 
+OR
+  (NOT :PORT_CUTOFF_START IS NULL
+AND EXISTS  
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'
+  AND (TO_DATE(cref.charter_voyage_refnum_value,'MM/DD/YY') >= TO_DATE(:PORT_CUTOFF_START,'YYYY-MM-DD')
+  AND 
+  TO_DATE(cref.charter_voyage_refnum_value,'MM/DD/YY') <= 
+  (CASE WHEN :PORT_CUTOFF_END IS NULL 
+  THEN TO_DATE(:PORT_CUTOFF_START,'YYYY-MM-DD')
+  ELSE TO_DATE(:PORT_CUTOFF_END,'YYYY-MM-DD')
+  END)))))   
+AND
+  (:SOURCE_LOCATION IS NULL
+OR
+  (NOT :SOURCE_LOCATION IS NULL
+AND
+  cv.source_location_gid
+  IN (SELECT REGEXP_SUBSTR(:SOURCE_LOCATION,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:SOURCE_LOCATION, '[^,]+', 1, LEVEL) IS NOT NULL)))
+AND
+  (:DEST_LOCATION IS NULL
+OR
+  (NOT :DEST_LOCATION IS NULL
+AND
+  cv.dest_location_gid
+  IN (SELECT REGEXP_SUBSTR(:DEST_LOCATION,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:DEST_LOCATION, '[^,]+', 1, LEVEL) IS NOT NULL)))   
+AND
+  (:LOC_CODE IS NULL
+OR
+  (NOT :LOC_CODE IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE' 
+  AND cref.charter_voyage_refnum_value = :LOC_CODE)))
+AND
+  (:LOAD_PORT IS NULL
+OR
+  (NOT :LOAD_PORT IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid LIKE 'SCOULAR/%.VIA_LOCATION_ID' 
+  AND 'SCOULAR.' || cref.charter_voyage_refnum_value   
+  IN (SELECT REGEXP_SUBSTR(:LOAD_PORT,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:LOAD_PORT, '[^,]+', 1, LEVEL) IS NOT NULL))))
+AND
+  (:DISCHARGE_PORT IS NULL
+OR
+  (NOT :DISCHARGE_PORT IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE'
+  AND 'SCOULAR.' || cref.charter_voyage_refnum_value 
+  IN (SELECT REGEXP_SUBSTR(:DISCHARGE_PORT,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:DISCHARGE_PORT, '[^,]+', 1, LEVEL) IS NOT NULL))))
+AND
+  (:TRANSHIP_PORT IS NULL
+OR
+  (NOT :TRANSHIP_PORT IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT'
+  AND 'SCOULAR.' || cref.charter_voyage_refnum_value 
+  IN (SELECT REGEXP_SUBSTR(:TRANSHIP_PORT,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:TRANSHIP_PORT, '[^,]+', 1, LEVEL) IS NOT NULL))))
+AND  
+  (:COUNT_TEU_START IS NULL 
+OR
+  (NOT :COUNT_TEU_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TEU COUNT'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:COUNT_TEU_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :COUNT_TEU_END IS NULL 
+  THEN TO_NUMBER(:COUNT_TEU_START)
+  ELSE TO_NUMBER(:COUNT_TEU_END)
+  END)))))
+AND  
+  (:COUNT_FORTY_START IS NULL 
+OR
+  (NOT :COUNT_FORTY_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FT COUNT'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:COUNT_FORTY_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :COUNT_FORTY_END IS NULL 
+  THEN TO_NUMBER(:COUNT_FORTY_START)
+  ELSE TO_NUMBER(:COUNT_FORTY_END)
+  END)))))
+AND  
+  (:COUNT_FORTYRF_START IS NULL 
+OR
+  (NOT :COUNT_FORTYRF_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTRF COUNT'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:COUNT_FORTYRF_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :COUNT_FORTYRF_END IS NULL 
+  THEN TO_NUMBER(:COUNT_FORTYRF_START)
+  ELSE TO_NUMBER(:COUNT_FORTYRF_END)
+  END)))))
+AND  
+  (:COUNT_FORTYHC_START IS NULL 
+OR
+  (NOT :COUNT_FORTYHC_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTHC COUNT'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:COUNT_FORTYHC_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :COUNT_FORTYHC_END IS NULL 
+  THEN TO_NUMBER(:COUNT_FORTYHC_START)
+  ELSE TO_NUMBER(:COUNT_FORTYHC_END)
+  END)))))
+AND  
+  (:COUNT_FORTYFIVE_START IS NULL 
+OR
+  (NOT :COUNT_FORTYFIVE_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_45FT COUNT'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:COUNT_FORTYFIVE_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :COUNT_FORTYFIVE_END IS NULL 
+  THEN TO_NUMBER(:COUNT_FORTYFIVE_START)
+  ELSE TO_NUMBER(:COUNT_FORTYFIVE_END)
+  END)))))
+AND  
+  (:COUNT_TWENTYRF_START IS NULL 
+OR
+  (NOT :COUNT_TWENTYRF_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_20FTRF COUNT'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:COUNT_TWENTYRF_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :COUNT_TWENTYRF_END IS NULL 
+  THEN TO_NUMBER(:COUNT_TWENTYRF_START)
+  ELSE TO_NUMBER(:COUNT_TWENTYRF_END)
+  END)))))
+AND  
+  (:TEU_SYSTEM_START IS NULL 
+OR
+  (NOT :TEU_SYSTEM_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_SYSTEM'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:TEU_SYSTEM_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :TEU_SYSTEM_END IS NULL 
+  THEN TO_NUMBER(:TEU_SYSTEM_START)
+  ELSE TO_NUMBER(:TEU_SYSTEM_END)
+  END)))))
+AND  
+  (:TEU_USER_START IS NULL 
+OR
+  (NOT :TEU_USER_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_USER'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:TEU_USER_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :TEU_USER_END IS NULL 
+  THEN TO_NUMBER(:TEU_USER_START)
+  ELSE TO_NUMBER(:TEU_USER_END)
+  END)))))
+AND  
+  (:FEU_SYSTEM_START IS NULL 
+OR
+  (NOT :FEU_SYSTEM_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_SYSTEM'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:FEU_SYSTEM_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :FEU_SYSTEM_END IS NULL 
+  THEN TO_NUMBER(:FEU_SYSTEM_START)
+  ELSE TO_NUMBER(:FEU_SYSTEM_END)
+  END)))))
+AND  
+  (:FEU_USER_START IS NULL 
+OR
+  (NOT :FEU_USER_START IS NULL
+AND EXISTS
+  (SELECT cref.charter_voyage_gid
+  FROM charter_voyage_refnum cref
+  WHERE cref.charter_voyage_gid = cv.charter_voyage_gid
+  AND cref.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_USER'
+  AND (TO_NUMBER(cref.charter_voyage_refnum_value) >= TO_NUMBER(:FEU_USER_START)
+  AND
+  TO_NUMBER(cref.charter_voyage_refnum_value) <= 
+  (CASE WHEN :FEU_USER_END IS NULL 
+  THEN TO_NUMBER(:FEU_USER_START)
+  ELSE TO_NUMBER(:FEU_USER_END)
+  END)))))
+) a
+INNER JOIN
+  audit_trail atr ON a.charter_voyage_gid = atr.object_gid
+AND 
+  atr.audit_object_type_gid = 'CHARTER_VOYAGE'
+INNER JOIN
+  audit_data_info adi ON atr.audit_trail_gid = adi.audit_trail_gid
+INNER JOIN
+  data_info di ON adi.data_info_seq = di.data_info_seq
+INNER JOIN
+  data_info_detail did ON di.data_info_seq = did.data_info_seq
+WHERE NOT
+  did.column_name = 'UNKNOWN'
+AND  
+  (:AUDIT_START IS NULL 
+OR
+  (NOT :AUDIT_START IS NULL
+AND
+  TO_DATE(atr.audit_time,'dd-mm-rr') >= TO_DATE(:AUDIT_START,'YYYY-MM-DD')
+  AND 
+  TO_DATE(atr.audit_time,'dd-mm-rr') <= 
+  (CASE WHEN :AUDIT_END IS NULL 
+  THEN TO_DATE(:AUDIT_START,'YYYY-MM-DD')
+  ELSE TO_DATE(:AUDIT_END,'YYYY-MM-DD')
+  END)))
+AND
+  ((:AUDIT_FIELD = 'ALL'
+OR
+  (NOT :AUDIT_FIELD = 'ALL' AND NOT INSTR(:AUDIT_FIELD,'|') > 0
+AND
+  TRIM(CASE WHEN SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100) = atr.object_gid
+    THEN 
+      DECODE(UPPER(did.column_name),'ARRIVALDATE','ARRIVAL_DATE','DEPARTUREDATE','DEPARTURE_DATE','ACTUALARRIVALDATE',
+      'ACTUAL_ARRIVAL_DATE','ACTUALDEPARTUREDATE','ACTUAL_DEPARTURE_DATE','SOURCELOCATIONGID','SOURCE_LOCATION_GID',
+      'DESTLOCATIONGID','DEST_LOCATION_GID','UNITNETWEIGHT','UNIT_WEIGHT','VOYAGENAME','VOYAGE_NAME',
+      'CAPACITYCOMMITTIME','CAPACITY_COMMIT_TIME','BOOKINGFREEZETIME','BOOKING_FREEZE_TIME',UPPER(did.column_name))
+    ELSE 
+      (CASE WHEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) = di.pk_value
+      THEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,' ',1,1)+1,100)) 
+      ELSE UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) 
+      END)
+  END) = :AUDIT_FIELD))
+OR
+  (:AUDIT_FIELD = 'ALL'
+OR
+  (NOT :AUDIT_FIELD = 'ALL' AND INSTR(:AUDIT_FIELD,'|') > 0
+AND
+  TRIM(CASE WHEN SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100) = atr.object_gid
+    THEN 
+      UPPER(did.column_name)
+    ELSE 
+      (CASE WHEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) = di.pk_value
+      THEN UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,' ',1,1)+1,100)) 
+      ELSE UPPER(SUBSTR(di.pk_value,INSTR(di.pk_value,'.',1,2)+1,100)) 
+      END)
+  END) LIKE REPLACE(:AUDIT_FIELD,'|','%'))))
+ORDER BY 
+  atr.object_gid, atr.audit_time]]></sqlStatement>
+    <sqlStatement name="Q_ERROR"><![CDATA[SELECT 
+  (CASE WHEN TO_DATE(:SAIL_DATE_END,'YYYY-MM-DD') - TO_DATE(:SAIL_DATE_START,'YYYY-MM-DD') >= 180 
+  THEN 'Sail Date Range must be less than or equal to 180 days - please choose a lesser date range'
+  ELSE ''
+  END) error_message
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="SYS_DATE" value="SYS_DATE" />
+      <element name="DATE_ST" value="DATE_ST" />
+      <element name="DATE_END" value="DATE_END" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="BOOKING_ID" value="BOOKING_ID"></element>
+      <element name="FIELD_NAME" value="FIELD_NAME"></element>
+      <element name="BEFORE_VALUE" value="BEFORE_VALUE" />
+      <element name="AFTER_VALUE" value="AFTER_VALUE"></element>
+      <element name="AUDIT_DATE" value="AUDIT_DATE" />
+      <element name="AUDIT_USER" value="AUDIT_USER" />
+    </group>
+    <group name="G_ERROR" source="Q_ERROR">
+      <element name="ERROR_MESSAGE" value="ERROR_MESSAGE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

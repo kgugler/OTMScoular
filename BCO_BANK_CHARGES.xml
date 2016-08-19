@@ -1,0 +1,278 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BANK_CHARGES" description="BCO Bank Charges Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="LOCS" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt, NVL(:LOCS,'ALL') loc_codes FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  s.sail_date,
+  sref1.shipment_refnum_value loc,
+  sref2.shipment_refnum_value commodity,
+  s.shipment_xid shipment_no,
+  orem1.remark_text payment_terms,
+  sref3.shipment_refnum_value booking_no,
+  sref4.shipment_refnum_value contract_no,
+  loc.country_code3_gid dest_country,
+  TO_CHAR(s.sail_date,'MM/DD/YYYY') sail_date,
+  orem2.remark_text advising_bank,
+  TO_CHAR(ROUND(s.total_net_weight_base * 0.0004536,3)) total_mts,
+  srem1.remark_text total_sum,
+  srem2.remark_text bank_charge_type1,
+  srem3.remark_text bank_charge_amount1,
+  srem4.remark_text bank_charge_desc1,
+  srem5.remark_text bank_charge_type2,
+  srem6.remark_text bank_charge_amount2,
+  srem7.remark_text bank_charge_desc2,
+  srem8.remark_text bank_charge_type3,
+  srem9.remark_text bank_charge_amount3,
+  srem10.remark_text bank_charge_desc3,
+  srem11.remark_text bank_charge_type4,
+  srem12.remark_text bank_charge_amount4,
+  srem13.remark_text bank_charge_desc4,
+  srem14.remark_text bank_charge_type5,
+  srem15.remark_text bank_charge_amount5,
+  srem16.remark_text bank_charge_desc5,
+  srem17.remark_text bank_charge_type6,
+  srem18.remark_text bank_charge_amount6,
+  srem19.remark_text bank_charge_desc6,
+  srem20.remark_text bank_charge_type7,
+  srem21.remark_text bank_charge_amount7,
+  srem22.remark_text bank_charge_desc7,
+  srem23.remark_text bank_charge_type8,
+  srem24.remark_text bank_charge_amount8,
+  srem25.remark_text bank_charge_desc8,
+  srem26.remark_text bank_charge_type9,
+  srem27.remark_text bank_charge_amount9,
+  srem28.remark_text bank_charge_desc9,
+  srem29.remark_text bank_charge_type10,
+  srem30.remark_text bank_charge_amount10,
+  srem31.remark_text bank_charge_desc10    
+FROM
+  shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN	
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN        
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND
+  ssul.order_release_gid LIKE 'SCOULAR/BCO.S%'
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+LEFT OUTER JOIN
+  shipment_refnum sref4 ON s.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO'    
+LEFT OUTER JOIN
+  ob_remark orem1 ON ssul.order_base_gid = orem1.order_base_gid
+AND
+  orem1.remark_qual_gid = 'SCOULAR/BCO.PAYMENT TEXT'
+LEFT OUTER JOIN
+  ob_remark orem2 ON ssul.order_base_gid = orem2.order_base_gid
+AND
+  orem2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK'  
+LEFT OUTER JOIN
+  location loc ON s.dest_location_gid = loc.location_gid
+LEFT OUTER JOIN
+  shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR/BCO.SUM OF ALL BANK CHARGES'
+LEFT OUTER JOIN
+  shipment_remark srem2 ON s.shipment_gid = srem2.shipment_gid
+AND
+  srem2.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 1 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem3 ON s.shipment_gid = srem3.shipment_gid
+AND
+  srem3.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 1 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem4 ON s.shipment_gid = srem4.shipment_gid
+AND
+  srem4.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 1 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem5 ON s.shipment_gid = srem5.shipment_gid
+AND
+  srem5.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 2 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem6 ON s.shipment_gid = srem6.shipment_gid
+AND
+  srem6.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 2 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem7 ON s.shipment_gid = srem7.shipment_gid
+AND
+  srem7.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 2 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem8 ON s.shipment_gid = srem8.shipment_gid
+AND
+  srem8.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 3 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem9 ON s.shipment_gid = srem9.shipment_gid
+AND
+  srem9.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 3 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem10 ON s.shipment_gid = srem10.shipment_gid
+AND
+  srem10.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 3 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem11 ON s.shipment_gid = srem11.shipment_gid
+AND
+  srem11.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 4 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem12 ON s.shipment_gid = srem12.shipment_gid
+AND
+  srem12.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 4 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem13 ON s.shipment_gid = srem13.shipment_gid
+AND
+  srem13.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 4 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem14 ON s.shipment_gid = srem14.shipment_gid
+AND
+  srem14.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 5 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem15 ON s.shipment_gid = srem15.shipment_gid
+AND
+  srem15.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 5 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem16 ON s.shipment_gid = srem16.shipment_gid
+AND
+  srem16.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 5 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem17 ON s.shipment_gid = srem17.shipment_gid
+AND
+  srem17.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 6 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem18 ON s.shipment_gid = srem18.shipment_gid
+AND
+  srem18.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 6 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem19 ON s.shipment_gid = srem19.shipment_gid
+AND
+  srem19.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 6 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem20 ON s.shipment_gid = srem20.shipment_gid
+AND
+  srem20.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 7 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem21 ON s.shipment_gid = srem21.shipment_gid
+AND
+  srem21.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 7 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem22 ON s.shipment_gid = srem22.shipment_gid
+AND
+  srem22.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 7 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem23 ON s.shipment_gid = srem23.shipment_gid
+AND
+  srem23.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 8 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem24 ON s.shipment_gid = srem24.shipment_gid
+AND
+  srem24.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 8 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem25 ON s.shipment_gid = srem25.shipment_gid
+AND
+  srem25.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 8 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem26 ON s.shipment_gid = srem26.shipment_gid
+AND
+  srem26.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 9 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem27 ON s.shipment_gid = srem27.shipment_gid
+AND
+  srem27.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 9 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem28 ON s.shipment_gid = srem28.shipment_gid
+AND
+  srem28.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 9 DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem29 ON s.shipment_gid = srem29.shipment_gid
+AND
+  srem29.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 10 TYPE'
+LEFT OUTER JOIN
+  shipment_remark srem30 ON s.shipment_gid = srem30.shipment_gid
+AND
+  srem30.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 10 AMOUNT'
+LEFT OUTER JOIN
+  shipment_remark srem31 ON s.shipment_gid = srem31.shipment_gid
+AND
+  srem31.remark_qual_gid = 'SCOULAR/BCO.BANK CHARGE 10 DESCRIPTION'      
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:LOCS IS NULL OR (NOT :LOCS IS NULL AND
+  sref1.shipment_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOCS,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))  
+ORDER BY 
+  s.sail_date DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+      <element name="LOC_CODES" value="LOC_CODES" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="SHIPMENT_NO" value="SHIPMENT_NO" />
+      <element name="PAYMENT_TERMS" value="PAYMENT_TERMS" />
+      <element name="BOOKING_NO" value="BOOKING_NO" />
+      <element name="CONTRACT_NO" value="CONTRACT_NO" />
+      <element name="DEST_COUNTRY" value="DEST_COUNTRY" />
+      <element name="SAIL_DATE" value="SAIL_DATE"></element>
+      <element name="ADVISING_BANK" value="ADVISING_BANK" />
+      <element name="TOTAL_MTS" value="TOTAL_MTS" />
+      <element name="TOTAL_SUM" value="TOTAL_SUM" />
+      <element name="BANK_CHARGE_TYPE1" value="BANK_CHARGE_TYPE1" />
+      <element name="BANK_CHARGE_AMOUNT1" value="BANK_CHARGE_AMOUNT1" />
+      <element name="BANK_CHARGE_DESC1" value="BANK_CHARGE_DESC1" />
+      <element name="BANK_CHARGE_TYPE2" value="BANK_CHARGE_TYPE2" />
+      <element name="BANK_CHARGE_AMOUNT2" value="BANK_CHARGE_AMOUNT2" />
+      <element name="BANK_CHARGE_DESC2" value="BANK_CHARGE_DESC2" />
+      <element name="BANK_CHARGE_TYPE3" value="BANK_CHARGE_TYPE3" />
+      <element name="BANK_CHARGE_AMOUNT3" value="BANK_CHARGE_AMOUNT3" />
+      <element name="BANK_CHARGE_DESC3" value="BANK_CHARGE_DESC3" />
+      <element name="BANK_CHARGE_TYPE4" value="BANK_CHARGE_TYPE4" />
+      <element name="BANK_CHARGE_AMOUNT4" value="BANK_CHARGE_AMOUNT4" />
+      <element name="BANK_CHARGE_DESC4" value="BANK_CHARGE_DESC4" />
+      <element name="BANK_CHARGE_TYPE5" value="BANK_CHARGE_TYPE5" />
+      <element name="BANK_CHARGE_AMOUNT5" value="BANK_CHARGE_AMOUNT5" />
+      <element name="BANK_CHARGE_DESC5" value="BANK_CHARGE_DESC5" />
+      <element name="BANK_CHARGE_TYPE6" value="BANK_CHARGE_TYPE6" />
+      <element name="BANK_CHARGE_AMOUNT6" value="BANK_CHARGE_AMOUNT6" />
+      <element name="BANK_CHARGE_DESC6" value="BANK_CHARGE_DESC6" />
+      <element name="BANK_CHARGE_TYPE7" value="BANK_CHARGE_TYPE7" />
+      <element name="BANK_CHARGE_AMOUNT7" value="BANK_CHARGE_AMOUNT7" />
+      <element name="BANK_CHARGE_DESC7" value="BANK_CHARGE_DESC7" />
+      <element name="BANK_CHARGE_TYPE8" value="BANK_CHARGE_TYPE8" />
+      <element name="BANK_CHARGE_AMOUNT8" value="BANK_CHARGE_AMOUNT8" />
+      <element name="BANK_CHARGE_DESC8" value="BANK_CHARGE_DESC8" />
+      <element name="BANK_CHARGE_TYPE9" value="BANK_CHARGE_TYPE9" />
+      <element name="BANK_CHARGE_AMOUNT9" value="BANK_CHARGE_AMOUNT9" />
+      <element name="BANK_CHARGE_DESC9" value="BANK_CHARGE_DESC9"></element>
+      <element name="BANK_CHARGE_TYPE10" value="BANK_CHARGE_TYPE10" />
+      <element name="BANK_CHARGE_AMOUNT10" value="BANK_CHARGE_AMOUNT10" />
+      <element name="BANK_CHARGE_DESC10" value="BANK_CHARGE_DESC10" />
+    </group>
+  </dataStructure>
+</dataTemplate>

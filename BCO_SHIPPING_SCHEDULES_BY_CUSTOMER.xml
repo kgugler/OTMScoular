@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPPING_SCHEDULES_BY_CUSTOMER" description="Shipping Schedules by Customer" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  v.process_control_request_id job_id,
+  v.parameter_id,
+  TO_CHAR(from_tz(CAST(v.next_process_time AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI PM') next_process_time,
+  TO_CHAR((v.cycle_duration / 60 / 60 / 24), '99') || ' day(s)' cycle_duration
+FROM
+  process_control_request pr
+CROSS JOIN
+(SELECT 
+  pr1.process_control_request_id, 
+  pr1.next_process_time, 
+  pr1.cycle_duration,
+  (CASE WHEN 
+    INSTR(topic_parameters,'CUSTOMERID=') > 0
+  THEN
+    SUBSTR(SUBSTR(topic_parameters,
+    INSTR(topic_parameters,'CUSTOMERID=')+11,25),0,INSTR(SUBSTR(topic_parameters,
+    INSTR(topic_parameters,'CUSTOMERID=')+11,25),'&')-1)
+  WHEN 
+    INSTR(topic_parameters,'BROKERID=') > 0
+  THEN
+    SUBSTR(SUBSTR(topic_parameters,
+    INSTR(topic_parameters,'BROKERID=')+9,25),0,INSTR(SUBSTR(topic_parameters,
+    INSTR(topic_parameters,'BROKERID=')+9,25),'&')-1)    
+  ELSE
+    NULL
+  END)
+  parameter_id,
+  SUBSTR(topic_parameters,27,INSTR(topic_parameters,'-queryString')-28) report_name
+FROM 
+  process_control_request pr1
+WHERE NOT 
+  pr1.next_process_time IS NULL
+AND
+  pr1.domain_name = 'SCOULAR/BCO') v
+WHERE
+  pr.process_control_request_id = v.process_control_request_id
+AND
+  NOT v.report_name IS NULL
+AND
+  NOT v.parameter_id IS NULL  
+AND
+  pr.domain_name = 'SCOULAR/BCO'
+ORDER BY
+  v.process_control_request_id]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="JOB_ID" value="JOB_ID" />
+      <element name="PARAMETER_ID" value="PARAMETER_ID" />
+      <element name="NEXT_PROCESS_TIME" value="NEXT_PROCESS_TIME" />
+      <element name="CYCLE_DURATION" value="CYCLE_DURATION" />
+    </group>
+  </dataStructure>
+</dataTemplate>

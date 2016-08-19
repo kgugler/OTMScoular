@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKING_REQUEST_MONITOR" description="BCO Booking Request Monitor" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="CARRIER_ID" dataType="character" />
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  s.shipment_xid booking_request,
+  cv.charter_voyage_xid booking_confirm,
+  loc1.location_name carrier,
+  TO_CHAR(glogowner.utc.get_local_date(
+  (SELECT MIN(itrans.insert_date)
+  FROM i_transaction itrans
+  WHERE itrans.object_gid = s.shipment_gid
+  AND ROWNUM = 1),
+  (SELECT location_gid
+  FROM location
+  WHERE city = 'OVERLAND PARK'
+  AND province_code = 'KS'
+  AND ROWNUM = 1)
+  ),'MM/DD/YY hh:mi am')
+  req_trans,
+  TO_CHAR(glogowner.utc.get_local_date(cv.insert_date,
+  (SELECT location_gid
+  FROM location
+  WHERE city = 'OVERLAND PARK'
+  AND province_code = 'KS'
+  AND ROWNUM = 1)
+  ),'MM/DD/YY hh:mi am')  
+  resp_trans,
+  TRIM(TO_CHAR(ROUND((TO_DATE(TO_CHAR(cv.insert_date,'DD/MM/YYYY HH24:MI:SS'), 'DD/MM/YYYY HH24:MI:SS') - 
+  TO_DATE(TO_CHAR(
+  (SELECT MIN(itrans.insert_date)
+  FROM i_transaction itrans
+  WHERE itrans.object_gid = s.shipment_gid
+  AND ROWNUM = 1)
+  ,'DD/MM/YYYY HH24:MI:SS'), 'DD/MM/YYYY HH24:MI:SS')) * 24,1),'999,999,990.0'))
+  hrs
+FROM
+  shipment s
+INNER JOIN
+  location loc1 ON s.servprov_gid = loc1.location_gid
+INNER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid LIKE '%20FT_22GP_WEIGHT'
+INNER JOIN
+	charter_voyage_refnum cvr ON '%' || s.shipment_xid || '%' LIKE '%' || cvr.charter_voyage_refnum_value || '%'
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_BOOKING REQUEST NUMBER'
+INNER JOIN
+  charter_voyage cv ON cvr.charter_voyage_gid = cv.charter_voyage_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  (TO_DATE((SELECT MIN(itrans.insert_date)
+  FROM i_transaction itrans
+  WHERE itrans.object_gid = s.shipment_gid
+  AND ROWNUM = 1),'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE((SELECT MIN(itrans.insert_date)
+  FROM i_transaction itrans
+  WHERE itrans.object_gid = s.shipment_gid
+  AND ROWNUM = 1),'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  ((:CARRIER_ID IS NULL)
+OR
+  (NOT :CARRIER_ID IS NULL AND s.servprov_gid = :CARRIER_ID))  
+AND
+  ((:SHIPMENT_ID IS NULL)
+OR
+  (NOT :SHIPMENT_ID IS NULL AND s.shipment_gid = :SHIPMENT_ID)) 
+AND EXISTS
+  (SELECT itr.object_gid
+  FROM i_transaction itr 
+  WHERE itr.object_gid = cv.charter_voyage_gid)
+ORDER BY
+  (SELECT MIN(itrans.insert_date)
+  FROM i_transaction itrans
+  WHERE itrans.object_gid = s.shipment_gid
+  AND ROWNUM = 1)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="BOOKING_REQUEST" value="BOOKING_REQUEST" />
+      <element name="BOOKING_CONFIRM" value="BOOKING_CONFIRM" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="REQ_TRANS" value="REQ_TRANS" />
+      <element name="RESP_TRANS" value="RESP_TRANS" />
+      <element name="HRS" value="HRS" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,197 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENTS_COMPLETE_DOC_MAN" description="BCO Shipments Complete by Doc Manager" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'fmMM/DD/YYYY') pay_start,
+  TO_CHAR(TO_DATE(:END_DATE,'YYYY-MM-DD'),'fmMM/DD/YYYY') pay_end
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  b.doc_manager,
+  SUM(b.tot_2083) ct_2083,
+  SUM(b.tot_2084) ct_2084,
+  SUM(b.tot_2184) ct_2184,
+  SUM(b.tot_2185) ct_2185,
+  SUM(b.tot_5071) ct_5071,
+  SUM(b.tot_5078) ct_5078,
+  SUM(b.tot_ship) shipments_completed,
+  SUM(b.cont_total) containers,
+  ROUND(SUM(b.days_to_payment) / SUM(b.tot_ship),1) average_days,
+  SUM(b.pmt_recd_total) payment_received  
+FROM
+(SELECT
+  a.doc_manager,
+  (CASE WHEN a.loc_code = '2083' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) tot_2083,
+  (CASE WHEN a.loc_code = '2084' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) tot_2084,
+  (CASE WHEN a.loc_code = '2184' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) tot_2184,
+  (CASE WHEN a.loc_code = '2185' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) tot_2185,
+  (CASE WHEN a.loc_code = '5071' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) tot_5071,
+  (CASE WHEN a.loc_code = '5078' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) tot_5078,
+  COUNT(a.shipment_gid) tot_ship,
+  SUM(a.container_count) cont_total,
+  SUM(a.days_to_payment) days_to_payment,
+  SUM(a.pmt_recd_count) pmt_recd_total
+FROM (
+SELECT
+  con.contact_gid, 
+  con.first_name || ' ' || con.last_name doc_manager, 
+  sref.shipment_refnum_value loc_code,
+  s.shipment_gid,
+  (SELECT COUNT(ssu.s_ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1) container_count,
+  (TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') - 
+  TO_DATE(s.sail_date,'dd-mm-rr')) days_to_payment,  
+  (CASE WHEN
+  TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY')
+  <= TO_DATE((CASE WHEN s.dest_location_gid IS NULL THEN
+    s.port_discharge_eta
+  ELSE
+    glogowner.utc.get_local_date(s.port_discharge_eta,s.dest_location_gid)
+  END),'dd-mm-rr') THEN 1 ELSE 0 END) pmt_recd_count
+FROM 
+  shipment s
+INNER JOIN 
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid 
+AND 
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'    
+INNER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+INNER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'  
+AND
+  sref.shipment_refnum_value IN ('2083','2084','2184','2185','5071','5078')
+AND NOT
+  s.attribute_date4 IS NULL
+AND
+  (TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))) a
+GROUP BY a.doc_manager, a.loc_code) b
+GROUP BY b.doc_manager
+ORDER BY b.doc_manager]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+  SUM(b.ct_2083) tot_2083,
+  SUM(b.ct_2084) tot_2084,
+  SUM(b.ct_2184) tot_2184,
+  SUM(b.ct_2185) tot_2185,
+  SUM(b.ct_5071) tot_5071,
+  SUM(b.ct_5078) tot_5078,
+  SUM(b.tot_ship) shipments_completed_total,
+  SUM(b.cont_total) containers_total,
+  ROUND(SUM(b.days_to_payment) / SUM(b.tot_ship),1) average_days_total,
+  SUM(b.pmt_recd_total) payment_received_total  
+FROM
+(SELECT
+  (CASE WHEN a.loc_code = '2083' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) ct_2083,
+  (CASE WHEN a.loc_code = '2084' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) ct_2084,
+  (CASE WHEN a.loc_code = '2184' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) ct_2184,
+  (CASE WHEN a.loc_code = '2185' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) ct_2185,
+  (CASE WHEN a.loc_code = '5071' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) ct_5071,
+  (CASE WHEN a.loc_code = '5078' THEN TO_CHAR(COUNT(a.shipment_gid)) ELSE '' END) ct_5078,
+  COUNT(a.shipment_gid) tot_ship,
+  SUM(a.container_count) cont_total,
+  SUM(a.days_to_payment) days_to_payment,
+  SUM(a.pmt_recd_count) pmt_recd_total
+FROM (
+SELECT
+  sref.shipment_refnum_value loc_code,
+  s.shipment_gid,
+  (SELECT COUNT(ssu.s_ship_unit_gid)
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND	sstopd.stop_num = 1) container_count,
+  (TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') - 
+  TO_DATE((CASE WHEN s.source_location_gid IS NULL THEN
+    s.sail_date
+  ELSE
+    glogowner.utc.get_local_date(s.sail_date,s.source_location_gid)
+  END),'dd-mm-rr')) days_to_payment,  
+  (CASE WHEN
+  TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY')
+  <= TO_DATE((CASE WHEN s.dest_location_gid IS NULL THEN
+    s.port_discharge_eta
+  ELSE
+    glogowner.utc.get_local_date(s.port_discharge_eta,s.dest_location_gid)
+  END),'dd-mm-rr') THEN 1 ELSE 0 END) pmt_recd_count
+FROM 
+  shipment s
+INNER JOIN 
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid 
+AND 
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'    
+INNER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+INNER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'  
+AND NOT
+  s.attribute_date4 IS NULL  
+AND
+  sref.shipment_refnum_value IN ('2083','2084','2184','2185','5071','5078')
+AND
+  (TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+  AND
+  TO_DATE(TO_CHAR(from_tz(CAST(s.attribute_date4 AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))) a
+GROUP BY a.loc_code) b]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="PAY_START" value="PAY_START" />
+      <element name="PAY_END" value="PAY_END" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="DOC_MANAGER" value="DOC_MANAGER" />
+      <element name="CT_2083" value="CT_2083" />
+      <element name="CT_2084" value="CT_2084" />
+      <element name="CT_2184" value="CT_2184" />
+      <element name="CT_2185" value="CT_2185" />
+      <element name="CT_5071" value="CT_5071" />
+      <element name="CT_5078" value="CT_5078"></element>
+      <element name="SHIPMENTS_COMPLETED" value="SHIPMENTS_COMPLETED"></element>
+      <element name="CONTAINERS" value="CONTAINERS"></element>
+      <element name="AVERAGE_DAYS" value="AVERAGE_DAYS" />
+      <element name="PAYMENT_RECEIVED" value="PAYMENT_RECEIVED" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOT_2083" value="TOT_2083" />
+      <element name="TOT_2084" value="TOT_2084" />
+      <element name="TOT_2184" value="TOT_2184" />
+      <element name="TOT_2185" value="TOT_2185" />
+      <element name="TOT_5071" value="TOT_5071" />
+      <element name="TOT_5078" value="TOT_5078"></element>
+      <element name="SHIPMENTS_COMPLETED_TOTAL" value="SHIPMENTS_COMPLETED_TOTAL"></element>
+      <element name="CONTAINERS_TOTAL" value="CONTAINERS_TOTAL"></element>
+      <element name="AVERAGE_DAYS_TOTAL" value="AVERAGE_DAYS_TOTAL" />
+      <element name="PAYMENT_RECEIVED_TOTAL" value="PAYMENT_RECEIVED_TOTAL"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

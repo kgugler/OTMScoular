@@ -1,0 +1,268 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_SHIPPER_ACTIVITY_SUNRISE" description="NVO Shipper Activity - Sunrise" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="PORT_DISCH" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+TO_CHAR(TO_DATE(SYSDATE - 60,'DD-MM-RR'),'YYYY-MM-DD') lc_start_date,
+TO_CHAR(TO_DATE(SYSDATE,'DD-MM-RR'),'YYYY-MM-DD') lc_end_date
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  a.*,
+  l.location_name place_of_delivery
+FROM
+(SELECT DISTINCT
+  j.job_gid,
+  j.insert_date,
+  TO_CHAR(j.insert_date,'MM/DD/YYYY') job_insert_date,  
+  cv.charter_voyage_xid booking_no,
+  'TSC' || j.job_xid job_no,
+  TRIM(TO_CHAR((SELECT COUNT(ssu.s_ship_unit_gid)
+  FROM	shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1),'999,999,990'))
+  container_count,
+  (SELECT TRIM(TO_CHAR(ROUND(SUM(ssu.received_weight),2), '999,999,990.00')) || ' ' || ssu.received_weight_uom
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  GROUP BY ssu.received_weight_uom)
+  gross_weight,
+  loc1.location_name carrier_name,
+  cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value
+  mother_vessel,
+  (CASE WHEN cv.actual_departure_date IS NULL THEN
+    (CASE WHEN cv.source_location_gid IS NULL THEN
+      TO_CHAR(cv.departure_date,'MM/DD/YYYY')
+    ELSE
+      TO_CHAR(glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid),'MM/DD/YYYY')
+    END)
+  ELSE
+    (CASE WHEN cv.source_location_gid IS NULL THEN
+      TO_CHAR(cv.actual_departure_date,'MM/DD/YYYY')
+    ELSE
+      TO_CHAR(glogowner.utc.get_local_date(cv.actual_departure_date,cv.source_location_gid),'MM/DD/YYYY')
+    END)
+  END)
+  etd,
+  (CASE WHEN cvr2.charter_voyage_refnum_value IS NULL THEN
+    loc2.location_name
+  ELSE
+    (SELECT location_name
+    FROM location
+    WHERE location_gid = 'SCOULAR.' || cvr2.charter_voyage_refnum_value)
+  END)
+  load_port,
+  (CASE WHEN cvr3.charter_voyage_refnum_value IS NULL THEN
+    loc3.location_name
+  ELSE
+    (SELECT location_name
+    FROM location
+    WHERE location_gid = 'SCOULAR.' || cvr3.charter_voyage_refnum_value)
+  END)  
+  discharge_port,
+  (SELECT location_name
+  FROM location
+  WHERE location_gid = 'SCOULAR.' || cvr4.charter_voyage_refnum_value)
+  tranship_port,
+  cvr5.charter_voyage_refnum_value
+  feeder_vessel,
+  (CASE WHEN cv.dest_location_gid IS NULL THEN
+    TO_CHAR(cv.arrival_date,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(glogowner.utc.get_local_date(cv.arrival_date,cv.dest_location_gid),'MM/DD/YYYY')
+  END)
+  eta,
+  (CASE WHEN cv.dest_location_gid IS NULL THEN
+    TO_CHAR(cv.actual_arrival_date,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(glogowner.utc.get_local_date(cv.actual_arrival_date,cv.dest_location_gid),'MM/DD/YYYY')
+  END)  
+  actual_eta,
+  TRIM((SELECT listagg (ssunit.tag_3, ', ')
+  WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
+  INNER JOIN shipment_stop_d ssd ON ssunit.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  WHERE ssd.shipment_gid = s.shipment_gid))
+  containers,  
+  loc4.location_name shipper,
+  loc5.location_name consignee,
+  loc6.location_name notify_party
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+INNER JOIN
+  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
+AND
+  vsor.shipment_gid IN (
+  SELECT sh.shipment_gid
+  FROM shipment sh
+  WHERE vsor.shipment_gid = sh.shipment_gid
+  AND sh.shipment_type_gid = 'TRANSPORT'
+  AND sh.transport_mode_gid = 'VESSEL-CO'
+  AND sh.is_primary = 'Y'
+  AND sh.perspective = 'B')  
+INNER JOIN
+	shipment s ON vsor.shipment_gid = s.shipment_gid  
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'  
+INNER JOIN
+  shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+  sip1.involved_party_qual_gid = 'BILL-TO'
+INNER JOIN
+  shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+  sip2.involved_party_qual_gid = 'FINAL_DESTINATION_AGENT'
+LEFT OUTER JOIN
+  shipment_involved_party sip3 ON s.shipment_gid = sip3.shipment_gid
+AND
+  sip3.involved_party_qual_gid = 'SHIPPER'  
+LEFT OUTER JOIN
+  shipment_involved_party sip4 ON s.shipment_gid = sip4.shipment_gid
+AND
+  sip4.involved_party_qual_gid = 'ULTIMATE CONSIGNEE' 
+LEFT OUTER JOIN
+  shipment_involved_party sip5 ON s.shipment_gid = sip5.shipment_gid
+AND
+  sip5.involved_party_qual_gid = 'NOTIFY PARTY'      
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR/NVO.VIA_LOCATION_ID'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+	cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT' 
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+	cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER VESSEL NAME' 
+LEFT OUTER JOIN
+	location loc1 ON s.servprov_gid = loc1.location_gid    
+LEFT OUTER JOIN
+	location loc2 ON cv.source_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+	location loc3 ON cv.dest_location_gid = loc3.location_gid 
+LEFT OUTER JOIN
+	location loc4 ON sip3.involved_party_contact_gid = loc4.location_gid 
+LEFT OUTER JOIN
+	location loc5 ON sip4.involved_party_contact_gid = loc5.location_gid 
+LEFT OUTER JOIN
+	location loc6 ON sip5.involved_party_contact_gid = loc6.location_gid   
+WHERE
+  j.domain_name = 'SCOULAR/NVO'  
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)   
+AND
+  (TO_DATE(j.insert_date,'dd-mm-rr') >= TO_DATE(SYSDATE - 120,'DD-MM-RR')
+AND
+  TO_DATE(j.insert_date,'dd-mm-rr') <= TO_DATE(SYSDATE,'DD-MM-RR'))
+AND
+  sip1.involved_party_contact_gid = 'SCOULAR.SUNRSP'
+AND
+  sip2.involved_party_contact_gid IN ('SCOULAR.CRESTU','SCOULAR.CRESMU','SCOULAR.CRESRA','SCOULAR.CRESDU','SCOULAR.CRESJO')
+AND
+  (CASE WHEN cvr2.charter_voyage_refnum_value IS NULL THEN
+    cv.source_location_gid
+  ELSE
+    'SCOULAR.' || cvr2.charter_voyage_refnum_value
+  END) = 'SCOULAR.CAVAN'
+AND
+  (:PORT_DISCH IS NULL
+OR
+  (NOT :PORT_DISCH IS NULL
+AND
+  ((CASE WHEN cvr3.charter_voyage_refnum_value IS NULL THEN
+    cv.dest_location_gid
+  ELSE
+    'SCOULAR.' || cvr3.charter_voyage_refnum_value
+  END) IN (SELECT REGEXP_SUBSTR(:PORT_DISCH,'[^,]+', 1, LEVEL) FROM DUAL
+                                      CONNECT BY REGEXP_SUBSTR(:PORT_DISCH, '[^,]+', 1, LEVEL) IS NOT NULL))))  
+) a
+INNER JOIN 
+  job_order_release_join jrj ON a.job_gid = jrj.job_gid
+INNER JOIN 
+  view_shipment_order_release vsr ON jrj.order_release_gid = vsr.order_release_gid
+AND 
+  vsr.shipment_gid IN (
+    SELECT shp.shipment_gid
+    FROM shipment shp
+    WHERE vsr.shipment_gid = shp.shipment_gid
+    AND shp.shipment_type_gid = 'TRANSPORT'
+    AND shp.transport_mode_gid = 'VESSEL-CO'    
+    AND shp.is_primary = 'Y'
+    AND shp.perspective = 'S')  
+INNER JOIN 
+  shipment ship ON vsr.shipment_gid = ship.shipment_gid  
+AND 
+  ship.shipment_type_gid = 'TRANSPORT'
+AND
+  ship.transport_mode_gid = 'VESSEL-CO'  
+AND	
+  ship.is_primary = 'Y'
+AND
+  ship.perspective = 'S' 
+LEFT OUTER JOIN 
+  location l ON ship.dest_location_gid = l.location_gid
+ORDER BY
+  a.insert_date]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+      <element name="LC_START_DATE" value="LC_START_DATE" />
+      <element name="LC_END_DATE" value="LC_END_DATE"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="JOB_INSERT_DATE" value="JOB_INSERT_DATE"></element>
+      <element name="BOOKING_NO" value="BOOKING_NO" />
+      <element name="JOB_NO" value="JOB_NO"></element>
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT" />
+      <element name="GROSS_WEIGHT" value="GROSS_WEIGHT" />
+      <element name="CARRIER_NAME" value="CARRIER_NAME" />
+      <element name="MOTHER_VESSEL" value="MOTHER_VESSEL" />
+      <element name="ETD" value="ETD" />
+      <element name="LOAD_PORT" value="LOAD_PORT"></element>
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT"></element>
+      <element name="PLACE_OF_DELIVERY" value="PLACE_OF_DELIVERY" />
+      <element name="TRANSHIP_PORT" value="TRANSHIP_PORT"></element>
+      <element name="FEEDER_VESSEL" value="FEEDER_VESSEL" />
+      <element name="ETA" value="ETA" />
+      <element name="ACTUAL_ETA" value="ACTUAL_ETA" />
+      <element name="CONTAINERS" value="CONTAINERS" />
+      <element name="SHIPPER" value="SHIPPER" />
+      <element name="CONSIGNEE" value="CONSIGNEE" />
+      <element name="NOTIFY_PARTY" value="NOTIFY_PARTY" />
+    </group>
+  </dataStructure>
+</dataTemplate>

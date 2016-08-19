@@ -1,0 +1,208 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_DOMESTIC_BILL_OF_LADING" description="NVO Domestic Bill Of Lading" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  j.job_xid pro_no,
+  s.attribute2 bl_num,
+  REPLACE(s.attribute1,'SCOULAR/NVO.','') po_no,
+  loc1.location_name carrier_name,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER')
+  shipper_name,
+  TO_CHAR(SYSDATE, 'fmMM/DD/YY') system_date,
+	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','3'))
+  shipper_address,
+  glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER','')
+  shipper_city,
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER')
+  shipper_state,
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER')
+  shipper_zip,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
+  consignee_name,
+	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','3'))
+  consignee_address,  
+  glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','')
+  consignee_city,
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
+  consignee_state,
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
+  consignee_zip,
+  j.attribute5 containers,  
+  srem.remark_text additional_notes,
+  (SELECT it.description
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_line ssul ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN item it ON ssul.packaged_item_gid = it.item_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1) descript_of_cargo,
+	TRIM(TO_CHAR((SELECT SUM(ROUND(ssunit.unit_net_weight_base,2)) FROM shipment_stop_d sstopdd
+  JOIN s_ship_unit ssunit ON sstopdd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1),'999,999,990.00')) || ' LB' 
+  total_weight,
+  glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  manager_name,  
+  glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  manager_phone,  
+  glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  manager_fax,    
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  manager_company,
+	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','3'))
+  manager_address,  
+  glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','')
+  manager_city,
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  manager_state,
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  manager_zip
+FROM
+  shipment s
+LEFT OUTER JOIN
+  view_shipment_order_release vsor ON s.shipment_gid = vsor.shipment_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj ON vsor.order_release_gid = jorj.order_release_gid
+LEFT OUTER JOIN
+	job j ON jorj.job_gid = j.job_gid
+LEFT OUTER JOIN
+	shipment_remark srem ON s.shipment_gid = srem.shipment_gid
+AND
+	srem.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES'	
+LEFT OUTER JOIN
+  location loc1 ON s.servprov_gid = loc1.location_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+  NVL(j.job_xid, 'Data Missing in System') pro_no,
+  NVL(s.attribute2, 'Data Missing in System') bl_num,
+  NVL(REPLACE(s.attribute1,'SCOULAR/NVO.',''), 'Data Missing in System') po_no,
+  NVL(loc1.location_name, 'Data Missing in System') carrier_name,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER'), 'Data Missing in System')
+  shipper_name,
+  TO_CHAR(SYSDATE, 'fmMM/DD/YY') system_date,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','3')), 'Data Missing in System')
+  shipper_address,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER',''), 'Data Missing in System')
+  shipper_city,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER'), 'Data Missing in System')
+  shipper_state,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER'), 'Data Missing in System')
+  shipper_zip,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'), 'Data Missing in System')
+  consignee_name,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE','3')), 'Data Missing in System')
+  consignee_address,  
+  NVL(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE',''), 'Data Missing in System')
+  consignee_city,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'), 'Data Missing in System')
+  consignee_state,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'), 'Data Missing in System')
+  consignee_zip,
+  NVL(j.attribute5, 'Data Missing in System') containers,  
+  NVL(srem.remark_text, 'Data Missing in System') additional_notes,
+  NVL((SELECT it.description
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_line ssul ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN item it ON ssul.packaged_item_gid = it.item_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1), 'Data Missing in System') descript_of_cargo,
+	NVL(TRIM(TO_CHAR((SELECT SUM(ROUND(ssunit.unit_net_weight_base,2)) FROM shipment_stop_d sstopdd
+  JOIN s_ship_unit ssunit ON sstopdd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1),'999,999,990.00')), 'Data Missing in System') || ' LB' 
+  total_weight,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  manager_name,  
+  NVL(glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  manager_phone,  
+  NVL(glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  manager_fax,    
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  manager_company,
+	NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','3')), 'Data Missing in System')
+  manager_address,  
+  NVL(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER',''), 'Data Missing in System')
+  manager_city,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  manager_state,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'), 'Data Missing in System')
+  manager_zip
+FROM
+  shipment s
+LEFT OUTER JOIN
+  view_shipment_order_release vsor ON s.shipment_gid = vsor.shipment_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj ON vsor.order_release_gid = jorj.order_release_gid
+LEFT OUTER JOIN
+	job j ON jorj.job_gid = j.job_gid
+LEFT OUTER JOIN
+	shipment_remark srem ON s.shipment_gid = srem.shipment_gid
+AND
+	srem.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES'	
+LEFT OUTER JOIN
+  location loc1 ON s.servprov_gid = loc1.location_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="PRO_NO" value="PRO_NO" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="PO_NO" value="PO_NO" />
+      <element name="CARRIER_NAME" value="CARRIER_NAME" />
+      <element name="SHIPPER_NAME" value="SHIPPER_NAME"></element>
+      <element name="SYSTEM_DATE" value="SYSTEM_DATE"></element>
+      <element name="SHIPPER_ADDRESS" value="SHIPPER_ADDRESS"></element>
+      <element name="SHIPPER_CITY" value="SHIPPER_CITY" />
+      <element name="SHIPPER_STATE" value="SHIPPER_STATE"></element>
+      <element name="SHIPPER_ZIP" value="SHIPPER_ZIP" />
+      <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME" />
+      <element name="CONSIGNEE_ADDRESS" value="CONSIGNEE_ADDRESS" />
+      <element name="CONSIGNEE_CITY" value="CONSIGNEE_CITY" />
+      <element name="CONSIGNEE_STATE" value="CONSIGNEE_STATE" />
+      <element name="CONSIGNEE_ZIP" value="CONSIGNEE_ZIP" />
+      <element name="CONTAINERS" value="CONTAINERS" />
+      <element name="ADDITIONAL_NOTES" value="ADDITIONAL_NOTES" />
+      <element name="DESCRIPT_OF_CARGO" value="DESCRIPT_OF_CARGO" />
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+      <element name="MANAGER_NAME" value="MANAGER_NAME" />
+      <element name="MANAGER_PHONE" value="MANAGER_PHONE" />
+      <element name="MANAGER_FAX" value="MANAGER_FAX" />
+      <element name="MANAGER_COMPANY" value="MANAGER_COMPANY" />
+      <element name="MANAGER_ADDRESS" value="MANAGER_ADDRESS"></element>
+      <element name="MANAGER_CITY" value="MANAGER_CITY"></element>
+      <element name="MANAGER_STATE" value="MANAGER_STATE"></element>
+      <element name="MANAGER_ZIP" value="MANAGER_ZIP"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

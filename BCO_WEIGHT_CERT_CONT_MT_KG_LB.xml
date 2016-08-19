@@ -1,0 +1,238 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_WEIGHT_CERT_CONT_MT_KG" description="BCO Weight Certificate (Cont-MT/KG)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') booking_date,
+	obr1.remark_text credit_number,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999'))  || ' X ' 
+  || TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'999,999')) || ' FT CONTAINERS' quantity,
+	COALESCE(obr2.remark_text,
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ) description,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) vessel,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1) bl_num,
+  (CASE WHEN sref.shipment_refnum_value IN ('5334','5335') THEN
+    'YES'
+  ELSE
+    'NO'
+  END)
+  one_column
+FROM
+	shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
+LEFT OUTER JOIN
+	item it ON pi.item_gid = it.item_gid
+LEFT OUTER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'   
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+	sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') booking_date,
+	NVL(obr1.remark_text, 'Data Missing in System') credit_number,
+	(CASE WHEN (SELECT COUNT(sstopdd.s_ship_unit_gid)	FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1) = 0 THEN 'Data Missing in System'
+	ELSE TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' 
+  || NVL(TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'999,999')), 'Data Missing in System') || ' FT CONTAINERS' END) quantity,
+	NVL(COALESCE(obr2.remark_text,
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ), 'Data Missing in System') description,
+	NVL(TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value), 'Data Missing in System') vessel,
+	NVL((SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1), 'Data Missing in System') bl_num,
+  (CASE WHEN sref.shipment_refnum_value IN ('5334','5335') THEN
+    'YES'
+  ELSE
+    'NO'
+  END)
+  one_column
+FROM
+	shipment s
+LEFT OUTER JOIN
+	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'   
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+	sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	ROWNUM rnum, a.*
+FROM
+(SELECT
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(ssu.tag_3, 'Data Missing in System') ELSE ssu.tag_3 END) container_number,
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base / 2204.5855379,3), '999,999,990.000')), 'Data Missing in System')
+	ELSE TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base / 2204.5855379,3), '999,999,990.000')) END) unit_weight,
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base / 2.2045855379,0), '999,999,990')), 'Data Missing in System')
+	ELSE TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base / 2.2045855379,0), '999,999,990')) END) unit_weight_kg,
+	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base,0), '999,999,990')), 'Data Missing in System')
+	ELSE TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base,0), '999,999,990')) END) unit_weight_lb
+FROM
+	shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+ORDER BY container_number
+) a
+ORDER BY rnum ]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+	(CASE WHEN :P_RUN = 'FINAL' THEN
+	TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)), '999,999,990.000')) || ' MT'
+	ELSE NVL(TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)), '999,999,990.000')), 'Data Missing in System') || ' MT' END) total_weight,
+	(CASE WHEN :P_RUN = 'FINAL' THEN
+	TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight_base / 2.2045855379,0)), '999,999,990')) || ' KG'
+	ELSE NVL(TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight_base / 2.2045855379,0)), '999,999,990')), 'Data Missing in System') || ' KG' END) total_weight_kg,
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+	TRIM(TO_CHAR(ROUND(SUM(ssu.unit_net_weight_base),0), '999,999,990')) || ' LB'
+	ELSE NVL(TRIM(TO_CHAR(ROUND(SUM(ssu.unit_net_weight_base),0), '999,999,990')), 'Data Missing in System') || ' LB' END) total_weight_lb
+FROM
+	shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="ONE_COLUMN" value="ONE_COLUMN" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="RNUM" value="RNUM" />
+      <element name="CONTAINER_NUMBER" value="CONTAINER_NUMBER" />
+      <element name="UNIT_WEIGHT" value="UNIT_WEIGHT" />
+      <element name="UNIT_WEIGHT_KG" value="UNIT_WEIGHT_KG" />
+      <element name="UNIT_WEIGHT_LB" value="UNIT_WEIGHT_LB" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+      <element name="TOTAL_WEIGHT_KG" value="TOTAL_WEIGHT_KG" />
+      <element name="TOTAL_WEIGHT_LB" value="TOTAL_WEIGHT_LB" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,219 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_ADJUSTMENT_CHARGES" description="BCO Adjustment Charges between Sail Dates" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  a.cat_no, sref1.shipment_refnum_value loc, sref2.shipment_refnum_value booking_no, a.shipment_xid shipment_no, a.tag_3 container_no, oob.order_base_xid contract_no,
+  loc1.location_name customer_name, loc2.location_xid origin, loc3.location_xid destination, cvr.charter_voyage_refnum_value cut_date, TO_CHAR(a.sail_date,'MM/DD/YYYY') sail_date,
+  obrem.remark_text last_ship_date, TO_CHAR(TO_DATE(a.sail_date,'dd-mm-rr') - TO_DATE(obrem.remark_text,'YYYY-MM-DD')) days_late, a.adjust_desc adjust_description,
+  a.adjust_cat adjust_category, a.adjust_amt adjust_amount
+FROM
+(SELECT
+  1 cat_no, s.shipment_gid, s.shipment_xid, s.source_location_gid, s.dest_location_gid, s.sail_date, ssu.s_ship_unit_gid, ssu.tag_3, ssuref1.refnum_value adjust_cat,
+  ssuref2.refnum_value adjust_desc, ssuref3.refnum_value adjust_amt  
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND
+  ssul.order_release_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  s_ship_unit_refnum ssuref1 ON ssu.s_ship_unit_gid = ssuref1.s_ship_unit_gid
+AND
+  ssuref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.ADJUSTMENT_CATEGORY_1'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref2 ON ssu.s_ship_unit_gid = ssuref2.s_ship_unit_gid
+AND
+  ssuref2.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 1'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref3 ON ssu.s_ship_unit_gid = ssuref3.s_ship_unit_gid
+AND
+  ssuref3.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 1 VALUE'  
+WHERE
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+UNION
+SELECT
+  2 cat_no, s.shipment_gid, s.shipment_xid, s.source_location_gid, s.dest_location_gid, s.sail_date, ssu.s_ship_unit_gid, ssu.tag_3, ssuref1.refnum_value adjust_cat,
+  ssuref2.refnum_value adjust_desc, ssuref3.refnum_value adjust_amt  
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND
+  ssul.order_release_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  s_ship_unit_refnum ssuref1 ON ssu.s_ship_unit_gid = ssuref1.s_ship_unit_gid
+AND
+  ssuref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.ADJUSTMENT_CATEGORY_2'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref2 ON ssu.s_ship_unit_gid = ssuref2.s_ship_unit_gid
+AND
+  ssuref2.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 2'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref3 ON ssu.s_ship_unit_gid = ssuref3.s_ship_unit_gid
+AND
+  ssuref3.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 2 VALUE'  
+WHERE
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+UNION
+SELECT
+  3 cat_no, s.shipment_gid, s.shipment_xid, s.source_location_gid, s.dest_location_gid, s.sail_date, ssu.s_ship_unit_gid, ssu.tag_3, ssuref1.refnum_value adjust_cat,
+  ssuref2.refnum_value adjust_desc, ssuref3.refnum_value adjust_amt  
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND
+  ssul.order_release_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  s_ship_unit_refnum ssuref1 ON ssu.s_ship_unit_gid = ssuref1.s_ship_unit_gid
+AND
+  ssuref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.ADJUSTMENT_CATEGORY_3'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref2 ON ssu.s_ship_unit_gid = ssuref2.s_ship_unit_gid
+AND
+  ssuref2.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 3'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref3 ON ssu.s_ship_unit_gid = ssuref3.s_ship_unit_gid
+AND
+  ssuref3.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 3 VALUE'  
+WHERE
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD')) 
+UNION
+SELECT
+  4 cat_no, s.shipment_gid, s.shipment_xid, s.source_location_gid, s.dest_location_gid, s.sail_date, ssu.s_ship_unit_gid, ssu.tag_3, ssuref1.refnum_value adjust_cat,
+  ssuref2.refnum_value adjust_desc, ssuref3.refnum_value adjust_amt  
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND
+  ssul.order_release_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  s_ship_unit_refnum ssuref1 ON ssu.s_ship_unit_gid = ssuref1.s_ship_unit_gid
+AND
+  ssuref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.ADJUSTMENT_CATEGORY_4'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref2 ON ssu.s_ship_unit_gid = ssuref2.s_ship_unit_gid
+AND
+  ssuref2.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 4'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref3 ON ssu.s_ship_unit_gid = ssuref3.s_ship_unit_gid
+AND
+  ssuref3.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 4 VALUE'  
+WHERE
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD')) 
+UNION
+SELECT
+  5 cat_no, s.shipment_gid, s.shipment_xid, s.source_location_gid, s.dest_location_gid, s.sail_date, ssu.s_ship_unit_gid, ssu.tag_3, ssuref1.refnum_value adjust_cat,
+  ssuref2.refnum_value adjust_desc, ssuref3.refnum_value adjust_amt  
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND
+  ssul.order_release_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  s_ship_unit_refnum ssuref1 ON ssu.s_ship_unit_gid = ssuref1.s_ship_unit_gid
+AND
+  ssuref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.ADJUSTMENT_CATEGORY_5'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref2 ON ssu.s_ship_unit_gid = ssuref2.s_ship_unit_gid
+AND
+  ssuref2.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 5'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssuref3 ON ssu.s_ship_unit_gid = ssuref3.s_ship_unit_gid
+AND
+  ssuref3.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ADJUSTMENT 5 VALUE'  
+WHERE
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))) a
+LEFT OUTER JOIN
+  view_shipment_order_base vsob ON a.shipment_gid = vsob.shipment_gid
+LEFT OUTER JOIN
+  ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  ob_remark obrem ON vsob.order_base_gid = obrem.order_base_gid
+AND
+  obrem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LAST SHIP DATE'
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON a.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON a.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+  charter_voyage cv ON 'SCOULAR/BCO.' || sref2.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+  shipment_involved_party sip ON a.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  location loc1 ON sip.involved_party_contact_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON a.source_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  location loc3 ON a.dest_location_gid = loc3.location_gid
+ORDER BY
+  a.sail_date DESC, a.tag_3, a.cat_no]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

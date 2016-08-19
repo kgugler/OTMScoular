@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_OPEN_BOOKING_REPORT" description="BCO Open Booking Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOC" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT
+  TO_CHAR(SYSDATE + 5,'fmMM/DD/YYYY') criteria_date,
+  :LOC locs
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  cv.charter_voyage_xid booking_number,
+  loc1.location_name org_port,
+  loc2.location_name dest_port,
+  loc3.location_name carrier,
+  TO_CHAR(TO_DATE(TRIM(cvr1.charter_voyage_refnum_value),'MM/DD/YY'),'fmMM/DD/YYYY') cut_date,
+  NVL(con.max_num_teu,0) || 'TEU / ' || NVL(con.max_num_feu,0) || 'FEU' capacity,
+  cvr2.charter_voyage_refnum_value fo_loc
+FROM
+  charter_voyage cv
+INNER JOIN
+  consol con ON cv.charter_voyage_gid = con.charter_voyage_gid
+INNER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+LEFT OUTER JOIN
+  location loc1 ON cv.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON cv.dest_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  location loc3 ON cv.servprov_gid = loc3.location_gid  
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND
+  NOT cv.is_cancelled = 'Y'
+AND
+  ((con.allocated_num_teu IS NULL OR con.allocated_num_teu = 0)
+AND
+  (con.allocated_num_feu IS NULL OR con.allocated_num_feu = 0))
+AND
+  (LENGTH(TRIM(cvr1.charter_voyage_refnum_value)) = 8
+AND
+  TO_DATE(TRIM(cvr1.charter_voyage_refnum_value),'MM/DD/YY') <= SYSDATE + 5)
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  cvr2.charter_voyage_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))    
+ORDER BY
+  TO_DATE(TRIM(cvr1.charter_voyage_refnum_value),'MM/DD/YY') DESC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="CRITERIA_DATE" value="CRITERIA_DATE" />
+      <element name="LOCS" value="LOCS" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="ORG_PORT" value="ORG_PORT" />
+      <element name="DEST_PORT" value="DEST_PORT" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="CUT_DATE" value="CUT_DATE" />
+      <element name="CAPACITY" value="CAPACITY" />
+      <element name="FO_LOC" value="FO_LOC"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

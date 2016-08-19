@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_PHYTO_CERTS_BY_DATE" description="BCO Phyto Certificates by Date Range" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :START_DATE start_dt, :END_DATE end_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  sref3.shipment_refnum_value loc,
+  phy.phyto_number_xid phyto_id,
+  TO_CHAR(phy.phyto_date,'MM/DD/YYYY') phyto_date,
+  phy.phyto_state,
+  sref1.shipment_refnum_value booking_number,
+  sref2.shipment_refnum_value commodity
+FROM
+  shipment s
+INNER JOIN
+  phyto phy ON s.shipment_xid = phy.shipment_id
+LEFT OUTER JOIN 
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid 
+AND 
+  sref1.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+LEFT OUTER JOIN 
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid 
+AND 
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN 
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid 
+AND 
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'   
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  (TO_DATE(phy.phyto_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD') 
+AND 
+  TO_DATE(phy.phyto_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  sref2.shipment_refnum_value]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="START_DT" value="START_DT" />
+      <element name="END_DT" value="END_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC" />
+      <element name="PHYTO_ID" value="PHYTO_ID" />
+      <element name="PHYTO_DATE" value="PHYTO_DATE" />
+      <element name="PHYTO_STATE" value="PHYTO_STATE" />
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER"></element>
+      <element name="COMMODITY" value="COMMODITY"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,950 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_WORK_ORDER_IMPORT" description="NVO Delivery Order" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_NVO_WORK_ORDER_VALID" version="1.0">
+  <parameters>
+    <parameter name="JOB_ID" dataType="character" />
+    <parameter name="SERVPROV_ID" dataType="character" />
+    <parameter name="LOCATION_ID" dataType="character"></parameter>
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')
+  loc_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','3')) 
+  loc_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'))
+  loc_city_state_zip,
+	glogowner.xxscou_nvo_report_functions.entity_phone_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Tel:') 
+  loc_phone,
+	glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Fax:') 
+  loc_fax,
+  glogowner.xxscou_nvo_report_functions.entity_email(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')
+  loc_email,
+	(TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'), 'fmMM/DD/YY')) system_date,
+	'TSFE' || j.job_xid bill_lading,
+  con1.company_name carrier,
+  (CASE WHEN sref1.shipment_refnum_value IS NULL THEN
+    sref2.shipment_refnum_value
+  ELSE
+    sref1.shipment_refnum_value
+  END) voyage_name,
+  j.attribute5 master_bill_lading,
+  TO_CHAR(cv.arrival_date,'fmMM/DD/YY') arrival_date,
+--  cvr2.charter_voyage_refnum_value inland_cut,
+--  cvr4.charter_voyage_refnum_value inland_cut_time,  
+  (SELECT ssur.refnum_value
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid  
+  INNER JOIN s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/NVO.LAST FREE DAY'
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND	ssd.stop_num = 1
+  AND ROWNUM = 1) inland_cut,
+  '' inland_cut_time,
+  j.attribute3 customer_ref_no,  
+  glogowner.xxscou_nvo_report_functions.location_name_value('SCOULAR.' || REPLACE(cvr3.charter_voyage_refnum_value,'SCOULAR.',''))
+  pickup_name,  
+  glogowner.xxscou_nvo_report_functions.loc_address('SCOULAR.' || REPLACE(cvr3.charter_voyage_refnum_value,'SCOULAR.',''))
+  pickup_address,
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip('SCOULAR.' || REPLACE(cvr3.charter_voyage_refnum_value,'SCOULAR.',''))
+  pickup_city_state_zip,   
+  srem1.remark_text work_order_remarks, 
+  (SELECT ship.payment_method_code_gid
+  FROM job jb
+  INNER JOIN job_order_release_join jorjb ON jb.job_gid = jorjb.job_gid
+  INNER JOIN s_ship_unit_line ssuline ON jorjb.order_release_gid = ssuline.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessujoin ON sessujoin.s_ship_unit_gid = ssuline.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssejoin ON sessujoin.s_equipment_gid = ssejoin.s_equipment_gid
+  INNER JOIN shipment ship ON ssejoin.shipment_gid = ship.shipment_gid
+  AND ship.servprov_gid = :SERVPROV_ID
+  AND ship.shipment_type_gid = 'TRANSPORT'
+  AND ship.transport_mode_gid = 'DRAYAGE'
+  AND ship.is_primary = 'N'
+  AND ship.perspective = 'B'    
+  WHERE jb.job_gid = :JOB_ID
+  AND (:LOCATION_ID IS NULL
+  OR (NOT :LOCATION_ID IS NULL 
+  AND ship.dest_location_gid = :LOCATION_ID))    
+  AND ROWNUM = 1) prepaid,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')
+  manager_name,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','3')) 
+  manager_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'))
+  manager_city_state_zip,
+	glogowner.xxscou_nvo_report_functions.entity_phone_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Tel:') 
+  manager_phone,
+	glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Fax:') 
+  manager_fax,
+  glogowner.xxscou_nvo_report_functions.entity_email(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')
+  manager_email,
+	glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')
+  manager_contact
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+LEFT OUTER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'    
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME' 
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FIRMS_CODE'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+	cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC_CUTOFF_TIME_HHMM'  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.VESSEL_VOYAGE'  
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/NVO.BOOKING_VESSEL_VOYAGE'     
+LEFT OUTER JOIN
+	shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+	srem1.remark_qual_gid = 'SCOULAR/NVO.WORK ORDER REMARKS'  
+LEFT OUTER JOIN
+	contact con1 ON cv.servprov_gid = con1.contact_gid
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'FINAL'
+AND NOT
+  s.shipment_gid IS NULL  
+UNION
+SELECT
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System')
+  loc_name,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','3')), 'Data Missing in System') 
+  loc_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')), 'Data Missing in System')
+  loc_city_state_zip,
+	NVL(glogowner.xxscou_nvo_report_functions.entity_phone_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Tel:'), 'Data Missing in System') 
+  loc_phone,
+	NVL(glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Fax:'), 'Data Missing in System') 
+  loc_fax,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_email(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System')
+  loc_email,
+	(TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'), 'fmMM/DD/YY')) system_date,
+	'TSFE' || NVL(j.job_xid, ' Data Missing in System') bill_lading,
+  NVL(con1.company_name, 'Data Missing in System') carrier,
+  NVL((CASE WHEN sref1.shipment_refnum_value IS NULL THEN
+    sref2.shipment_refnum_value
+  ELSE
+    sref1.shipment_refnum_value
+  END), 'Data Missing in System') voyage_name,
+  NVL(j.attribute5, 'Data Missing in System') master_bill_lading,
+  NVL(TO_CHAR(cv.arrival_date,'fmMM/DD/YY'), 'Data Missing in System') arrival_date,
+--  NVL(cvr2.charter_voyage_refnum_value, 'Data Missing in System') inland_cut,
+--  NVL(cvr4.charter_voyage_refnum_value, 'Data Missing in System') inland_cut_time,  
+  NVL((SELECT ssur.refnum_value
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid  
+  INNER JOIN s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/NVO.LAST FREE DAY'
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND	ssd.stop_num = 1
+  AND ROWNUM = 1), 'Data Missing in System') inland_cut,
+  '' inland_cut_time,
+  NVL(j.attribute3, 'Data Missing in System') customer_ref_no,  
+  NVL(glogowner.xxscou_nvo_report_functions.location_name_value('SCOULAR.' || REPLACE(cvr3.charter_voyage_refnum_value,'SCOULAR.','')), 'Data Missing in System')
+  pickup_name,    
+  NVL(glogowner.xxscou_nvo_report_functions.loc_address('SCOULAR.' || REPLACE(cvr3.charter_voyage_refnum_value,'SCOULAR.','')), 'Data Missing in System')
+  pickup_address,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip('SCOULAR.' || REPLACE(cvr3.charter_voyage_refnum_value,'SCOULAR.','')), 'Data Missing in System')
+  pickup_city_state_zip,     
+  NVL(srem1.remark_text, 'Data Missing in System') work_order_remarks, 
+  NVL((SELECT ship.payment_method_code_gid
+  FROM job jb
+  INNER JOIN job_order_release_join jorjb ON jb.job_gid = jorjb.job_gid
+  INNER JOIN s_ship_unit_line ssuline ON jorjb.order_release_gid = ssuline.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessujoin ON sessujoin.s_ship_unit_gid = ssuline.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssejoin ON sessujoin.s_equipment_gid = ssejoin.s_equipment_gid
+  INNER JOIN shipment ship ON ssejoin.shipment_gid = ship.shipment_gid
+  AND ship.servprov_gid = :SERVPROV_ID
+  AND ship.shipment_type_gid = 'TRANSPORT'
+  AND ship.transport_mode_gid = 'DRAYAGE'
+  AND ship.is_primary = 'N'
+  AND ship.perspective = 'B'
+  AND (:LOCATION_ID IS NULL
+  OR (NOT :LOCATION_ID IS NULL 
+  AND ship.dest_location_gid = :LOCATION_ID))  
+  WHERE jb.job_gid = :JOB_ID
+  AND ROWNUM = 1), 'Data Missing in System') prepaid,    
+  NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System')
+  manager_name,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','3')), 'Data Missing in System') 
+  manager_address,
+  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER')), 'Data Missing in System')
+  manager_city_state_zip,
+	NVL(glogowner.xxscou_nvo_report_functions.entity_phone_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Tel:'), 'Data Missing in System') 
+  manager_phone,
+	NVL(glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','Fax:'), 'Data Missing in System') 
+  manager_fax,
+  NVL(glogowner.xxscou_nvo_report_functions.entity_email(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System')
+  manager_email,
+	NVL(glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System')
+  manager_contact
+FROM
+	job j
+LEFT OUTER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+LEFT OUTER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+LEFT OUTER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'    
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+LEFT OUTER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME' 
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FIRMS_CODE'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+	cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC_CUTOFF_TIME_HHMM'  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.VESSEL_VOYAGE'  
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/NVO.BOOKING_VESSEL_VOYAGE'     
+LEFT OUTER JOIN
+	shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+	srem1.remark_qual_gid = 'SCOULAR/NVO.WORK ORDER REMARKS'  
+LEFT OUTER JOIN
+	contact con1 ON cv.servprov_gid = con1.contact_gid
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'DRAFT'
+AND NOT
+  s.shipment_gid IS NULL]]></sqlStatement>
+    <sqlStatement name="Q_SPINST"><![CDATA[SELECT 
+(CASE WHEN :DRAFT_FINAL = 'DRAFT' THEN NVL(
+  (SELECT LISTAGG(sr.shipment_refnum_value,CHR(13))
+  WITHIN GROUP (ORDER BY sr.shipment_refnum_value)
+  FROM
+    job j
+  INNER JOIN
+    job_order_release_join jorj ON j.job_gid = jorj.job_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  INNER JOIN
+    shipment s ON ssej.shipment_gid = s.shipment_gid
+  AND 
+    s.perspective = 'B'
+  AND 
+    s.is_primary = 'N'
+  AND
+    s.servprov_gid = :SERVPROV_ID
+  AND
+    (:LOCATION_ID IS NULL
+  OR
+    (NOT :LOCATION_ID IS NULL
+  AND
+    s.source_location_gid = :LOCATION_ID))      
+  INNER JOIN 
+    shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+  AND	
+    sr.shipment_refnum_qual_gid = 'SCOULAR/NVO.WORK ORDER_SPECIAL LOAD INSTRUCTIONS'  
+  WHERE 
+    j.job_gid = :JOB_ID),
+  'Data Missing in System')
+ELSE 
+  (SELECT LISTAGG(sr.shipment_refnum_value,CHR(13))
+  WITHIN GROUP (ORDER BY sr.shipment_refnum_value)
+  FROM
+    job j
+  INNER JOIN
+    job_order_release_join jorj ON j.job_gid = jorj.job_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  INNER JOIN
+    shipment s ON ssej.shipment_gid = s.shipment_gid
+  AND 
+    s.perspective = 'B'
+  AND 
+    s.is_primary = 'N'
+  AND
+    s.servprov_gid = :SERVPROV_ID
+  AND
+    (:LOCATION_ID IS NULL
+  OR
+    (NOT :LOCATION_ID IS NULL
+  AND
+    s.source_location_gid = :LOCATION_ID))      
+  INNER JOIN 
+    shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+  AND	
+    sr.shipment_refnum_qual_gid = 'SCOULAR/NVO.WORK ORDER_SPECIAL LOAD INSTRUCTIONS'  
+  WHERE 
+    j.job_gid = :JOB_ID) 
+END) special_instructions
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_CARRIER"><![CDATA[SELECT
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(loc.location_name,'Data Missing in System')
+  ELSE loc.location_name END) 
+  carrier_name,
+  (CASE WHEN :P_RUN = 'DRAFT' 
+  THEN NVL(glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid) END)
+  carrier_address,
+  (CASE WHEN :P_RUN = 'DRAFT' 
+  THEN  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid) END)
+  carrier_city_state_zip,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  NVL(glogowner.xxscou_nvo_report_functions.contact_email_with_label(con.contact_gid,'eMail:'),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.contact_email_with_label(con.contact_gid,'eMail:') END)
+  carrier_email,  
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(con.contact_gid,'Tel:'),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.contact_phone_with_label(con.contact_gid,'Tel:') END) 
+  carrier_phone,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  NVL(glogowner.xxscou_nvo_report_functions.contact_fullname_with_label(con.contact_gid,'Contact:'),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.contact_fullname_with_label(con.contact_gid,'Contact:') END) 
+  carrier_contact
+FROM
+	contact con
+INNER JOIN
+	location loc ON con.location_gid = loc.location_gid 
+WHERE 
+  con.contact_gid  = :SERVPROV_ID]]></sqlStatement>
+    <sqlStatement name="Q_DELIVER"><![CDATA[SELECT
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(con.company_name,'Data Missing in System')
+  ELSE con.company_name END) 
+  deliver_name,
+  (CASE WHEN :P_RUN = 'DRAFT' 
+  THEN NVL(glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid) END)
+  deliver_address,
+  (CASE WHEN :P_RUN = 'DRAFT' 
+  THEN  NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid) END)
+  deliver_city_state_zip,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  NVL(glogowner.xxscou_nvo_report_functions.contact_phone_with_label(con.contact_gid,'Tel:'),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.contact_phone_with_label(con.contact_gid,'Tel:') END) 
+  deliver_phone,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  NVL(glogowner.xxscou_nvo_report_functions.contact_fax_with_label(con.contact_gid,'Fax:'),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.contact_fax_with_label(con.contact_gid,'Fax:') END)
+  deliver_fax,  
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  NVL(glogowner.xxscou_nvo_report_functions.contact_fullname_with_label(con.contact_gid,'Contact:'),'Data Missing in System')
+  ELSE glogowner.xxscou_nvo_report_functions.contact_fullname_with_label(con.contact_gid,'Contact:') END) 
+  deliver_contact
+FROM 
+  job j
+INNER JOIN 
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND 
+  s.servprov_gid = :SERVPROV_ID
+AND 
+  s.shipment_type_gid = 'TRANSPORT'
+AND 
+  s.transport_mode_gid = 'DRAYAGE'
+AND 
+  s.is_primary = 'N'
+AND 
+  s.perspective = 'B'
+INNER JOIN
+	location loc ON s.dest_location_gid = loc.location_gid 
+INNER JOIN
+  contact con ON loc.location_gid = con.contact_gid
+WHERE 
+  j.job_gid = :JOB_ID
+AND
+  (:LOCATION_ID IS NULL
+OR
+  (NOT :LOCATION_ID IS NULL 
+AND
+  loc.location_gid = :LOCATION_ID))  
+AND
+  ROWNUM = 1]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.s_ship_unit_gid,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.container_num,'Data Missing in System')
+  ELSE a.container_num END) container_num,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+    (CASE WHEN NVL(TRIM(a.seal_num1 || ' ' || a.seal_num2 || ' ' || a.seal_num3),'XXYYZZYYXX') = 'XXYYZZYYXX' THEN
+      'Data Missing in System'
+    ELSE
+      TRIM(
+      (CASE WHEN a.attribute1 = 'YES' THEN
+        'AGENT SEAL '
+      ELSE
+        ''
+      END) ||         
+      a.seal_num1 || ' ' ||
+      (CASE WHEN a.attribute1 = 'YES' THEN
+        'CUSTOMS SEAL '
+      ELSE
+        ''
+      END) ||         
+      a.seal_num2 || ' ' || a.seal_num3)
+    END)
+  ELSE
+    TRIM(
+    (CASE WHEN a.attribute1 = 'YES' THEN
+      'AGENT SEAL '
+    ELSE
+      ''
+    END) ||       
+    a.seal_num1 || ' ' ||
+    (CASE WHEN a.attribute1 = 'YES' THEN
+      'CUSTOMS SEAL '
+    ELSE
+      ''
+    END) ||       
+    a.seal_num2 || ' ' || a.seal_num3)
+  END) seal_num,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.piece_count,'Data Missing in System')
+  ELSE a.piece_count END) piece_count,  
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(
+    (CASE WHEN TO_NUMBER(regexp_replace(a.piece_count,'^.*?(\d+)\.doc$','\1')) > 1 THEN
+      (SELECT pt.plural_text
+      FROM glogowner.xxscou_piece_type pt
+      WHERE pt.code = a.piece_type)
+    ELSE
+      (SELECT pt.singular_text
+      FROM glogowner.xxscou_piece_type pt
+      WHERE pt.code = a.piece_type)
+    END)  
+  ,'Data Missing in System')
+  ELSE
+    (CASE WHEN TO_NUMBER(regexp_replace(a.piece_count,'^.*?(\d+)\.doc$','\1')) > 1 THEN
+      (SELECT pt.plural_text
+      FROM glogowner.xxscou_piece_type pt
+      WHERE pt.code = a.piece_type)
+    ELSE
+      (SELECT pt.singular_text
+      FROM glogowner.xxscou_piece_type pt
+      WHERE pt.code = a.piece_type)
+    END)  
+  END) piece_type,  
+  (CASE WHEN :P_RUN = 'DRAFT' THEN
+  (CASE WHEN a.received_ship_unit_count IS NULL THEN 'Data Missing in System'
+  ELSE
+  (CASE WHEN a.received_ship_unit_count = 19 THEN 'LCL'
+  WHEN a.received_ship_unit_count = 20 THEN '20 FT Standard'
+  WHEN a.received_ship_unit_count = 21 THEN '20 FT Reefer'
+  WHEN a.received_ship_unit_count = 40 THEN '40 FT Standard'
+  WHEN a.received_ship_unit_count = 41 THEN '40 FT Reefer'
+  WHEN a.received_ship_unit_count = 42 THEN '40 FT High Cube'  
+  WHEN a.received_ship_unit_count = 45 THEN '45 FT Standard'
+  WHEN a.received_ship_unit_count = 46 THEN '45 FT Reefer' END)
+  END)
+  ELSE 
+  (CASE WHEN a.received_ship_unit_count IS NULL THEN ''
+  ELSE
+  (CASE WHEN a.received_ship_unit_count = 19 THEN 'LCL'
+  WHEN a.received_ship_unit_count = 20 THEN '20 FT Standard'
+  WHEN a.received_ship_unit_count = 21 THEN '20 FT Reefer'
+  WHEN a.received_ship_unit_count = 40 THEN '40 FT Standard'
+  WHEN a.received_ship_unit_count = 41 THEN '40 FT Reefer'
+  WHEN a.received_ship_unit_count = 42 THEN '40 FT High Cube'  
+  WHEN a.received_ship_unit_count = 45 THEN '45 FT Standard'
+  WHEN a.received_ship_unit_count = 46 THEN '45 FT Reefer' END)
+  END) 
+  END) container_type,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.commodity,'Data Missing in System')
+  ELSE a.commodity END) commodity,    
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.net_weight_kgs,'Data Missing in System')
+  ELSE a.net_weight_kgs END) || ' KG' net_weight_kgs,  
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.net_weight_lbs,'Data Missing in System')
+  ELSE a.net_weight_lbs END) || ' LB' net_weight_lbs,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.pu_number,'Data Missing in System')
+  ELSE a.pu_number END) pu_number,
+  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.it_number,'Data Missing in System')
+  ELSE a.it_number END) it_number
+FROM
+(SELECT DISTINCT
+  ssu.s_ship_unit_gid,
+	ssu.tag_3 container_num,
+  ssu.tag_1 seal_num1,
+ (SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur 
+  WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER SEAL NUMBER 2')
+  seal_num2,
+  (SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur 
+  WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER SEAL NUMBER 3')
+  seal_num3,   
+  s.attribute1,
+  (SELECT refnum_value 
+  FROM s_ship_unit_refnum
+  WHERE s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT')
+  piece_count,   
+  (SELECT refnum_value 
+  FROM s_ship_unit_refnum
+  WHERE s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE TYPE')
+  piece_type,   
+  ssu.received_ship_unit_count,
+ (SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur 
+  WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.COMMODITY ID')  
+  commodity,
+  TO_CHAR((CASE WHEN ssu.received_weight_uom = 'LB' THEN ssu.received_weight * 0.45359237
+    WHEN ssu.received_weight_uom = 'KG' THEN ssu.received_weight
+    WHEN ssu.received_weight_uom = 'TON' THEN (ssu.received_weight * 2000) * 0.45359237
+    WHEN ssu.received_weight_uom = 'MTON' OR ssu.received_weight_uom = 'MT' THEN ssu.received_weight * 1000
+    ELSE ssu.received_weight END),'999,999,990')
+  net_weight_kgs,
+  TO_CHAR((CASE WHEN ssu.received_weight_uom = 'LB' THEN ssu.received_weight
+    WHEN ssu.received_weight_uom = 'KG' THEN ssu.received_weight * 2.20462262
+    WHEN ssu.received_weight_uom = 'TON' THEN ssu.received_weight * 2000
+    WHEN ssu.received_weight_uom = 'MTON' OR ssu.received_weight_uom = 'MT' THEN ssu.received_weight * 2204.62442018
+    ELSE ssu.received_weight END),'999,999,990') 
+  net_weight_lbs,
+  (SELECT refnum_value 
+  FROM s_ship_unit_refnum
+  WHERE s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR/NVO.PICKUP NUMBER')
+  pu_number,
+  (CASE WHEN
+    (SELECT refnum_value 
+    FROM s_ship_unit_refnum
+    WHERE s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND s_ship_unit_refnum_qual_gid = 'SCOULAR/NVO.IN TRANSIT NUMBER') IS NULL 
+  THEN
+    (SELECT sref.shipment_refnum_value
+    FROM job j
+    INNER JOIN job_order_release_join jorjoin ON j.job_gid = jorjoin.job_gid
+    INNER JOIN s_ship_unit_line ssuline ON jorjoin.order_release_gid = ssuline.order_release_gid
+    INNER JOIN s_equipment_s_ship_unit_join sessujoin ON ssuline.s_ship_unit_gid = sessujoin.s_ship_unit_gid
+    INNER JOIN shipment_s_equipment_join ssejoin ON sessujoin.s_equipment_gid = ssejoin.s_equipment_gid 
+    INNER JOIN shipment ship ON ssejoin.shipment_gid = ship.shipment_gid
+    AND	ship.shipment_type_gid = 'TRANSPORT'
+    AND	ship.is_primary = 'Y'
+    AND ship.perspective = 'B'
+    INNER JOIN shipment_refnum sref ON ship.shipment_gid = sref.shipment_gid
+    AND sref.shipment_refnum_qual_gid = 'SCOULAR/NVO.IT NUMBER'
+    AND j.job_gid = :JOB_ID
+    AND NOT ship.shipment_gid IS NULL
+    AND ROWNUM = 1)
+  ELSE
+    (SELECT refnum_value 
+    FROM s_ship_unit_refnum
+    WHERE s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND s_ship_unit_refnum_qual_gid = 'SCOULAR/NVO.IN TRANSIT NUMBER')
+  END)
+  it_number
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+WHERE
+  s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+AND
+  ssu.s_ship_unit_gid IN
+(SELECT 
+  ssut.s_ship_unit_gid
+FROM
+	job_order_release_join jorj
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN
+  shipment sh ON ssej1.shipment_gid = sh.shipment_gid
+AND
+  sh.servprov_gid = :SERVPROV_ID
+AND
+	sh.shipment_type_gid = 'TRANSPORT'
+AND
+	sh.transport_mode_gid = 'DRAYAGE'
+AND
+	sh.is_primary = 'N'
+AND
+	sh.perspective = 'B'
+AND
+  (:LOCATION_ID IS NULL
+OR
+  (NOT :LOCATION_ID IS NULL
+AND
+  sh.dest_location_gid = :LOCATION_ID))  
+INNER JOIN
+  shipment_s_equipment_join ssej2 ON sh.shipment_gid = ssej2.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj2 ON ssej2.s_equipment_gid = sessuj2.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
+INNER JOIN
+  order_release orel ON ssul2.order_release_gid = orel.order_release_gid
+INNER JOIN
+  s_ship_unit_line ssul ON orel.order_release_gid = ssul.order_release_gid
+INNER JOIN
+	s_ship_unit ssut ON ssul.s_ship_unit_gid = ssut.s_ship_unit_gid
+WHERE
+	jorj.job_gid = :JOB_ID)) a
+ORDER BY a.s_ship_unit_gid ASC]]></sqlStatement>
+    <sqlStatement name="Q_RATES"><![CDATA[SELECT DISTINCT
+  a.sort_order,
+  (CASE WHEN a.cost_type = 'B' THEN
+  'Base Rate' 
+  ELSE a.accessorial_code_xid END) rates,
+  (CASE WHEN a.cost_type = 'B' OR ((NOT UPPER(a.detail) LIKE '%BOL%' OR NOT a.remark_text = 'YES')
+   OR (a.detail IS NULL AND a.remark_text IS NULL))  THEN
+    TRIM(TO_CHAR(SUM(a.total_ship_unit_count),'999,999,990') || ' ' || 
+    (CASE
+    WHEN NOT
+    (SELECT cvr1.charter_voyage_refnum_value
+    FROM charter_voyage_refnum cvr1
+    WHERE cvr1.charter_voyage_gid = a.charter_voyage_gid
+    AND cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_20FTRF COUNT') IS NULL THEN
+    '20 FT RF'  
+    WHEN NOT
+    (SELECT cvr1.charter_voyage_refnum_value
+    FROM charter_voyage_refnum cvr1
+    WHERE cvr1.charter_voyage_gid = a.charter_voyage_gid
+    AND cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TEU COUNT') IS NULL THEN
+    '20 FT'
+    WHEN NOT
+    (SELECT cvr2.charter_voyage_refnum_value
+    FROM charter_voyage_refnum cvr2
+    WHERE cvr2.charter_voyage_gid = a.charter_voyage_gid
+    AND cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FT COUNT') IS NULL THEN
+    '40 FT'
+    WHEN NOT
+    (SELECT cvr3.charter_voyage_refnum_value
+    FROM charter_voyage_refnum cvr3
+    WHERE cvr3.charter_voyage_gid = a.charter_voyage_gid
+    AND cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTHC COUNT') IS NULL THEN
+    '40 FT HC'
+    WHEN NOT
+    (SELECT cvr4.charter_voyage_refnum_value
+    FROM charter_voyage_refnum cvr4
+    WHERE cvr4.charter_voyage_gid = a.charter_voyage_gid
+    AND cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTRF COUNT') IS NULL THEN
+    '40 FT RF'
+    WHEN NOT
+    (SELECT cvr5.charter_voyage_refnum_value
+    FROM charter_voyage_refnum cvr5
+    WHERE cvr5.charter_voyage_gid = a.charter_voyage_gid
+    AND cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_45FTRF COUNT') IS NULL THEN
+    '45 FT RF' 
+    END) || ' @ ' ||
+    TRIM(TO_CHAR(ROUND(SUM(a.cost) / SUM(a.total_ship_unit_count), 2),'999,999,990.00'))) 
+    ELSE TRIM(TO_CHAR(SUM(a.cost), '999,999,990.00')) END)
+  base,
+  (CASE WHEN a.cost_method_code = 'PPD' OR (a.cost_method_code IS NULL AND a.ship_method_code = 'PPD')
+  THEN TRIM(TO_CHAR(ROUND(SUM(a.cost), 2),'999,999,990.00')) ELSE '' END) r_prepaid,
+  (CASE WHEN a.cost_method_code = 'COL' OR (a.cost_method_code IS NULL AND a.ship_method_code = 'COL')
+  THEN TRIM(TO_CHAR(ROUND(SUM(a.cost), 2),'999,999,990.00')) ELSE '' END) r_collect
+FROM
+(SELECT DISTINCT
+  (CASE WHEN sc.cost_type = 'B' THEN 1
+  WHEN sc.cost_type = 'A' THEN 2
+  WHEN sc.cost_type = 'O' THEN 3
+  ELSE 4 END) sort_order,
+  s.shipment_gid,
+  scr.remark_text,  
+  sc.shipment_cost_seqno,
+  sc.cost_type, 
+  (SELECT ac.accessorial_code_xid
+  FROM accessorial_code ac
+  WHERE ac.accessorial_code_gid = sc.accessorial_code_gid) accessorial_code_xid,
+  (SELECT COUNT(ssu.s_ship_unit_gid)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND stop_num = 1)
+  total_ship_unit_count,
+  (SELECT DISTINCT cv1.charter_voyage_gid
+  FROM job j1
+  INNER JOIN job_order_release_join jorj1 ON j1.job_gid = jorj1.job_gid
+  INNER JOIN s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid 
+  INNER JOIN shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+  AND s1.perspective = 'B'
+  AND s1.shipment_type_gid = 'TRANSPORT'
+  AND s1.transport_mode_gid = 'VESSEL-CO'
+  AND s1.is_primary = 'Y'
+  INNER JOIN shipment_refnum sr1 ON s1.shipment_gid = sr1.shipment_gid
+  AND sr1.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+  INNER JOIN charter_voyage cv1 ON 'SCOULAR/NVO.' || sr1.shipment_refnum_value = cv1.charter_voyage_gid
+  WHERE jorj1.job_gid = :JOB_ID) charter_voyage_gid,
+  sc.cost,
+  scd.detail,
+  sc.payment_method_code_gid cost_method_code,
+  s.payment_method_code_gid ship_method_code
+FROM
+  job_order_release_join jorj
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'DRAYAGE'
+AND
+	s.is_primary = 'N'
+AND
+  s.perspective = 'B'
+AND
+  s.servprov_gid = :SERVPROV_ID
+AND
+  (:LOCATION_ID IS NULL
+OR
+  (NOT :LOCATION_ID IS NULL
+AND
+  s.dest_location_gid = :LOCATION_ID))  
+INNER JOIN 
+  shipment_cost sc ON sc.shipment_gid = s.shipment_gid
+LEFT OUTER JOIN
+  shipment_cost_remark scr ON sc.shipment_cost_seqno = scr.shipment_cost_seqno     
+AND
+  scr.remark_qual_gid = 'SCOULAR/NVO.IS_COST_PER_BOL'  
+LEFT OUTER JOIN
+  shipment_cost_detail scd ON sc.shipment_cost_seqno = scd.shipment_cost_seqno
+WHERE
+  jorj.job_gid = :JOB_ID) a
+GROUP BY a.sort_order, a.cost_type, a.accessorial_code_xid, a.charter_voyage_gid, a.remark_text, a.detail, a.cost_method_code, a.ship_method_code
+ORDER BY a.sort_order ASC]]></sqlStatement>
+    <sqlStatement name="Q_RTOTALS"><![CDATA[SELECT DISTINCT
+  (CASE WHEN a.ppd = 'PPD'
+  THEN TRIM(TO_CHAR(ROUND(SUM(a.cost), 2),'999,999,990.00')) ELSE '' END) total_ppd,
+  (CASE WHEN a.col = 'COL'
+  THEN TRIM(TO_CHAR(ROUND(SUM(a.cost), 2),'999,999,990.00')) ELSE '' END) total_col
+FROM
+(SELECT DISTINCT
+  s.shipment_gid, 
+  sc.shipment_cost_seqno,
+  sc.cost,
+  (CASE WHEN sc.payment_method_code_gid = 'PPD' OR (sc.payment_method_code_gid IS NULL AND s.payment_method_code_gid = 'PPD') THEN 'PPD' ELSE '' END) ppd,
+  (CASE WHEN sc.payment_method_code_gid = 'COL' OR (sc.payment_method_code_gid IS NULL AND s.payment_method_code_gid = 'COL') THEN 'COL' ELSE '' END) col  
+FROM
+  job_order_release_join jorj
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'DRAYAGE'
+AND
+	s.is_primary = 'N'
+AND
+  s.perspective = 'B'
+AND
+  s.servprov_gid = :SERVPROV_ID
+AND
+  (:LOCATION_ID IS NULL
+OR
+  (NOT :LOCATION_ID IS NULL
+AND
+  s.dest_location_gid = :LOCATION_ID))   
+INNER JOIN 
+  shipment_cost sc ON sc.shipment_gid = s.shipment_gid
+WHERE
+  jorj.job_gid = :JOB_ID) a
+GROUP BY a.ppd, a.col]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_NVO_WORK_ORDER_VALID.before_report_import" />
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="LOC_NAME" value="LOC_NAME" />
+      <element name="LOC_ADDRESS" value="LOC_ADDRESS"></element>
+      <element name="LOC_CITY_STATE_ZIP" value="LOC_CITY_STATE_ZIP" />
+      <element name="LOC_PHONE" value="LOC_PHONE" />
+      <element name="LOC_FAX" value="LOC_FAX" />
+      <element name="LOC_EMAIL" value="LOC_EMAIL" />
+      <element name="SYSTEM_DATE" value="SYSTEM_DATE"></element>
+      <element name="BILL_LADING" value="BILL_LADING"></element>
+      <element name="CARRIER" value="CARRIER" />
+      <element name="VOYAGE_NAME" value="VOYAGE_NAME" />
+      <element name="MASTER_BILL_LADING" value="MASTER_BILL_LADING" />
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE" />
+      <element name="INLAND_CUT" value="INLAND_CUT" />
+      <element name="INLAND_CUT_TIME" value="INLAND_CUT_TIME"></element>
+      <element name="CUSTOMER_REF_NO" value="CUSTOMER_REF_NO"></element>
+      <element name="PICKUP_NAME" value="PICKUP_NAME"></element>
+      <element name="PICKUP_ADDRESS" value="PICKUP_ADDRESS"></element>
+      <element name="PICKUP_CITY_STATE_ZIP" value="PICKUP_CITY_STATE_ZIP"></element>
+      <element name="WORK_ORDER_REMARKS" value="WORK_ORDER_REMARKS"></element>
+      <element name="PREPAID" value="PREPAID"></element>
+      <element name="MANAGER_NAME" value="MANAGER_NAME"></element>
+      <element name="MANAGER_ADDRESS" value="MANAGER_ADDRESS"></element>
+      <element name="MANAGER_CITY_STATE_ZIP" value="MANAGER_CITY_STATE_ZIP"></element>
+      <element name="MANAGER_PHONE" value="MANAGER_PHONE"></element>
+      <element name="MANAGER_FAX" value="MANAGER_FAX"></element>
+      <element name="MANAGER_EMAIL" value="MANAGER_EMAIL"></element>
+      <element name="MANAGER_CONTACT" value="MANAGER_CONTACT"></element>
+    </group>
+    <group name="G_SPINST" source="Q_SPINST">
+      <element name="SPECIAL_INSTRUCTIONS" value="SPECIAL_INSTRUCTIONS"></element>
+    </group>
+    <group name="G_CARRIER" source="Q_CARRIER">
+      <element name="CARRIER_NAME" value="CARRIER_NAME" />
+      <element name="CARRIER_ADDRESS" value="CARRIER_ADDRESS" />
+      <element name="CARRIER_CITY_STATE_ZIP" value="CARRIER_CITY_STATE_ZIP" />
+      <element name="CARRIER_EMAIL" value="CARRIER_EMAIL" />
+      <element name="CARRIER_PHONE" value="CARRIER_PHONE" />
+      <element name="CARRIER_CONTACT" value="CARRIER_CONTACT" />
+    </group>
+    <group name="G_DELIVER" source="Q_DELIVER">
+      <element name="DELIVER_NAME" value="DELIVER_NAME" />
+      <element name="DELIVER_ADDRESS" value="DELIVER_ADDRESS" />
+      <element name="DELIVER_CITY_STATE_ZIP" value="DELIVER_CITY_STATE_ZIP" />
+      <element name="DELIVER_PHONE" value="DELIVER_PHONE" />
+      <element name="DELIVER_FAX" value="DELIVER_FAX"></element>
+      <element name="DELIVER_CONTACT" value="DELIVER_CONTACT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CONTAINER_NUM" value="CONTAINER_NUM" />
+      <element name="SEAL_NUM" value="SEAL_NUM" />
+      <element name="PIECE_COUNT" value="PIECE_COUNT" />
+      <element name="PIECE_TYPE" value="PIECE_TYPE" />
+      <element name="CONTAINER_TYPE" value="CONTAINER_TYPE" />
+      <element name="COMMODITY" value="COMMODITY"></element>
+      <element name="NET_WEIGHT_KGS" value="NET_WEIGHT_KGS" />
+      <element name="NET_WEIGHT_LBS" value="NET_WEIGHT_LBS" />
+      <element name="PU_NUMBER" value="PU_NUMBER" />
+      <element name="IT_NUMBER" value="IT_NUMBER" />
+    </group>
+    <group name="G_RATES" source="Q_RATES">
+      <element name="RATES" value="RATES"></element>
+      <element name="BASE" value="BASE"></element>
+      <element name="R_PREPAID" value="R_PREPAID"></element>
+      <element name="R_COLLECT" value="R_COLLECT"></element>
+    </group>
+    <group name="G_RTOTALS" source="Q_RTOTALS">
+      <element name="TOTAL_PPD" value="TOTAL_PPD"></element>
+      <element name="TOTAL_COL" value="TOTAL_COL"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

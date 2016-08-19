@@ -1,0 +1,219 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_MISSING_INVOICE_ETD" description="NVO Missing Invoice - ETD Date" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="OP_START_DATE" dataType="character"></parameter>
+    <parameter name="OP_END_DATE" dataType="character" />
+    <parameter name="P_IMPORT_EXPORT" dataType="character" />
+    <parameter name="LOC" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_RUN_DATES"><![CDATA[SELECT
+  TO_CHAR(SYSDATE,'fmMM/DD/YY') run_date,
+  TO_CHAR(SYSDATE,'fmHH:MI PM') run_time
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(:OP_START_DATE,'YYYY-MM-DD'),'MM/DD/YY') op_s_date,
+  TO_CHAR(TO_DATE(:OP_END_DATE,'YYYY-MM-DD'),'MM/DD/YY') op_e_date,
+  :P_IMPORT_EXPORT import_export,
+  LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',') loc_num
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT /*+ ALL_ROWS */ 
+  TRIM(con1.first_name || ' ' || con1.last_name) ops_manager,
+  j.job_xid house_bill_lading,
+  loc2.location_xid account_no,  
+  c1.contact_xid carrier,  
+  j.attribute5 master_bill_lading,
+  cv.departure_date s_date,
+  TO_CHAR(TO_DATE(j.insert_date,'dd-mm-rr'),'fmMM/DD/YYYY') open_date,
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'),'fmMM/DD/YYYY') sail_date,
+  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'),'fmMM/DD/YYYY') arrival_date,
+  'Yes' missing_ar
+FROM
+	job j
+INNER JOIN 
+  job_status jstat ON j.job_gid = jstat.job_gid
+AND
+  jstat.status_type_gid = 'SCOULAR/NVO.JOB_BILLED'
+AND NOT
+  jstat.status_value_gid = 'SCOULAR/NVO.JOB_BILL_APPROVED'    
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+  s.shipment_type_gid ='TRANSPORT' 
+AND 
+  s.transport_mode_gid='VESSEL-CO' 
+AND
+  s.is_primary='Y' 
+AND
+  s.perspective='B'
+INNER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+AND
+  loc1.country_code3_gid IN ('USA','CAN','MEX')      
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
+LEFT OUTER JOIN
+	contact con1 ON	sip1.involved_party_contact_gid = con1.contact_gid 
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+	contact con2 ON	sip2.involved_party_contact_gid = con2.contact_gid
+LEFT OUTER JOIN
+	location loc2 ON con2.location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  contact c1 ON cv.servprov_gid = c1.contact_gid
+WHERE
+  j.domain_name = 'SCOULAR/NVO'
+AND
+  j.move_perspective_gid = 'EXPORT'  
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)
+AND
+  (TO_DATE(cv.departure_date,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
+AND
+  (:P_IMPORT_EXPORT = 'EXPORT' OR :P_IMPORT_EXPORT = 'BOTH')
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))   
+UNION
+SELECT /*+ ALL_ROWS */ 
+  TRIM(con1.first_name || ' ' || con1.last_name) ops_manager,
+  j.job_xid house_bill_lading,
+  loc2.location_xid account_no,  
+  c1.contact_xid carrier,  
+  j.attribute5 master_bill_lading,
+  cv.departure_date s_date,
+  TO_CHAR(TO_DATE(j.insert_date,'dd-mm-rr'),'fmMM/DD/YYYY') open_date,
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'),'fmMM/DD/YYYY') sail_date,
+  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'),'fmMM/DD/YYYY') arrival_date,
+  'Yes' missing_ar
+FROM
+	job j
+INNER JOIN 
+  job_status jstat ON j.job_gid = jstat.job_gid
+AND
+  jstat.status_type_gid = 'SCOULAR/NVO.JOB_BILLED'
+AND NOT
+  jstat.status_value_gid = 'SCOULAR/NVO.JOB_BILL_APPROVED'  
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+  s.shipment_type_gid ='TRANSPORT' 
+AND 
+  s.transport_mode_gid='VESSEL-CO' 
+AND
+  s.is_primary='Y' 
+AND
+  s.perspective='B'  
+INNER JOIN
+  location loc1 ON s.dest_location_gid = loc1.location_gid
+AND
+  loc1.country_code3_gid IN ('USA','CAN','MEX')      
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
+LEFT OUTER JOIN
+	contact con1 ON	sip1.involved_party_contact_gid = con1.contact_gid 
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+	contact con2 ON	sip2.involved_party_contact_gid = con2.contact_gid
+LEFT OUTER JOIN
+	location loc2 ON con2.location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  contact c1 ON cv.servprov_gid = c1.contact_gid
+WHERE
+  j.domain_name = 'SCOULAR/NVO'
+AND
+  j.move_perspective_gid = 'IMPORT'  
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)
+AND
+  (TO_DATE(cv.departure_date,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
+AND
+  (:P_IMPORT_EXPORT = 'IMPORT' OR :P_IMPORT_EXPORT = 'BOTH')
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))  
+ORDER BY s_date, house_bill_lading]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_RUN_DATES" source="Q_RUN_DATES">
+      <element name="RUN_DATE" value="RUN_DATE" />
+      <element name="RUN_TIME" value="RUN_TIME" />
+    </group>
+    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+      <element name="OP_S_DATE" value="OP_S_DATE"></element>
+      <element name="OP_E_DATE" value="OP_E_DATE"></element>
+      <element name="IMPORT_EXPORT" value="IMPORT_EXPORT" />
+      <element name="LOC_NUM" value="LOC_NUM" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="OPS_MANAGER" value="OPS_MANAGER" />
+      <element name="HOUSE_BILL_LADING" value="HOUSE_BILL_LADING"></element>
+      <element name="ACCOUNT_NO" value="ACCOUNT_NO" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="MASTER_BILL_LADING" value="MASTER_BILL_LADING" />
+      <element name="OPEN_DATE" value="OPEN_DATE" />
+      <element name="SAIL_DATE" value="SAIL_DATE" />
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE" />
+      <element name="MISSING_AR" value="MISSING_AR" />
+    </group>
+  </dataStructure>
+</dataTemplate>

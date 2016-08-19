@@ -1,0 +1,338 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_DOMESTIC_FREIGHT_INVOICE_AUTO" description="NVO Domestic Freight Invoice Auto" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
+  loc_name,
+	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','1') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','2') || ' ' ||
+  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER','3'))
+  loc_address,
+  TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER',',') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') || ' ' || 
+  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER'))
+  loc_city_state_zip,
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'KS' THEN
+  'TEL: 877-905-8525'
+  WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'IL' THEN
+  'TEL: 630-874-2918'
+  ELSE '' END)
+  loc_phone,
+  (CASE WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'KS' THEN
+  'FAX: 913-696-9240'
+  WHEN glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER') = 'IL' THEN
+  'FAX: 630-493-1402'
+  ELSE '' END)
+  loc_fax, 
+  sref1.shipment_refnum_value cust_ref_no,
+	TO_CHAR(
+  (SELECT ssu.unit_net_weight
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1),'999,999,990.00')
+  gross_weight,
+  (SELECT ssu.unit_net_weight_uom_code
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1) gross_weight_uom,
+  (SELECT it.description
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_line ssul ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN item it ON ssul.packaged_item_gid = it.item_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1) descript_of_cargo,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER')
+  shipper_name,
+  glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
+  consignee_name,
+  glogowner.xxscou_nvo_report_functions.loc_city_province(
+  (SELECT orel.source_location_gid
+  FROM order_release orel
+  WHERE orel.order_release_gid = vsor1.order_release_gid))
+  source_location,
+	glogowner.xxscou_nvo_report_functions.loc_city_province(
+  (SELECT orel.dest_location_gid
+  FROM order_release orel
+  WHERE orel.order_release_gid = vsor1.order_release_gid))
+  destination_location,
+	j.job_xid bill_lading,
+  TO_CHAR(TO_DATE(
+  (SELECT MIN(ship3.attribute_date2)
+  FROM shipment ship1
+  INNER JOIN view_shipment_order_release vsor1 ON ship1.shipment_gid = vsor1.shipment_gid
+  LEFT OUTER JOIN job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
+  LEFT OUTER JOIN view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
+  AND vsor2.shipment_gid IN (SELECT ship2.shipment_gid FROM shipment ship2 WHERE vsor2.shipment_gid = ship2.shipment_gid
+  AND ship2.perspective = 'B')  
+  LEFT OUTER JOIN shipment ship3 ON vsor2.shipment_gid = ship3.shipment_gid
+  AND ship3.perspective = 'B' 
+  WHERE ship1.shipment_gid = :SHIPMENT_ID),'dd-mm-rr'), 'fmMM/DD/YY') 
+  departure_date,
+  TRIM((SELECT listagg (ssunit.tag_3, ', ')
+  WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
+  INNER JOIN shipment_stop_d ssd ON ssunit.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  WHERE ssd.shipment_gid = s.shipment_gid)) containers  
+FROM
+  shipment sh
+LEFT OUTER JOIN
+  view_shipment_order_release vsor1 ON sh.shipment_gid = vsor1.shipment_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj1 ON vsor1.order_release_gid = jorj1.order_release_gid
+LEFT OUTER JOIN
+	job j ON jorj1.job_gid = j.job_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
+LEFT OUTER JOIN
+  view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
+AND
+  vsor2.shipment_gid IN (
+  SELECT ship.shipment_gid
+  FROM shipment ship
+  WHERE vsor2.shipment_gid = ship.shipment_gid
+  AND ship.shipment_type_gid = 'TRANSPORT'
+  AND ship.is_primary = 'Y'
+  AND ship.perspective = 'B')  
+LEFT OUTER JOIN
+	shipment s ON vsor2.shipment_gid = s.shipment_gid
+AND
+	s.perspective = 'B'
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.is_primary = 'Y'
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO NUMBER'	
+WHERE
+	sh.shipment_gid = :SHIPMENT_ID
+AND NOT
+  s.shipment_gid IS NULL]]></sqlStatement>
+    <sqlStatement name="Q_INVOICE"><![CDATA[SELECT
+	inv.invoice_xid,
+	TO_CHAR(TO_DATE(inv.invoice_date,'dd-mm-rr'), 'fmMM/DD/YY') invoice_date,
+	gpr.refnum_value invoice_terms,
+	TO_CHAR(TO_DATE(inv.net_due_date,'dd-mm-rr'), 'fmMM/DD/YY')	invoice_due_date,
+	invr.remark_text,
+	TO_CHAR(inv.net_amount_due, '999,999,990.00') total_amount,
+  loc.location_name exporter_name,
+  glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid) exporter_address, 
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid) exporter_city_state_zip      
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+	gtm_party_refnum gpr ON sip.involved_party_contact_gid = gpr.contact_gid
+AND
+	gpr.gtm_party_refnum_qual_gid = 'SCOULAR.PAYMENT TERMS NVO DOMESTIC'
+LEFT OUTER JOIN
+	shipment_bill sb ON s.shipment_gid = sb.shipment_gid
+LEFT OUTER JOIN
+	invoice_remark invr ON sb.bill_gid = invr.invoice_gid
+AND
+	remark_qual_identifier = 'SCOULAR/NVODOM.FREIGHT INVOICE REMARKS'    
+LEFT OUTER JOIN
+	invoice inv ON sb.bill_gid = inv.invoice_gid
+LEFT OUTER JOIN
+  invoice_involved_party iip ON inv.invoice_gid = iip.invoice_gid
+AND
+  iip.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+  contact con ON iip.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+  location loc ON con.location_gid = loc.location_gid  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_COSTS"><![CDATA[SELECT b.shipment_cost_seqno, b.cost_type, b.cost_total
+FROM
+(SELECT a.shipment_cost_seqno, TRIM(a.cost_type) cost_type, a.cost_total
+FROM
+(SELECT DISTINCT
+  sc.shipment_cost_seqno,
+	(CASE WHEN sc.cost_type = 'A' THEN
+  (CASE WHEN sc.accessorial_code_gid = 'SCOULAR/NVODOM.CONSOLIDATION' THEN
+  ((SELECT SUM(TO_NUMBER(ssur.refnum_value))
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
+  WHERE ssd.shipment_gid = sc.shipment_gid
+  AND ssd.stop_num = 1) || ' ' ||
+  (SELECT ssur.refnum_value 
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE TYPE'
+  WHERE ssd.shipment_gid = sc.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1) || ' at ' || TRIM(TO_CHAR(sc.cost,'999,999,990.00')))
+  ELSE
+  (SELECT ac.accessorial_code_xid
+  FROM accessorial_code ac
+  WHERE ac.accessorial_code_gid = sc.accessorial_code_gid) || ' @ ' || TRIM(TO_CHAR(sc.cost,'999,999,990.00')) END)
+	ELSE 
+  '   LINE HAUL @ ' ||
+  TRIM(TO_CHAR(sc.cost,'999,999,990.00')) END)
+  cost_type,
+	TO_CHAR(sc.cost,'999,999,990.00') cost_total
+FROM
+	shipment_cost sc
+INNER JOIN 
+  shipment s ON sc.shipment_gid = s.shipment_gid
+WHERE 
+  sc.shipment_gid = :SHIPMENT_ID
+ORDER BY sc.shipment_cost_seqno) a) b
+WHERE (SELECT COUNT(ilit.lineitem_seq_no)
+FROM shipment_bill sbl
+INNER JOIN invoice_lineitem ilit ON sbl.bill_gid = ilit.invoice_gid
+WHERE sbl.shipment_gid = :SHIPMENT_ID) = 0
+UNION
+SELECT c.lineitem_seq_no, TRIM(c.cost_type) cost_type, c.cost_total
+FROM
+(SELECT DISTINCT
+  ili.lineitem_seq_no,
+	(CASE WHEN ili.cost_type_gid = 'A' THEN
+  (CASE WHEN ili.accessorial_code_gid = 'SCOULAR/NVODOM.CONSOLIDATION' THEN
+  ((SELECT SUM(TO_NUMBER(ssur.refnum_value))
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
+  WHERE ssd.shipment_gid = ship.shipment_gid
+  AND ssd.stop_num = 1) || ' ' ||
+  (SELECT ssur.refnum_value 
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE TYPE'
+  WHERE ssd.shipment_gid = ship.shipment_gid
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1) || ' at ' || TRIM(TO_CHAR(ili.freight_charge,'999,999,990.00')))
+  ELSE
+  (SELECT ac.accessorial_code_xid
+  FROM accessorial_code ac
+  WHERE ac.accessorial_code_gid = ili.accessorial_code_gid) || ' @ ' || TRIM(TO_CHAR(ili.freight_charge,'999,999,990.00')) END)
+	ELSE 
+  '   LINE HAUL @ ' ||
+  TRIM(TO_CHAR(ili.freight_charge,'999,999,990.00')) END)
+  cost_type,
+	TO_CHAR(ili.freight_charge,'999,999,990.00') cost_total
+FROM
+  shipment ship
+INNER JOIN
+	shipment_bill sb ON ship.shipment_gid = sb.shipment_gid
+INNER JOIN 
+  invoice_lineitem ili ON sb.bill_gid = ili.invoice_gid
+WHERE 
+  ship.shipment_gid = :SHIPMENT_ID
+ORDER BY ili.lineitem_seq_no) c]]></sqlStatement>
+    <sqlStatement name="Q_PCS"><![CDATA[SELECT DISTINCT
+  TRIM(TO_CHAR(SUM(TO_NUMBER(a.piece_count)),'999,999,990')) num_pieces,
+  a.piece_type
+FROM
+(SELECT DISTINCT
+  ssur1.s_ship_unit_gid, ssur1.refnum_value piece_count, ssur2.refnum_value piece_type
+FROM
+  shipment sh
+INNER JOIN
+  view_shipment_order_release vsor1 ON sh.shipment_gid = vsor1.shipment_gid
+INNER JOIN
+  job_order_release_join jorj1 ON vsor1.order_release_gid = jorj1.order_release_gid
+INNER JOIN
+	job j ON jorj1.job_gid = j.job_gid
+INNER JOIN
+  job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
+INNER JOIN
+  view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
+AND
+  vsor2.shipment_gid IN (
+  SELECT ship.shipment_gid
+  FROM shipment ship
+  WHERE vsor2.shipment_gid = ship.shipment_gid
+  AND ship.shipment_type_gid = 'TRANSPORT'
+  AND ship.is_primary = 'Y'
+  AND ship.perspective = 'B')  
+INNER JOIN
+	shipment s ON vsor2.shipment_gid = s.shipment_gid
+AND
+	s.perspective = 'B'
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.is_primary = 'Y'  
+INNER JOIN
+	shipment_stop_d ssd ON ssd.shipment_gid = s.shipment_gid
+AND
+	ssd.stop_num = 1  
+INNER JOIN
+	s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
+AND
+  ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
+AND
+  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE TYPE'  
+WHERE
+	sh.shipment_gid = :SHIPMENT_ID) a
+GROUP BY
+  a.piece_type]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="LOC_NAME" value="LOC_NAME" />
+      <element name="LOC_ADDRESS" value="LOC_ADDRESS"></element>
+      <element name="LOC_CITY_STATE_ZIP" value="LOC_CITY_STATE_ZIP"></element>
+      <element name="LOC_PHONE" value="LOC_PHONE"></element>
+      <element name="LOC_FAX" value="LOC_FAX"></element>
+      <element name="CUST_REF_NO" value="CUST_REF_NO" />
+      <element name="GROSS_WEIGHT" value="GROSS_WEIGHT"></element>
+      <element name="GROSS_WEIGHT_UOM" value="GROSS_WEIGHT_UOM"></element>
+      <element name="DESCRIPT_OF_CARGO" value="DESCRIPT_OF_CARGO"></element>
+      <element name="SHIPPER_NAME" value="SHIPPER_NAME" />
+      <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME"></element>
+      <element name="SOURCE_LOCATION" value="SOURCE_LOCATION" />
+      <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION" />
+      <element name="BILL_LADING" value="BILL_LADING" />
+      <element name="DEPARTURE_DATE" value="DEPARTURE_DATE" />
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE" />
+      <element name="LOC_ADDRESS" value="LOC_ADDRESS" />
+      <element name="LOC_CITY_STATE_ZIP" value="LOC_CITY_STATE_ZIP"></element>
+      <element name="CONTAINERS" value="CONTAINERS" />
+    </group>
+    <group name="G_INVOICE" source="Q_INVOICE">
+      <element name="INVOICE_XID" value="INVOICE_XID" />
+      <element name="INVOICE_DATE" value="INVOICE_DATE" />
+      <element name="INVOICE_TERMS" value="INVOICE_TERMS" />
+      <element name="INVOICE_DUE_DATE" value="INVOICE_DUE_DATE" />
+      <element name="REMARK_TEXT" value="REMARK_TEXT" />
+      <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT" />
+      <element name="EXPORTER_NAME" value="EXPORTER_NAME"></element>
+      <element name="EXPORTER_ADDRESS" value="EXPORTER_ADDRESS" />
+      <element name="EXPORTER_CITY_STATE_ZIP" value="EXPORTER_CITY_STATE_ZIP" />
+    </group>
+    <group name="G_COSTS" source="Q_COSTS">
+      <element name="COST_TYPE" value="COST_TYPE" />
+      <element name="COST_TOTAL" value="COST_TOTAL" />
+    </group>
+    <group name="G_PCS" source="Q_PCS">
+      <element name="NUM_PIECES" value="NUM_PIECES" />
+      <element name="PIECE_TYPE" value="PIECE_TYPE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

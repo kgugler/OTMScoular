@@ -1,0 +1,253 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_IMPORT_QUOTE_EXTERNAL_AUTO_CAR" description="NVO Import Quote (External) - Auto w/Carrier" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="QTE_ID" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  (CASE WHEN
+    (SELECT qrk1.remark_text
+    FROM quote_remark qrk1
+    WHERE qrk1.quote_gid = q.quote_gid
+    AND qrk1.remark_qualifier_gid = 'SCOULAR/NVO.QUOTE EXTERNAL NOTES') IS NULL
+  THEN
+    (SELECT qr1.quote_refnum_value
+    FROM quote_refnum qr1
+    WHERE qr1.quote_gid = q.quote_gid
+    AND qr1.quote_refnum_qual_gid = 'SCOULAR.QUOTE EXTERNAL NOTES')
+  ELSE
+    (SELECT qrk1.remark_text
+    FROM quote_remark qrk1
+    WHERE qrk1.quote_gid = q.quote_gid
+    AND qrk1.remark_qualifier_gid = 'SCOULAR/NVO.QUOTE EXTERNAL NOTES')
+  END)
+  notes,
+  (CASE WHEN qref.quote_refnum_value = 'NRA' THEN 'YES' ELSE 'NO' END) nra_yes_no,
+  (CASE WHEN lc2.location_name IS NULL
+  THEN q.attribute11 
+  ELSE lc2.location_name END) company_name,
+  glogowner.xxscou_nvo_report_functions.loc_address(loc1.location_gid)
+  company_address,  
+  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc1.location_gid)
+  company_city_state_zip,  
+  TRIM(con3.first_name || ' ' || con3.last_name) manager_contact,
+  con3.company_name manager_name,
+	glogowner.xxscou_nvo_report_functions.loc_address(loc3.location_gid)
+  manager_address,
+	glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc3.location_gid)
+  manager_city_state_zip,
+  TRIM(TO_CHAR((SELECT SUM(qcosc1.cost)
+  FROM quote_cost_option_ship_cost qcosc1
+  INNER JOIN quote_cost_option_shipment qcos1 ON qcosc1.quote_gid = qcos1.quote_gid
+  AND qcosc1.cost_option_sequence = qcos1.cost_option_sequence
+  AND qcosc1.shipment_sequence = qcos1.shipment_sequence
+  AND qcos1.perspective = 'S'
+  WHERE qcos1.quote_gid = q.quote_gid
+  AND NOT NVL(qcos1.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE' 
+  AND qcosc1.cost_type = 'B'
+  AND qcos1.cost_option_sequence = 0),'$999,999,990.00')) sell_price,
+  (CASE WHEN 
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) IS NULL
+  THEN
+    (SELECT eg.equipment_group_name 
+    FROM equipment_group eg 
+    INNER JOIN equipment_type_join etj ON eg.equipment_group_gid = etj.equipment_group_gid
+    INNER JOIN quote_ship_unit qsu ON etj.equipment_type_gid = qsu.transport_handling_unit_gid
+    WHERE qsu.quote_gid = q.quote_gid)
+  ELSE
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) 
+  END)
+  equip,
+	l1.city || ', ' || l1.province_code origin,
+	l2.city || ', ' || l2.province_code || ' ' || l2.country_code3_gid destination,  
+  (CASE WHEN NOT lc1.location_name IS NULL THEN
+    'with ' || lc1.location_name || ' '
+  ELSE '' END)
+  carrier,
+  qrnum.quote_refnum_value commod,
+  TO_CHAR(TO_DATE(q.expiration_date,'dd-mm-rr'),'fmMM/DD/YY') expire_date,
+  q.quote_xid quote_num,
+  (CASE WHEN lc2.location_name IS NULL
+  THEN q.attribute11 
+  ELSE lc2.location_name END) cust_name
+FROM
+  quote q
+LEFT OUTER JOIN
+  quote_refnum qr ON q.quote_gid = qr.quote_gid
+AND
+  qr.quote_refnum_qual_gid = 'SCOULAR.IMPORT_EXPORT'
+LEFT OUTER JOIN
+  quote_refnum qref ON q.quote_gid = qref.quote_gid
+AND
+  qref.quote_refnum_qual_gid = 'SCOULAR.NRA'    
+LEFT OUTER JOIN
+  quote_involved_party qip1 ON q.quote_gid = qip1.quote_gid
+AND
+  qip1.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+  contact con1 ON qip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  location lc2 ON con1.location_gid = lc2.location_gid
+LEFT OUTER JOIN
+  location loc1 ON con1.location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  country_code ccode1 ON loc1.country_code3_gid = ccode1.country_code3_gid
+LEFT OUTER JOIN
+  quote_involved_party qip3 ON q.quote_gid = qip3.quote_gid
+AND
+  qip3.involved_party_qual_gid = 'SCOULAR/NVO.QUOTE MANAGER'
+LEFT OUTER JOIN
+  contact con3 ON qip3.involved_party_contact_gid = con3.contact_gid
+LEFT OUTER JOIN
+  location loc3 ON con3.location_gid = loc3.location_gid
+LEFT OUTER JOIN
+  country_code ccode3 ON loc3.country_code3_gid = ccode3.country_code3_gid  
+LEFT OUTER JOIN
+  location l1 ON q.origin_location_gid = l1.location_gid
+LEFT OUTER JOIN
+  location l2 ON q.destination_location_gid = l2.location_gid 
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos ON q.quote_gid = qcos.quote_gid
+AND
+  qcos.is_primary = 'Y' AND qcos.perspective = 'B'
+AND
+  qcos.cost_option_sequence = 0
+LEFT OUTER JOIN
+  location lc1 ON qcos.servprov_gid = lc1.location_gid  
+LEFT OUTER JOIN
+  quote_refnum qrnum ON q.quote_gid = qrnum.quote_gid
+AND
+  qrnum.quote_refnum_qual_gid = 'SCOULAR.ITEM DESCRIPTION'  
+WHERE
+  q.quote_gid = :QTE_ID]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  q.quote_xid || '-' || qco.cost_option_sequence quote_no,
+  TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'),'fmMM/DD/YY') system_date,
+  TO_CHAR(TO_DATE(q.expiration_date,'dd-mm-rr'),'fmMM/DD/YY') expiration_date,
+  (CASE WHEN lc2.location_name IS NULL
+  THEN q.attribute11 
+  ELSE lc2.location_name END) customer_name,
+  qrnum.quote_refnum_value commodity,
+  l1.city || ', ' || l1.province_code origin_location,
+  l2.city || ', ' || l2.province_code || ' ' || l2.country_code3_gid destination_location,
+  loc1.location_name carrier_name,
+  (CASE WHEN 
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) IS NULL
+  THEN
+    (SELECT eg.equipment_group_name 
+    FROM equipment_group eg 
+    INNER JOIN equipment_type_join etj ON eg.equipment_group_gid = etj.equipment_group_gid
+    INNER JOIN quote_ship_unit qsu ON etj.equipment_type_gid = qsu.transport_handling_unit_gid
+    WHERE qsu.quote_gid = q.quote_gid)
+  ELSE
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) 
+  END)
+  equipment,
+  TRIM(TO_CHAR((SELECT SUM(qcosc1.cost)
+  FROM quote_cost_option_ship_cost qcosc1
+  INNER JOIN quote_cost_option_shipment qcos1 ON qcosc1.quote_gid = qcos1.quote_gid
+  AND qcosc1.cost_option_sequence = qcos1.cost_option_sequence
+  AND qcosc1.shipment_sequence = qcos1.shipment_sequence
+  AND qcos1.perspective = 'S'
+  WHERE qcos1.quote_gid = qco.quote_gid
+  AND NOT NVL(qcos1.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE' 
+  AND qcosc1.cost_type = 'B'
+  AND qcos1.cost_option_sequence = qco.cost_option_sequence),'$999,999,990.00'))
+  price_cost
+FROM
+  quote q
+LEFT OUTER JOIN
+  quote_cost_option qco ON q.quote_gid = qco.quote_gid
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos ON q.quote_gid = qcos.quote_gid
+AND
+  qcos.is_primary = 'Y' AND qcos.perspective = 'B'
+AND
+  qcos.cost_option_sequence = qco.cost_option_sequence
+LEFT OUTER JOIN
+  location loc1 ON qcos.servprov_gid = loc1.location_gid
+LEFT OUTER JOIN
+  quote_refnum qr ON q.quote_gid = qr.quote_gid
+AND
+  qr.quote_refnum_qual_gid = 'SCOULAR.IMPORT_EXPORT'
+LEFT OUTER JOIN
+  quote_involved_party qip1 ON q.quote_gid = qip1.quote_gid
+AND
+  qip1.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+  contact con1 ON qip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  location lc2 ON con1.contact_gid = lc2.location_gid
+LEFT OUTER JOIN
+  quote_ship_unit qsu ON qco.quote_gid = qsu.quote_gid
+AND
+  qsu.sequence = 1
+LEFT OUTER JOIN
+  ship_unit_spec sus ON qsu.transport_handling_unit_gid = sus.ship_unit_spec_gid
+LEFT OUTER JOIN
+  location l1 ON q.origin_location_gid = l1.location_gid
+LEFT OUTER JOIN
+  location l2 ON q.destination_location_gid = l2.location_gid
+LEFT OUTER JOIN
+  quote_refnum qrnum ON q.quote_gid = qrnum.quote_gid
+AND
+  qrnum.quote_refnum_qual_gid = 'SCOULAR.ITEM DESCRIPTION'
+WHERE
+  q.quote_gid = :QTE_ID
+AND 
+  qco.cost_option_sequence = 0
+ORDER BY 
+  qco.cost_option_sequence ASC ]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="NOTES" value="NOTES" />
+      <element name="NRA_YES_NO" value="NRA_YES_NO"></element>
+      <element name="COMPANY_NAME" value="COMPANY_NAME" />
+      <element name="COMPANY_ADDRESS" value="COMPANY_ADDRESS" />
+      <element name="COMPANY_CITY_STATE_ZIP" value="COMPANY_CITY_STATE_ZIP" />
+      <element name="MANAGER_CONTACT" value="MANAGER_CONTACT" />
+      <element name="MANAGER_NAME" value="MANAGER_NAME" />
+      <element name="MANAGER_ADDRESS" value="MANAGER_ADDRESS" />
+      <element name="MANAGER_CITY_STATE_ZIP" value="MANAGER_CITY_STATE_ZIP" />
+      <element name="SELL_PRICE" value="SELL_PRICE" />
+      <element name="EQUIP" value="EQUIP" />
+      <element name="ORIGIN" value="ORIGIN" />
+      <element name="DESTINATION" value="DESTINATION" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="COMMOD" value="COMMOD"></element>
+      <element name="EXPIRE_DATE" value="EXPIRE_DATE" />
+      <element name="QUOTE_NUM" value="QUOTE_NUM"></element>
+      <element name="CUST_NAME" value="CUST_NAME"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="QUOTE_NO" value="QUOTE_NO" />
+      <element name="SYSTEM_DATE" value="SYSTEM_DATE" />
+      <element name="EXPIRATION_DATE" value="EXPIRATION_DATE" />
+      <element name="CUSTOMER_NAME" value="CUSTOMER_NAME" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="ORIGIN_LOCATION" value="ORIGIN_LOCATION"></element>
+      <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION" />
+      <element name="CARRIER_NAME" value="CARRIER_NAME" />
+      <element name="EQUIPMENT" value="EQUIPMENT" />
+      <element name="PRICE_COST" value="PRICE_COST" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_IDN_PHYTOSANITARY_CERT" description="BCO Indonesia Shipments Missing Phytosanitary Certificate" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
+  ship.sail_date,
+  ship.shipment_xid shipment_number,
+  con.contact_xid doc_manager,   
+  sref.shipment_refnum_value booking_number,
+  TRIM(TO_CHAR((SELECT COUNT(ssd.s_ship_unit_gid)
+  FROM shipment_stop_d ssd
+  WHERE ssd.shipment_gid = ship.shipment_gid 
+  AND ssd.stop_num = 1),'999,999,990')) containers,
+  TRIM(TO_CHAR((SELECT COUNT(ssd3.s_ship_unit_gid)
+  FROM shipment_stop_d ssd3
+  WHERE ssd3.shipment_gid = ship.shipment_gid 
+  AND ssd3.stop_num = 1) -
+  (SELECT COUNT(ssur.s_ship_unit_gid) 
+  FROM s_ship_unit_refnum ssur 
+  INNER JOIN shipment_stop_d ssd4 ON ssur.s_ship_unit_gid = ssd4.s_ship_unit_gid
+  WHERE ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.PHYTOSANITARY CERT NUMBER' 
+  AND ssd4.shipment_gid = ship.shipment_gid
+  AND ssd4.stop_num = 1),'999,999,990')) conts_miss_phyto,  
+  TO_CHAR(ship.attribute_date10,'MM/DD/YYYY') load_date,
+  TO_CHAR(ship.sail_date,'MM/DD/YYYY') sailed_date,
+  TRIM(TO_CHAR(ROUND(ship.sail_date - SYSDATE,0),'999,999,990')) days_phyto_due
+FROM 
+  shipment ship 
+INNER JOIN
+  location loc ON ship.dest_location_gid = loc.location_gid  
+INNER JOIN 
+  view_shipment_order_base vsob ON ship.shipment_gid = vsob.shipment_gid 
+AND 
+  vsob.order_base_gid like 'SCOULAR/BCO.S%' 
+LEFT OUTER JOIN 
+  shipment_refnum sref ON ship.shipment_gid = sref.shipment_gid 
+AND 
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+LEFT OUTER JOIN
+	shipment_involved_party sip ON ship.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+LEFT OUTER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid  
+WHERE 
+  ship.shipment_type_gid = 'TRANSPORT' 
+AND
+  loc.country_code3_gid = 'IDN'
+AND 
+  ship.domain_name = 'SCOULAR/BCO'
+AND 
+((SELECT 
+  COUNT(ssu.s_ship_unit_gid)
+FROM 
+  s_ship_unit ssu 
+INNER JOIN 
+  shipment_stop_d ssd1 ON ssu.s_ship_unit_gid = ssd1.s_ship_unit_gid 
+WHERE 
+  ssd1.shipment_gid = ship.shipment_gid 
+AND ssd1.stop_num = 1) 
+> 
+(SELECT
+  COUNT(ssur.s_ship_unit_gid) 
+FROM 
+  s_ship_unit_refnum ssur 
+INNER JOIN
+  shipment_stop_d ssd2 ON ssur.s_ship_unit_gid = ssd2.s_ship_unit_gid
+WHERE 
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.PHYTOSANITARY CERT NUMBER' 
+AND 
+  ssd2.shipment_gid = ship.shipment_gid
+AND
+  ssd2.stop_num = 1))
+ORDER BY ship.sail_date ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />
+      <element name="DOC_MANAGER" value="DOC_MANAGER" />
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="CONTAINERS" value="CONTAINERS" />
+      <element name="CONTS_MISS_PHYTO" value="CONTS_MISS_PHYTO" />
+      <element name="LOAD_DATE" value="LOAD_DATE"></element>
+      <element name="SAILED_DATE" value="SAILED_DATE" />
+      <element name="DAYS_PHYTO_DUE" value="DAYS_PHYTO_DUE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

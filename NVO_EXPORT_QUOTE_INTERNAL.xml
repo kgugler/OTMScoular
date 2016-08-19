@@ -1,0 +1,798 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_EXPORT_QUOTE_INTERNAL" description="NVO Export Quote (Internal)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="QTE_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  q.quote_xid quote_number,
+  con1.first_name || ' ' || con1.last_name creator,
+  TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'),'fmMM/DD/YYYY') issue_date,
+  lc1.location_name customer,
+  lc2.location_name consignee,
+  qr1.quote_refnum_value commodity,
+  glogowner.xxscou_nvo_report_functions.loc_city_province(q.origin_location_gid) 
+  origin,
+  q.destination_city || ', ' || q.destination_country_code3_gid destination,
+  TO_CHAR(q.issue_date,'fmMM/DD/YYYY') || ' - ' ||
+  TO_CHAR(q.expiration_date,'fmMM/DD/YYYY') expiration_date,
+  loc3.location_name carrier,
+  (CASE WHEN 
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) IS NULL
+  THEN
+    (SELECT eg.equipment_group_name 
+    FROM equipment_group eg 
+    INNER JOIN equipment_type_join etj ON eg.equipment_group_gid = etj.equipment_group_gid
+    INNER JOIN quote_ship_unit qsu ON etj.equipment_type_gid = qsu.transport_handling_unit_gid
+    WHERE qsu.quote_gid = q.quote_gid)
+  ELSE
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) 
+  END) equipment,
+  (CASE WHEN qr4.quote_refnum_value = 'IMPORT' THEN
+    glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(qcos2.source_location_gid) 
+    || ' via ' || 
+    glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(q.via_destination_location_gid) 
+  ELSE
+    glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(qcos2.source_location_gid) 
+    || ' via ' || 
+    glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(q.via_origin_location_gid) 
+  END) routing,
+  loc4.location_name trucking_carrier,
+  qr5.quote_refnum_value contract_id,
+  TRIM(TO_CHAR(NVL((SELECT
+    SUM(NVL(TO_NUMBER(qco1.buy_trans_cost),0) + NVL(TO_NUMBER(qco1.buy_non_trans_cost),0))
+  FROM
+    quote_cost_option qco1
+  WHERE
+    qco1.quote_gid = q.quote_gid),0),'999,999,990.00'))
+  buy_cost, 
+  NVL(TRIM(TO_CHAR((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+  AND qcos.perspective = 'S'
+  AND qcos.is_primary = 'Y'  
+  WHERE qcosc.quote_gid = q.quote_gid),'999,999,990.00')),'0.00')
+  sell_cost_primary,
+  NVL(TRIM(TO_CHAR((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+  AND qcos.perspective = 'S'
+  AND qcos.is_primary = 'N'  
+  WHERE qcosc.quote_gid = q.quote_gid),'999,999,990.00')),'0.00') 
+  sell_cost_secondary,
+  TRIM(TO_CHAR(NVL((
+    NVL(TO_NUMBER((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND qcos.perspective = 'S'
+  WHERE qcosc.quote_gid = q.quote_gid)),0)
+  -
+  (SELECT
+    SUM(NVL(TO_NUMBER(qco4.buy_trans_cost),0) + NVL(TO_NUMBER(qco4.buy_non_trans_cost),0))
+  FROM
+    quote_cost_option qco4
+  WHERE
+    qco4.quote_gid = q.quote_gid)),0),'999,999,990.00')) 
+  profit, 
+  (CASE WHEN qrk1.remark_text IS NULL THEN
+    qr2.quote_refnum_value
+  ELSE
+    qrk1.remark_text END) internal_notes,
+  (CASE WHEN qrk2.remark_text IS NULL THEN
+    qr3.quote_refnum_value
+  ELSE
+    qrk2.remark_text END) external_notes 
+FROM
+  quote q
+LEFT OUTER JOIN
+  quote_involved_party qip1 ON q.quote_gid = qip1.quote_gid
+AND
+  qip1.involved_party_qual_gid = 'SCOULAR/NVO.QUOTE MANAGER'  
+LEFT OUTER JOIN
+  contact con1 ON qip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  quote_involved_party qip2 ON q.quote_gid = qip2.quote_gid
+AND
+  qip2.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+  contact con2 ON qip2.involved_party_contact_gid = con2.contact_gid
+LEFT OUTER JOIN
+  location lc1 ON con2.contact_gid = lc1.location_gid    
+LEFT OUTER JOIN
+  quote_involved_party qip3 ON q.quote_gid = qip3.quote_gid
+AND
+  qip3.involved_party_qual_gid = 'CONSIGNEE'
+LEFT OUTER JOIN
+  contact con3 ON qip3.involved_party_contact_gid = con3.contact_gid
+LEFT OUTER JOIN
+  location lc2 ON con3.contact_gid = lc2.location_gid  
+LEFT OUTER JOIN
+  location loc1 ON q.servprov_gid = loc1.location_gid
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos1 ON q.quote_gid = qcos1.quote_gid
+AND
+  qcos1.is_primary = 'Y'  
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos2 ON q.quote_gid = qcos2.quote_gid
+AND
+  qcos2.is_primary = 'Y'  
+AND
+  qcos2.perspective = 'B'
+--AND
+--  qcos2.cost_option_sequence = 0  
+LEFT OUTER JOIN
+  location loc3 ON qcos2.servprov_gid = loc3.location_gid 
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos3 ON q.quote_gid = qcos3.quote_gid
+AND
+  qcos3.is_primary = 'N'  
+AND
+  qcos3.perspective = 'B'
+AND
+  qcos3.transport_mode_gid = 'TL'   
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos4 ON q.quote_gid = qcos4.quote_gid
+AND
+  qcos4.is_primary = 'N'  
+AND
+  qcos4.perspective = 'B'
+AND
+  qcos4.transport_mode_gid = 'DRAYAGE' 
+LEFT OUTER JOIN
+  location loc4 ON qcos4.servprov_gid = loc4.location_gid   
+LEFT OUTER JOIN
+  quote_refnum qr1 ON q.quote_gid = qr1.quote_gid
+AND
+  qr1.quote_refnum_qual_gid = 'SCOULAR.ITEM DESCRIPTION'
+LEFT OUTER JOIN
+  quote_refnum qr2 ON q.quote_gid = qr2.quote_gid
+AND
+  qr2.quote_refnum_qual_gid = 'SCOULAR.QUOTE INTERNAL NOTES'  
+LEFT OUTER JOIN
+  quote_refnum qr3 ON q.quote_gid = qr3.quote_gid
+AND
+  qr3.quote_refnum_qual_gid = 'SCOULAR.QUOTE EXTERNAL NOTES'  
+LEFT OUTER JOIN
+  quote_refnum qr4 ON q.quote_gid = qr4.quote_gid
+AND
+  qr4.quote_refnum_qual_gid = 'SCOULAR.IMPORT_EXPORT'
+LEFT OUTER JOIN
+  quote_refnum qr5 ON q.quote_gid = qr5.quote_gid
+AND
+  qr5.quote_refnum_qual_gid = 'SCOULAR/NVO.VESSEL CARRIER CONTRACT ID'
+LEFT OUTER JOIN
+  quote_remark qrk1 ON q.quote_gid = qrk1.quote_gid
+AND
+  qrk1.remark_qualifier_gid = 'SCOULAR/NVO.QUOTE INTERNAL NOTES'  
+LEFT OUTER JOIN
+  quote_remark qrk2 ON q.quote_gid = qrk2.quote_gid
+AND
+  qrk2.remark_qualifier_gid = 'SCOULAR/NVO.QUOTE EXTERNAL NOTES'     
+WHERE
+  q.quote_gid = :QTE_ID
+AND
+  :P_RUN = 'FINAL'
+UNION
+SELECT
+  NVL(q.quote_xid, 'Data Missing in System') quote_number,
+  NVL(TRIM(con1.first_name || ' ' || con1.last_name), 'Data Missing in System') creator,
+  TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'),'fmMM/DD/YYYY') issue_date,
+  NVL(lc1.location_name, 'Data Missing in System') customer,
+  NVL(lc2.location_name, 'Data Missing in System') consignee,
+  NVL(qr1.quote_refnum_value, 'Data Missing in System') commodity,
+  NVL(glogowner.xxscou_nvo_report_functions.loc_city_province(q.origin_location_gid), 'Data Missing in System')
+  origin,
+  (CASE WHEN NVL(q.destination_city,'') = '' THEN 'Data Missing in System' ELSE
+  q.destination_city || ', ' || q.destination_country_code3_gid END) destination,
+  NVL(TO_CHAR(q.issue_date,'fmMM/DD/YYYY'), 'Data Missing in System') || ' - ' ||
+  NVL(TO_CHAR(q.expiration_date,'fmMM/DD/YYYY'), 'Data Missing in System') 
+  expiration_date,
+  NVL(loc3.location_name, 'Data Missing in System') carrier,
+  NVL((CASE WHEN 
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) IS NULL
+  THEN
+    (SELECT eg.equipment_group_name 
+    FROM equipment_group eg 
+    INNER JOIN equipment_type_join etj ON eg.equipment_group_gid = etj.equipment_group_gid
+    INNER JOIN quote_ship_unit qsu ON etj.equipment_type_gid = qsu.transport_handling_unit_gid
+    WHERE qsu.quote_gid = q.quote_gid)
+  ELSE
+    (SELECT equipment_group_name 
+    FROM equipment_group eg
+    INNER JOIN quote_equipment_group qeg ON eg.equipment_group_gid = qeg.equipment_group_gid
+    WHERE qeg.quote_gid = q.quote_gid) 
+  END), 'Data Missing in System') equipment,
+  (CASE WHEN qr4.quote_refnum_value = 'IMPORT' THEN
+    NVL(glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(qcos2.source_location_gid),'Data Missing in System') 
+    || ' via ' || 
+    NVL(glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(q.via_destination_location_gid),'Data Missing in System')  
+  ELSE
+    NVL(glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(qcos2.source_location_gid),'Data Missing in System')  
+    || ' via ' || 
+    NVL(glogowner.xxscou_nvo_report_functions.loc_city_province_or_country(q.via_origin_location_gid),'Data Missing in System')  
+  END) routing,
+  NVL(loc4.location_name, 'Data Missing in System') trucking_carrier,
+  qr5.quote_refnum_value contract_id,
+  NVL(TRIM(TO_CHAR((SELECT
+    SUM(NVL(TO_NUMBER(qco1.buy_trans_cost),0) + NVL(TO_NUMBER(qco1.buy_non_trans_cost),0))
+  FROM
+    quote_cost_option qco1
+  WHERE
+    qco1.quote_gid = q.quote_gid),'999,999,990.00')), '0.00')  buy_cost, 
+  NVL(TRIM(TO_CHAR((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+  AND qcos.perspective = 'S'
+  AND qcos.is_primary = 'Y'  
+  WHERE qcosc.quote_gid = q.quote_gid),'999,999,990.00')), '0.00') 
+  sell_cost_primary,
+  NVL(TRIM(TO_CHAR((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+  AND qcos.perspective = 'S'
+  AND qcos.is_primary = 'N'  
+  WHERE qcosc.quote_gid = q.quote_gid),'999,999,990.00')), '0.00') 
+  sell_cost_secondary,    
+  TRIM(TO_CHAR(NVL((
+  NVL(TO_NUMBER((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND qcos.perspective = 'S'
+  WHERE qcosc.quote_gid = q.quote_gid)),0)
+  -
+  (SELECT
+    SUM(NVL(TO_NUMBER(qco4.buy_trans_cost),0) + NVL(TO_NUMBER(qco4.buy_non_trans_cost),0))
+  FROM
+    quote_cost_option qco4
+  WHERE
+    qco4.quote_gid = q.quote_gid)),0),'999,999,990.00')) 
+  profit,
+  NVL((CASE WHEN qrk1.remark_text IS NULL THEN
+    qr2.quote_refnum_value
+  ELSE
+    qrk1.remark_text END), 'Data Missing in System') internal_notes,
+  NVL((CASE WHEN qrk2.remark_text IS NULL THEN
+    qr3.quote_refnum_value
+  ELSE
+    qrk2.remark_text END), 'Data Missing in System') external_notes 
+FROM
+  quote q
+LEFT OUTER JOIN
+  quote_involved_party qip1 ON q.quote_gid = qip1.quote_gid
+AND
+  qip1.involved_party_qual_gid = 'SCOULAR/NVO.QUOTE MANAGER'  
+LEFT OUTER JOIN
+  contact con1 ON qip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+  quote_involved_party qip2 ON q.quote_gid = qip2.quote_gid
+AND
+  qip2.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+  contact con2 ON qip2.involved_party_contact_gid = con2.contact_gid
+LEFT OUTER JOIN
+  location lc1 ON con2.contact_gid = lc1.location_gid    
+LEFT OUTER JOIN
+  quote_involved_party qip3 ON q.quote_gid = qip3.quote_gid
+AND
+  qip3.involved_party_qual_gid = 'CONSIGNEE'
+LEFT OUTER JOIN
+  contact con3 ON qip3.involved_party_contact_gid = con3.contact_gid
+LEFT OUTER JOIN
+  location lc2 ON con3.contact_gid = lc2.location_gid  
+LEFT OUTER JOIN
+  location loc1 ON q.servprov_gid = loc1.location_gid
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos1 ON q.quote_gid = qcos1.quote_gid
+AND
+  qcos1.is_primary = 'Y'  
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos2 ON q.quote_gid = qcos2.quote_gid
+AND
+  qcos2.is_primary = 'Y'  
+AND
+  qcos2.perspective = 'B'
+--AND
+--  qcos2.cost_option_sequence = 0  
+LEFT OUTER JOIN
+  location loc3 ON qcos2.servprov_gid = loc3.location_gid 
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos3 ON q.quote_gid = qcos3.quote_gid
+AND
+  qcos3.is_primary = 'N'  
+AND
+  qcos3.perspective = 'B'
+AND
+  qcos3.transport_mode_gid = 'TL'   
+LEFT OUTER JOIN
+  quote_cost_option_shipment qcos4 ON q.quote_gid = qcos4.quote_gid
+AND
+  qcos4.is_primary = 'N'  
+AND
+  qcos4.perspective = 'B'
+AND
+  qcos4.transport_mode_gid = 'DRAYAGE' 
+LEFT OUTER JOIN
+  location loc4 ON qcos4.servprov_gid = loc4.location_gid   
+LEFT OUTER JOIN
+  quote_refnum qr1 ON q.quote_gid = qr1.quote_gid
+AND
+  qr1.quote_refnum_qual_gid = 'SCOULAR.ITEM DESCRIPTION'
+LEFT OUTER JOIN
+  quote_refnum qr2 ON q.quote_gid = qr2.quote_gid
+AND
+  qr2.quote_refnum_qual_gid = 'SCOULAR.QUOTE INTERNAL NOTES'  
+LEFT OUTER JOIN
+  quote_refnum qr3 ON q.quote_gid = qr3.quote_gid
+AND
+  qr3.quote_refnum_qual_gid = 'SCOULAR.QUOTE EXTERNAL NOTES'  
+LEFT OUTER JOIN
+  quote_refnum qr4 ON q.quote_gid = qr4.quote_gid
+AND
+  qr4.quote_refnum_qual_gid = 'SCOULAR.IMPORT_EXPORT'
+LEFT OUTER JOIN
+  quote_refnum qr5 ON q.quote_gid = qr5.quote_gid
+AND
+  qr5.quote_refnum_qual_gid = 'SCOULAR/NVO.VESSEL CARRIER CONTRACT ID'
+LEFT OUTER JOIN
+  quote_remark qrk1 ON q.quote_gid = qrk1.quote_gid
+AND
+  qrk1.remark_qualifier_gid = 'SCOULAR/NVO.QUOTE INTERNAL NOTES'  
+LEFT OUTER JOIN
+  quote_remark qrk2 ON q.quote_gid = qrk2.quote_gid
+AND
+  qrk2.remark_qualifier_gid = 'SCOULAR/NVO.QUOTE EXTERNAL NOTES'     
+WHERE
+  q.quote_gid = :QTE_ID
+AND
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_TRUCK_BASE_RATE"><![CDATA[SELECT TO_CHAR(SUM(qcosc.cost),'999,999,990.00') truck_base_rate
+  FROM quote_cost_option_ship_cost qcosc
+  WHERE qcosc.cost_type = 'B'
+  AND qcosc.quote_gid = :QTE_ID
+AND qcosc.shipment_sequence =
+(SELECT qcos.shipment_sequence
+FROM quote_cost_option_shipment qcos
+WHERE qcos.quote_gid = :QTE_ID
+AND qcos.is_primary = 'N'
+AND qcos.perspective = 'B'
+AND NOT qcos.servprov_gid IS NULL
+AND ROWNUM = 1)]]></sqlStatement>
+    <sqlStatement name="Q_TROWS"><![CDATA[SELECT
+qcosc.*,
+  (CASE WHEN qcosc.description IS NULL THEN 
+    (CASE WHEN (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid) IS NULL
+    THEN qcosc.cost_explanation 
+    ELSE (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid)
+    END)
+  ELSE 
+    qcosc.description
+  END) tdescription,
+  TO_CHAR(qcosc.cost,'999,999,990.00') tcost
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  qcos.is_primary = 'N'
+AND
+  qcos.perspective = 'B'
+AND NOT
+  NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  qcosc.cost_type = 'A'
+AND NOT
+  NVL(qcosc.accessorial_code_gid,'XXYYZZYYXX') = 'SCOULAR/NVO.AGENT']]></sqlStatement>
+    <sqlStatement name="Q_TRUCKING_TOTAL"><![CDATA[SELECT TRIM(TO_CHAR(NVL(
+  NVL((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  WHERE qcosc.cost_type = 'B'
+  AND qcosc.quote_gid = :QTE_ID
+  AND qcosc.shipment_sequence =
+  (SELECT qcos.shipment_sequence
+  FROM quote_cost_option_shipment qcos
+  WHERE qcos.quote_gid = :QTE_ID
+  AND qcos.is_primary = 'N'
+  AND qcos.perspective = 'B'
+  AND NOT qcos.servprov_gid IS NULL 
+  AND ROWNUM = 1)),0)
++
+  NVL((SELECT SUM(qcosc.cost)
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+  AND qcos.is_primary = 'N'
+  AND qcos.perspective = 'B'
+  AND NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'     
+  WHERE qcosc.quote_gid = :QTE_ID
+  AND qcosc.cost_type = 'A'
+  AND NOT NVL(qcosc.accessorial_code_gid,'XXYYZZYYXX') = 'SCOULAR/NVO.AGENT'),0),0),'999,999,990.00')) trucking_total
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_OCEAN_BASE_RATE"><![CDATA[SELECT TO_CHAR(SUM(qcosc.cost),'999,999,990.00') ocean_base_rate
+  FROM quote_cost_option_ship_cost qcosc
+  INNER JOIN quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+  AND qcosc.cost_option_sequence = qcos.cost_option_sequence
+  AND qcosc.shipment_sequence = qcos.shipment_sequence
+--  AND qcos.transport_mode_gid = 'VESSEL-CO'
+  AND qcos.is_primary = 'Y'
+  AND qcos.perspective = 'B'
+  WHERE qcosc.quote_gid = :QTE_ID
+  AND qcosc.cost_type = 'B']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  (CASE WHEN qcosc.description IS NULL THEN 
+    (CASE WHEN (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid) IS NULL
+    THEN qcosc.cost_explanation 
+    ELSE (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid)
+    END)
+  ELSE 
+    qcosc.description
+  END) description,
+  TO_CHAR(qcosc.cost,'999,999,990.00') cost
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+--AND 
+--  qcos.transport_mode_gid = 'VESSEL-CO'
+AND 
+  qcos.is_primary = 'Y'
+AND
+  qcos.perspective = 'B'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  qcosc.cost_type = 'A']]></sqlStatement>
+    <sqlStatement name="Q_OCEAN_TOTAL"><![CDATA[SELECT
+  NVL(a.ocean_total, '0.00') ocean_total
+FROM
+(SELECT 
+  TRIM(TO_CHAR(SUM(qcosc.cost),'999,999,990.00')) ocean_total
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND
+  qcos.perspective = 'B'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  ((qcos.is_primary = 'Y'
+AND
+  (qcosc.cost_type = 'A' OR qcosc.cost_type = 'B'
+AND
+  NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE')))) a]]></sqlStatement>
+    <sqlStatement name="Q_NFROWS"><![CDATA[SELECT 
+  (CASE WHEN qcosc.description IS NULL THEN 
+    (CASE WHEN (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid) IS NULL
+    THEN qcosc.cost_explanation 
+    ELSE (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid)
+    END)
+  ELSE 
+    qcosc.description
+  END) description,
+  TO_CHAR(qcosc.cost,'999,999,990.00') cost
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+AND
+  qcos.perspective = 'B'
+AND
+  qcos.is_primary = 'N'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  NOT qcosc.cost = 0
+AND
+  NOT NVL(qcosc.accessorial_code_gid,'XXYYZZYYYXX') = 'SCOULAR/NVO.AGENT']]></sqlStatement>
+    <sqlStatement name="Q_NFRC_TOTAL"><![CDATA[SELECT
+  NVL(a.nfrc_total, '0.00') nfrc_total
+FROM
+(SELECT 
+  TRIM(TO_CHAR(SUM(qcosc.cost),'999,999,990.00')) nfrc_total
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND
+  qcos.perspective = 'B'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND
+  ((qcos.is_primary = 'N'
+AND
+  (NOT qcosc.cost = 0
+AND
+  NOT NVL(qcosc.accessorial_code_gid,'XXYYZZYYYXX') = 'SCOULAR/NVO.AGENT'
+AND
+  NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE')))) a]]></sqlStatement>
+    <sqlStatement name="Q_AGENT_FEE"><![CDATA[SELECT 
+  NVL(a.agent_rate,'0.00') agent_rate
+FROM
+(SELECT
+  TRIM(TO_CHAR(SUM(qcosc.cost),'999,999,990.00')) agent_rate
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  qcos.is_primary = 'N'
+AND
+  qcos.perspective = 'B'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  qcosc.cost_type = 'A'
+AND
+  qcosc.accessorial_code_gid = 'SCOULAR/NVO.AGENT') a]]></sqlStatement>
+    <sqlStatement name="Q_DOOR_CARRIER"><![CDATA[SELECT
+  loc.location_name door_carrier
+FROM
+  location loc
+INNER JOIN
+  quote_cost_option_shipment qcos ON loc.location_gid = qcos.servprov_gid
+AND
+  qcos.transport_mode_gid = 'TL'
+AND
+  qcos.is_primary = 'N'
+AND
+  qcos.shipment_sequence > 
+(SELECT 
+  shipment_sequence
+FROM 
+  (SELECT shipment_sequence, RANK() OVER (ORDER BY shipment_sequence DESC) seq_rank 
+  FROM quote_cost_option_shipment
+WHERE
+  quote_gid = :QTE_ID
+AND
+  is_primary = 'Y')
+WHERE seq_rank = 1)
+WHERE
+  qcos.quote_gid = :QTE_ID]]></sqlStatement>
+    <sqlStatement name="Q_DOOR_BASE_RATE"><![CDATA[SELECT 
+  TO_CHAR(SUM(qcosc.cost),'999,999,990.00') door_base_rate
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  qcos.transport_mode_gid = 'TL'
+AND 
+  qcos.is_primary = 'N'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND
+  qcosc.cost_type = 'B'
+AND qcosc.shipment_sequence > 
+(SELECT 
+  qcos1.shipment_sequence
+FROM
+  quote_cost_option_shipment qcos1
+WHERE 
+  qcosc.quote_gid = qcos1.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos1.cost_option_sequence
+AND
+  qcosc.shipment_sequence = qcos1.shipment_sequence
+AND 
+  qcos1.is_primary = 'Y')]]></sqlStatement>
+    <sqlStatement name="Q_SELL_BASE_RATE"><![CDATA[SELECT 
+  TO_CHAR(qcosc.cost,'999,999,990.00') primary_sell_base_rate
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+--AND 
+--  qcos.transport_mode_gid = 'VESSEL-CO'
+AND 
+  qcos.is_primary = 'Y'
+AND
+  qcos.perspective = 'S'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  qcosc.cost_type = 'B']]></sqlStatement>
+    <sqlStatement name="Q_PSROWS"><![CDATA[SELECT 
+  (CASE WHEN qcosc.description IS NULL THEN 
+    (CASE WHEN (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid) IS NULL
+    THEN qcosc.cost_explanation 
+    ELSE (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid)
+    END)
+  ELSE 
+    qcosc.description
+  END) description,
+  TO_CHAR(qcosc.cost,'999,999,990.00') cost
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  NOT NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+--AND 
+--  qcos.transport_mode_gid = 'VESSEL-CO'
+AND 
+  qcos.is_primary = 'Y'
+AND
+  qcos.perspective = 'S'
+WHERE 
+  qcosc.quote_gid = :QTE_ID
+AND 
+  qcosc.cost_type = 'A']]></sqlStatement>
+    <sqlStatement name="Q_SSROWS"><![CDATA[SELECT 
+  (CASE WHEN qcosc.description IS NULL THEN 
+    (CASE WHEN (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid) IS NULL
+    THEN qcosc.cost_explanation 
+    ELSE (SELECT ac.accessorial_desc FROM accessorial_code ac WHERE qcosc.accessorial_code_gid = ac.accessorial_code_gid)
+    END)
+  ELSE 
+    qcosc.description
+  END) description,
+  TO_CHAR(qcosc.cost,'999,999,990.00') cost
+FROM 
+  quote_cost_option_ship_cost qcosc
+INNER JOIN 
+  quote_cost_option_shipment qcos ON qcosc.quote_gid = qcos.quote_gid
+AND 
+  qcosc.cost_option_sequence = qcos.cost_option_sequence
+AND 
+  qcosc.shipment_sequence = qcos.shipment_sequence
+AND 
+  NVL(qcos.shipment_type_gid,'XXYYZZYYXX') = 'NON FREIGHT RELATED CHARGE'   
+AND
+  qcos.perspective = 'S'
+AND
+  qcos.is_primary = 'N'
+WHERE 
+  qcosc.quote_gid = :QTE_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="QUOTE_NUMBER" value="QUOTE_NUMBER" />
+      <element name="CREATOR" value="CREATOR" />
+      <element name="ISSUE_DATE" value="ISSUE_DATE" />
+      <element name="CUSTOMER" value="CUSTOMER" />
+      <element name="CONSIGNEE" value="CONSIGNEE"></element>
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="ORIGIN" value="ORIGIN" />
+      <element name="DESTINATION" value="DESTINATION" />
+      <element name="EXPIRATION_DATE" value="EXPIRATION_DATE" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="EQUIPMENT" value="EQUIPMENT" />
+      <element name="ROUTING" value="ROUTING" />
+      <element name="TRUCKING_CARRIER" value="TRUCKING_CARRIER" />
+      <element name="CONTRACT_ID" value="CONTRACT_ID"></element>
+      <element name="BUY_COST" value="BUY_COST" />
+      <element name="SELL_COST_PRIMARY" value="SELL_COST_PRIMARY"></element>
+      <element name="SELL_COST_SECONDARY" value="SELL_COST_SECONDARY"></element>
+      <element name="PROFIT" value="PROFIT"></element>
+      <element name="INTERNAL_NOTES" value="INTERNAL_NOTES"></element>
+      <element name="EXTERNAL_NOTES" value="EXTERNAL_NOTES"></element>
+    </group>
+    <group name="G_TRUCK_BASE_RATE" source="Q_TRUCK_BASE_RATE">
+      <element name="TRUCK_BASE_RATE" value="TRUCK_BASE_RATE" />
+    </group>
+    <group name="G_TROWS" source="Q_TROWS">
+      <element name="TDESCRIPTION" value="TDESCRIPTION" />
+      <element name="TCOST" value="TCOST" />
+    </group>
+    <group name="G_TRUCKING_TOTAL" source="Q_TRUCKING_TOTAL">
+      <element name="TRUCKING_TOTAL" value="TRUCKING_TOTAL" />
+    </group>
+    <group name="G_OCEAN_BASE_RATE" source="Q_OCEAN_BASE_RATE">
+      <element name="OCEAN_BASE_RATE" value="OCEAN_BASE_RATE" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="COST" value="COST" />
+    </group>
+    <group name="G_OCEAN_TOTAL" source="Q_OCEAN_TOTAL">
+      <element name="OCEAN_TOTAL" value="OCEAN_TOTAL" />
+    </group>
+    <group name="G_NFROWS" source="Q_NFROWS">
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="COST" value="COST" />
+    </group>
+    <group name="G_NFRC_TOTAL" source="Q_NFRC_TOTAL">
+      <element name="NFRC_TOTAL" value="NFRC_TOTAL" />
+    </group>
+    <group name="G_AGENT_FEE" source="Q_AGENT_FEE">
+      <element name="AGENT_RATE" value="AGENT_RATE" />
+    </group>
+    <group name="G_DOOR_CARRIER" source="Q_DOOR_CARRIER">
+      <element name="DOOR_CARRIER" value="DOOR_CARRIER" />
+    </group>
+    <group name="G_DOOR_BASE_RATE" source="Q_DOOR_BASE_RATE">
+      <element name="DOOR_BASE_RATE" value="DOOR_BASE_RATE" />
+    </group>
+    <group name="G_SELL_BASE_RATE" source="Q_SELL_BASE_RATE">
+      <element name="PRIMARY_SELL_BASE_RATE" value="PRIMARY_SELL_BASE_RATE" />
+    </group>
+    <group name="G_PSROWS" source="Q_PSROWS">
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="COST" value="COST" />
+    </group>
+    <group name="G_SSROWS" source="Q_SSROWS">
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="COST" value="COST" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SALES_CONTRACTS" description="BCO Sales Contracts In Last 7 Days - 2083" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="P_REPORT_GID" dataType="character" />
+    <parameter name="P_DISPLAY_NAME" dataType="character" />
+    <parameter name="P_DOMAIN" dataType="character" />
+    <parameter name="P_GL_USER" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  oob.order_base_xid contract_id, 
+  ROUND((ol.weight_base * 0.0004536),3) original_quantity, 
+  loc.location_name dest_location_name, 
+  loc.country_code3_gid dest_country, 
+  TO_CHAR(ol.early_pickup_date,'MM/DD/YYYY') begin_ship_date, 
+  TO_CHAR(ol.late_delivery_date,'MM/DD/YYYY') end_ship_date, 
+  oref1.ob_refnum_value loc_num, 
+  oref2.ob_refnum_value commodity, 
+  con.contact_xid customer_code,
+  TO_CHAR(oob.insert_date,'MM/DD/YYYY') contract_entry_date,
+  oref3.ob_refnum_value contract_price, 
+  oref4.ob_refnum_value contract_price_uom, 
+  oref5.ob_refnum_value payment_terms, 
+  oref6.ob_refnum_value tolerance_less, 
+  oref7.ob_refnum_value tolerance_more
+FROM 
+  ob_order_base oob
+INNER JOIN 
+  ob_line ol ON oob.order_base_gid = ol.order_base_gid
+INNER JOIN
+  location loc ON ol.dest_location_gid = loc.location_gid
+INNER JOIN
+  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid 
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+AND
+  oref1.ob_refnum_value = '2083' 
+INNER JOIN
+  ob_refnum oref2 ON  oob.order_base_gid = oref2.order_base_gid 
+AND
+  oref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'
+INNER JOIN
+  ob_involved_party oip ON oob.order_base_gid = oip.order_base_gid 
+AND 
+  oip.involved_party_qual_gid='CUSTOMER' 
+INNER JOIN
+  contact con ON oip.involved_party_contact_gid = con.contact_Gid 
+LEFT OUTER JOIN
+  ob_refnum oref3 ON  oob.order_base_gid = oref3.order_base_gid 
+AND
+  oref3.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+LEFT OUTER JOIN
+  ob_refnum oref4 ON  oob.order_base_gid = oref4.order_base_gid 
+AND
+  oref4.ob_refnum_qual_gid = 'SCOULAR.PRICE_UOM'  
+LEFT OUTER JOIN
+  ob_refnum oref5 ON  oob.order_base_gid = oref5.order_base_gid 
+AND
+  oref5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'
+LEFT OUTER JOIN
+  ob_refnum oref6 ON  oob.order_base_gid = oref6.order_base_gid 
+AND
+  oref6.ob_refnum_qual_gid = 'SCOULAR.TOLERANCE_LESS'
+LEFT OUTER JOIN
+  ob_refnum oref7 ON  oob.order_base_gid = oref7.order_base_gid 
+AND
+  oref7.ob_refnum_qual_gid = 'SCOULAR.TOLERANCE_MORE'  
+WHERE
+  oob.insert_date > SYSDATE - 7 
+AND 
+  oob.order_base_xid like 'S%'
+ORDER BY
+  oob.insert_date ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CONTRACT_ID" value="CONTRACT_ID" />
+      <element name="ORIGINAL_QUANTITY" value="ORIGINAL_QUANTITY" />
+      <element name="DEST_LOCATION_NAME" value="DEST_LOCATION_NAME" />
+      <element name="DEST_COUNTRY" value="DEST_COUNTRY" />
+      <element name="BEGIN_SHIP_DATE" value="BEGIN_SHIP_DATE"></element>
+      <element name="END_SHIP_DATE" value="END_SHIP_DATE"></element>
+      <element name="LOC_NUM" value="LOC_NUM" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="CUSTOMER_CODE" value="CUSTOMER_CODE"></element>
+      <element name="CONTRACT_ENTRY_DATE" value="CONTRACT_ENTRY_DATE"></element>
+      <element name="CONTRACT_PRICE" value="CONTRACT_PRICE"></element>
+      <element name="CONTRACT_PRICE_UOM" value="CONTRACT_PRICE_UOM"></element>
+      <element name="PAYMENT_TERMS" value="PAYMENT_TERMS"></element>
+      <element name="TOLERANCE_LESS" value="TOLERANCE_LESS"></element>
+      <element name="TOLERANCE_MORE" value="TOLERANCE_MORE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

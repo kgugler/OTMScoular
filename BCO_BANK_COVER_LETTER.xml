@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BANK_COVER_LETTER" description="BCO Bank Cover Letter" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  TO_CHAR(SYSDATE, 'fmMonth DD, YYYY') date_printed,
+  (CASE WHEN sref1.shipment_refnum_value IS NULL THEN
+    s.shipment_xid
+  ELSE
+    sref1.shipment_refnum_value
+  END) invoice_number,
+  TRIM(con.first_name || ' ' || con.last_name) ops_name,
+  con.phone1 ops_phone,
+  con.email_address ops_email
+FROM
+	shipment s 
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'  
+LEFT OUTER JOIN
+	contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'  
+UNION
+SELECT
+  TO_CHAR(SYSDATE, 'fmMonth DD, YYYY') date_printed,
+  NVL((CASE WHEN sref1.shipment_refnum_value IS NULL THEN
+    s.shipment_xid
+  ELSE
+    sref1.shipment_refnum_value
+  END), 'Data Missing in System') invoice_number,
+  NVL(TRIM(con.first_name || ' ' || con.last_name), 'Data Missing in System') ops_name,
+  NVL(con.phone1, 'Data Missing in System') ops_phone,
+  NVL(con.email_address, 'Data Missing in System') ops_email
+FROM
+	shipment s    
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER' 
+LEFT OUTER JOIN
+	contact con ON sip.involved_party_contact_gid = con.contact_gid  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obrem1.remark_text
+  ELSE
+    NVL(obrem1.remark_text, 'Data Missing in System')
+  END)
+  advising_bank,
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obrem2.remark_text
+  ELSE
+    NVL(obrem2.remark_text, 'Data Missing in System')
+  END)
+  lc_number,
+  (CASE WHEN :P_RUN = 'FINAL' THEN
+    obrem3.remark_text
+  ELSE
+    NVL(obrem3.remark_text, 'Data Missing in System')
+  END)
+  bank_ref_num
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obrem1 ON oob.order_base_gid = obrem1.order_base_gid
+AND
+	obrem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK'
+LEFT OUTER JOIN
+	ob_remark obrem2 ON oob.order_base_gid = obrem2.order_base_gid
+AND
+	obrem2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'  
+LEFT OUTER JOIN
+	ob_remark obrem3 ON oob.order_base_gid = obrem3.order_base_gid
+AND
+	obrem3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_BANK REF'   
+WHERE
+	s.shipment_gid = :SHIPMENT_ID  
+AND NOT
+  sessuj.s_equipment_gid IS NULL
+UNION ALL
+SELECT
+  'Data Missing in System'
+  advising_bank,
+  'Data Missing in System'
+  lc_number,
+  'Data Missing in System'
+  bank_ref_num
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND NOT
+  sessuj.s_equipment_gid IS NULL)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="DATE_PRINTED" value="DATE_PRINTED" />
+      <element name="ADVISING_BANK" value="ADVISING_BANK" />
+      <element name="LC_NUMBER" value="LC_NUMBER"></element>
+      <element name="BANK_REF_NUM" value="BANK_REF_NUM" />
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
+      <element name="OPS_NAME" value="OPS_NAME" />
+      <element name="OPS_PHONE" value="OPS_PHONE" />
+      <element name="OPS_EMAIL" value="OPS_EMAIL" />
+    </group>
+  </dataStructure>
+</dataTemplate>
