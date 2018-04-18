@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_PURCH_ORD_RELEASES_LINKED_TO_SHIP" description="Purchase Order Releases Linked to Cross Country Shipments" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  sh.shipment_gid 
+  shipment_num,
+  orr.order_release_refnum_value 
+  order_rel
+FROM
+  shipment sh 
+INNER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_value = 'X'
+INNER JOIN
+  shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  order_release_refnum orr ON ssul.order_release_gid = orr.order_release_gid 
+AND
+  orr.order_release_refnum_value like 'PEW%'
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  sh.domain_name = 'SCOULAR/FOOD'
+ORDER BY
+  sh.shipment_gid, 
+  orr.order_release_refnum_value]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_NUM" value="SHIPMENT_NUM" />
+      <element name="ORDER_REL" value="ORDER_REL"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

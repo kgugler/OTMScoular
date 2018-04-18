@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_REJECTION_FORM" description="Rejection Form" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT 
+  TO_CHAR(SYSDATE,'fmMONTH DD, YYYY')
+  incident_date,
+  it.item_xid || ' - ' || it.description
+  product,
+  'SCOULAR - ' || con.first_name || ' ' || con.last_name
+  contact_name,
+  'SHIP ID ' || TRIM(TO_CHAR(TRIM(LEADING 0 FROM TO_NUMBER(sh.shipment_xid))))
+  lot_number,
+  TO_CHAR(sh.start_time,'fmMM/DD/YYYY')
+  shipment_date,
+  TRIM(TO_CHAR(sh.total_weight_base / 2000,'999999990')) || ' TON OF ' ||
+  (CASE WHEN TRIM(oref1.ob_refnum_value) = 'BULK' THEN
+    oref1.ob_refnum_value
+  ELSE
+    TRIM(oref2.ob_refnum_value) || ' ' || TRIM(oref3.ob_refnum_value) || ' ' || TRIM(oref4.ob_refnum_value)
+  END)
+  quantity,
+  srem1.remark_text
+  incident,
+  srem2.remark_text
+  research,
+  srem3.remark_text
+  resolution,
+  con.first_name || ' ' || con.last_name
+  person,
+  TO_CHAR(SYSDATE,'fmMONTH DD, YYYY')
+  run_date
+FROM 
+  shipment sh
+INNER JOIN
+	shipment_stop_d sstopd ON sh.shipment_gid = sstopd.shipment_gid
+AND
+  sstopd.stop_num = 1
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+	s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	order_release orel ON ssul.order_release_gid = orel.order_release_gid
+LEFT OUTER JOIN
+	ob_refnum oref1 ON orel.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.PACKAGING_DESCRIPTION'
+LEFT OUTER JOIN
+	ob_refnum oref2 ON orel.order_base_gid = oref2.order_base_gid
+AND
+  oref2.ob_refnum_qual_gid = 'SCOULAR.PACKAGING NUMBER'
+LEFT OUTER JOIN
+	ob_refnum oref3 ON orel.order_base_gid = oref3.order_base_gid
+AND
+  oref3.ob_refnum_qual_gid = 'SCOULAR.PACKAGING UNIT OF MEASURE'
+LEFT OUTER JOIN
+	ob_refnum oref4 ON orel.order_base_gid = oref4.order_base_gid
+AND
+  oref4.ob_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+LEFT OUTER JOIN
+	packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+LEFT OUTER JOIN
+	item it ON pi.item_gid = it.item_gid
+LEFT OUTER JOIN
+  contact con ON sh.insert_user = con.gl_user_gid
+LEFT OUTER JOIN
+  shipment_remark srem1 ON sh.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR/FOOD.INCIDENT_PROBLEM_DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_remark srem2 ON sh.shipment_gid = srem2.shipment_gid
+AND
+  srem2.remark_qual_gid = 'SCOULAR/FOOD.INCIDENT_PROBLEM_RESEARCH'
+LEFT OUTER JOIN
+  shipment_remark srem3 ON sh.shipment_gid = srem3.shipment_gid
+AND
+  srem3.remark_qual_gid = 'SCOULAR/FOOD.INCIDENT_PROBLEM_RESOLUTION'
+WHERE 
+  sh.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

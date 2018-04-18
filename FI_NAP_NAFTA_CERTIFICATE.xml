@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_NAP_NAFTA_CERTIFICATE" description="NAP NAFTA Certificate" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters>
+    <parameter name="P_SHIPMENT_NUM" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_HTS"><![CDATA[SELECT 
+  glogowner.xxscou_utility_pkg.xxscou_nafta_error_msg(:P_SHIPMENT_NUM)
+  hts_us
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT 
+  sh.shipment_xid
+  sh_xid,
+  loc_ex.location_name
+  ex_line1,
+  glogowner.xxscou_utility_pkg.xxscou_get_location_addr_fcn(loc_ex.location_gid)
+  ex_line2,
+  loc_ex.city || DECODE(loc_ex.province_code, NULL, NULL, ', ' || loc_ex.province_code) || 
+  DECODE(loc_ex.postal_code, NULL, NULL, ', ' || loc_ex.postal_code)
+  ex_line3,
+  cc_ex.country_name
+  ex_line4,
+  TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE 'PST') - 7,'MM/DD/YYYY')
+  from_dt,
+  TO_CHAR(ADD_MONTHS((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE 'PST') - 7,12),'MM/DD/YYYY')
+  to_dt,
+  loc_prod.location_name
+  prod_line1,
+  glogowner.xxscou_utility_pkg.xxscou_get_location_addr_fcn(loc_prod.location_gid)
+  prod_line2,
+  loc_prod.city || DECODE(loc_prod.province_code, NULL, NULL ,', ' || loc_prod.province_code) ||
+  DECODE(loc_prod.postal_code, NULL, NULL, ', ' || loc_prod.postal_code)
+  prod_line3,
+  cc_prod.country_name
+  prod_line4
+FROM 
+  shipment sh
+INNER JOIN
+	shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+INNER JOIN
+  order_release orl ON oob.order_base_gid = orl.order_base_gid
+INNER JOIN
+  shipment_involved_party sip ON sh.shipment_gid = sip.shipment_gid
+AND 
+  sip.involved_party_qual_gid   = 'CUSTOMER'  
+INNER JOIN
+  location loc_ex ON sip.involved_party_contact_gid = loc_ex.location_gid
+INNER JOIN         
+  country_code cc_ex ON loc_ex.country_code3_gid = cc_ex.country_code3_gid
+INNER JOIN         
+  location loc_prod ON sh.source_location_gid = loc_prod.location_gid
+INNER JOIN         
+  country_code cc_prod ON loc_prod.country_code3_gid = cc_prod.country_code3_gid
+WHERE 
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT  
+  itm.description,
+  gic.gtm_prod_class_code_gid
+  hs_tariff,
+  cc.country_code3_gid
+  cc_orig
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit_line ssul ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  packaged_item pki ON ssul.packaged_item_gid = pki.packaged_item_gid
+INNER JOIN
+  item itm ON pki.item_gid = itm.item_gid
+INNER JOIN             
+  gtm_item_classification gic ON pki.item_gid = gic.gtm_item_gid
+AND 
+  gic.gtm_prod_class_type_gid = 'HTS US'  
+INNER JOIN               
+  location loc ON sh.source_location_gid = loc.location_gid
+INNER JOIN         
+  country_code cc ON loc.country_code3_gid = cc.country_code3_gid
+WHERE 
+  1 = 1
+AND 
+  sh.shipment_gid  = :P_SHIPMENT_NUM]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TO_CHAR(TRUNC(SYSDATE),'MM/DD/YYYY')
+  curr_date
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_HTS" source="Q_HTS">
+      <element name="HTS_US" value="HTS_US" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SH_XID" value="SH_XID" />
+      <element name="EX_LINE1" value="EX_LINE1" />
+      <element name="EX_LINE2" value="EX_LINE2" />
+      <element name="EX_LINE3" value="EX_LINE3" />
+      <element name="EX_LINE4" value="EX_LINE4" />
+      <element name="FROM_DATE" value="FROM_DATE" />
+      <element name="TO_DATE" value="TO_DATE" />
+      <element name="PROD_LINE1" value="PROD_LINE1" />
+      <element name="PROD_LINE2" value="PROD_LINE2" />
+      <element name="PROD_LINE3" value="PROD_LINE3" />
+      <element name="PROD_LINE4" value="PROD_LINE4" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="HS_TARIFF" value="HS_TARIFF" />
+      <element name="CC_ORIG" value="CC_ORIG" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

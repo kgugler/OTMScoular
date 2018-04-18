@@ -1,0 +1,234 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_NAP_SHIPPING_SCHEDULE" description="NAP Shipping Schedules" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_NAP_SHIPPING_SCHEDULE" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="CUSTOMERID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT REPLACE(:CUSTOMERID, 'SCOULAR.', '') cust_id, TO_CHAR(SYSDATE,'MM/DD/YYYY HH:MI PM') sys_date FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  tab1.contract,
+  tab1.commodity,
+  tab1.destination_port,
+  tab1.mt_weight,
+  tab1.mt_applied,
+  tab1.boxes,
+  ipc.contact_xid customer,
+  cust.location_name customer_name,
+  tab1.begin_sail,
+  tab1.end_sail,
+  tab2.booking,
+  tab2.load_port,
+  tab2.bkg_dest_port,
+  tab2.carrier,
+  tab2.voyage_name,
+  tab2.voyage_number,
+  tab2.est_mt_weight,
+  tab2.est_boxes,
+  tab2.applied_mt,
+  tab2.applied_boxes,
+  tab2.ship_date,
+  tab2.arrival_date
+FROM
+(SELECT 
+  a.order_base_gid,
+  a.contract,
+  a.commodity,
+  a.destination_port,
+  a.mt_weight,
+  a.begin_sail,
+  a.end_sail,
+  a.mt_applied,
+  a.boxes
+FROM
+  (SELECT 
+    ob.order_base_gid,
+    ob.order_base_xid contract,
+    obr.ob_refnum_value commodity,
+    loc.location_name destination_port,
+    (CASE WHEN obl.source_location_gid IS NULL THEN
+      TO_CHAR(obl.early_pickup_date, 'MM/DD/YY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(obl.early_pickup_date,obl.source_location_gid),'dd-mm-rr'), 'MM/DD/YY')    
+    END)
+    begin_sail,
+    (CASE WHEN obl.dest_location_gid IS NULL THEN
+      TO_CHAR(obl.late_delivery_date, 'MM/DD/YY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(obl.late_delivery_date,obl.dest_location_gid),'dd-mm-rr'), 'MM/DD/YY')
+    END)    
+    end_sail,
+    TRIM(TO_CHAR(ROUND(AVG(ROUND(COALESCE(obl.weight_base / 2204.5855379, 0), 3)), 0), '999,999,990')) mt_weight,
+    TRIM(TO_CHAR(SUM(ROUND((
+    CASE WHEN (SELECT ssuref.s_ship_unit_gid
+              FROM s_ship_unit_refnum ssuref 
+              WHERE ssuref.s_ship_unit_gid = ssu.s_ship_unit_gid
+              AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID') IS NULL THEN 0
+    ELSE ssu.unit_net_weight_base
+    END / 2204.5855379), 3)), '999,999,990.999')) mt_applied,
+    TRIM(TO_CHAR(SUM(CASE WHEN (SELECT ssuref.s_ship_unit_gid
+              FROM s_ship_unit_refnum ssuref 
+              WHERE ssuref.s_ship_unit_gid = ssu.s_ship_unit_gid
+              AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID') IS NULL THEN 0 
+    ELSE 1 END),'999,999,990')) boxes
+  FROM 
+    ob_order_base ob
+  INNER JOIN 
+    ob_line obl ON ob.order_base_gid = obl.order_base_gid
+  LEFT OUTER JOIN
+    location loc ON obl.dest_location_gid = loc.location_gid
+  LEFT OUTER JOIN 
+    ob_refnum obr ON obr.order_base_gid = ob.order_base_gid
+  AND 
+    obr.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'
+  INNER JOIN 
+    s_ship_unit_line ssul ON ssul.order_base_gid = ob.order_base_gid
+  INNER JOIN 
+    shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND 
+    ssd.stop_num = 1
+  INNER JOIN 
+    shipment s ON s.shipment_gid = ssd.shipment_gid
+  AND 
+    s.shipment_type_gid = 'TRANSPORT'
+  INNER JOIN 
+    s_ship_unit ssu ON ssu.s_ship_unit_gid = ssd.s_ship_unit_gid
+  WHERE 
+    EXISTS (
+    SELECT s1.shipment_gid
+    FROM shipment s1
+    INNER JOIN shipment_s_equipment_join ssej ON s1.shipment_gid = ssej.shipment_gid 
+    INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid 
+    INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid 
+    WHERE ssul.order_base_gid = ob.order_base_gid
+    AND TO_DATE(s1.port_discharge_eta) - TO_DATE(CURRENT_DATE) >= -2)
+  GROUP BY 
+    ob.order_base_gid,
+    ob.order_base_xid,
+    obr.ob_refnum_value,
+    loc.location_name,
+    (CASE WHEN obl.source_location_gid IS NULL THEN
+      TO_CHAR(obl.early_pickup_date, 'MM/DD/YY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(obl.early_pickup_date,obl.source_location_gid),'dd-mm-rr'), 'MM/DD/YY')    
+    END),
+    (CASE WHEN obl.dest_location_gid IS NULL THEN
+      TO_CHAR(obl.late_delivery_date, 'MM/DD/YY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(obl.late_delivery_date,obl.dest_location_gid),'dd-mm-rr'), 'MM/DD/YY')
+    END) 
+  ) a
+) tab1
+INNER JOIN
+(SELECT 
+  b.order_base_gid,
+  b.booking,
+  b.load_port,
+  b.bkg_dest_port,
+  b.carrier,
+  b.voyage_name,
+  b.voyage_number,
+  b.est_mt_weight,
+  b.est_boxes,
+  b.applied_mt,
+  b.applied_boxes,
+  b.ship_date,
+  b.arrival_date
+FROM
+  (SELECT DISTINCT 
+    oob.order_base_gid,
+    sref.shipment_refnum_value
+    booking,
+    loc1.location_name load_port,
+    loc2.location_name bkg_dest_port,
+    SUBSTR(s.shipment_name,1,INSTR(s.shipment_name,'|') -1)
+    carrier,
+    SUBSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),1,INSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),'|') -1)
+    voyage_name,
+    SUBSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),INSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),'|') + 1,LENGTH(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1)) -1)
+    voyage_number,
+    TO_CHAR(s.sail_date, 'MM/DD/YY') ship_date,
+    TO_CHAR(s.port_discharge_eta, 'MM/DD/YY') arrival_date,    
+    SUM(ROUND(((CASE WHEN (SELECT ssuref.s_ship_unit_gid
+                          FROM s_ship_unit_refnum ssuref 
+                          WHERE ssuref.s_ship_unit_gid = ssu.s_ship_unit_gid
+                          AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID') IS NOT NULL THEN 0
+    ELSE ssu.unit_net_weight_base
+    END) / 2204.5855379), 3)) est_mt_weight,
+    SUM((CASE WHEN (SELECT ssuref.s_ship_unit_gid
+                    FROM s_ship_unit_refnum ssuref 
+                    WHERE ssuref.s_ship_unit_gid = ssu.s_ship_unit_gid
+                    AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID') IS NOT NULL THEN 0
+    ELSE 1
+    END)) Est_Boxes,
+    SUM(ROUND(((CASE WHEN (SELECT ssuref.s_ship_unit_gid
+                          FROM s_ship_unit_refnum ssuref 
+                          WHERE ssuref.s_ship_unit_gid = ssu.s_ship_unit_gid
+                          AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID') IS NULL THEN 0
+    ELSE ssu.unit_net_weight_base
+    END) / 2204.5855379), 3)) applied_mt,
+    SUM((CASE WHEN (SELECT ssuref.s_ship_unit_gid
+                    FROM s_ship_unit_refnum ssuref 
+                    WHERE ssuref.s_ship_unit_gid = ssu.s_ship_unit_gid
+                    AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID') IS NULL THEN 0
+    ELSE 1
+    END)) applied_boxes
+  FROM 
+    ob_order_base oob
+  INNER JOIN 
+    s_ship_unit_line ssul ON ssul.order_base_gid = oob.order_base_gid
+  INNER JOIN 
+    shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND 
+    ssd.stop_num = 1
+  INNER JOIN 
+    shipment s ON s.shipment_gid = ssd.shipment_gid
+  AND 
+    s.shipment_type_gid = 'TRANSPORT'
+  INNER JOIN 
+    s_ship_unit ssu ON ssu.s_ship_unit_gid = ssd.s_ship_unit_gid
+  LEFT OUTER JOIN 
+    shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+  AND 
+    sref.shipment_refnum_qual_gid = 'SCOULAR.BOOKING ID'
+  LEFT OUTER JOIN
+    location loc1 ON s.source_location_gid = loc1.location_gid
+  LEFT OUTER JOIN
+    location loc2 ON s.dest_location_gid = loc2.location_gid  
+  WHERE NOT
+    s.port_discharge_eta IS NULL
+  GROUP BY 
+    oob.order_base_gid,
+    sref.shipment_refnum_value,
+    loc1.location_name,
+    loc2.location_name,
+    SUBSTR(s.shipment_name,1,INSTR(s.shipment_name,'|') -1),
+    SUBSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),1,INSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),'|') -1),
+    SUBSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),INSTR(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1),'|') + 1,LENGTH(SUBSTR(s.shipment_name,INSTR(s.shipment_name,'|') +1, LENGTH(s.shipment_name) -1)) -1),
+    TO_CHAR(s.sail_date, 'MM/DD/YY'),
+    TO_CHAR(s.port_discharge_eta, 'MM/DD/YY')  
+  ORDER BY 1,2,3
+  ) b
+) tab2 ON tab1.order_base_gid = tab2.order_base_gid
+INNER JOIN
+  ob_involved_party obip ON tab1.order_base_gid = obip.order_base_gid
+AND	
+  obip.involved_party_qual_gid = 'CUSTOMER'
+INNER JOIN
+  contact ipc ON obip.involved_party_contact_gid = ipc.contact_gid
+INNER JOIN
+  location cust ON ipc.location_gid = cust.location_gid
+WHERE 
+  ipc.contact_gid = :CUSTOMERID
+AND 
+  obip.domain_name = 'SCOULAR/FOOD'
+ORDER BY 
+  tab1.contract,
+  tab1.begin_sail,
+  tab1.end_sail,
+  tab2.booking,
+  tab2.ship_date,
+  tab2.arrival_date]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_NAP_SHIPPING_SCHEDULE.before_report" />
+</dataTemplate>

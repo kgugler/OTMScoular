@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_USED_LOCATION_CONTACT_DETAILS" description="Used Location's Contact Details" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="DAYS_OF_SHIPMENT" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  :DAYS_OF_SHIPMENT num_days,
+  TO_CHAR(SYSDATE,'MM/DD/YYYY') run_date
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
+  loc.location_gid
+  location_id,
+  loc.location_name,
+  UPPER(con.contact_gid),
+  con.contact_gid
+  contact_id,
+  con.is_primary_contact
+  is_primary,
+  con.first_name,
+  con.last_name,
+  con.job_title,
+  con.email_address,
+  con.notes,
+  TO_DATE(TO_CHAR(a.last_used,'YYYY-MM-DD'),'YYYY-MM-DD'),
+  TO_CHAR(a.last_used,'MM/DD/YYYY')
+  last_used_date,
+  (SELECT loc.country_code3_gid
+  FROM shipment ship
+  INNER JOIN location loc ON ship.dest_location_gid = loc.location_gid
+  WHERE ship.shipment_gid = a.shipment_gid)
+  dest_country
+FROM 
+  location loc
+INNER JOIN
+  contact con ON loc.location_gid = con.location_gid
+INNER JOIN
+  (SELECT ss.location_gid,
+    MAX(s.insert_date) last_used,
+    MAX(s.shipment_gid) shipment_gid
+  FROM 
+    shipment_stop ss
+  INNER JOIN
+    shipment s ON ss.shipment_gid = s.shipment_gid
+  AND 
+    s.domain_name = 'SCOULAR/FOOD'
+  AND 
+    s.shipment_type_gid = 'TRANSPORT'
+  AND 
+    s.start_time > sysdate - :DAYS_OF_SHIPMENT
+  GROUP BY 
+    ss.location_gid) a ON loc.location_gid = a.location_gid
+ORDER BY 
+  11 desc,
+  1 asc, 
+  3 desc, 
+  5 asc]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

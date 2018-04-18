@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_USERS_THAT_NEED_CONTACT_EMAIL" description="Users That Need a Contact Email" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  glu.gl_user_gid 
+  user_id
+FROM
+  gl_user glu
+WHERE
+  glu.domain_name = 'SCOULAR/FOOD' 
+AND
+  glu.gl_user_gid NOT IN (
+SELECT 
+  contact_gid 
+FROM
+  contact 
+WHERE 
+  domain_name='SCOULAR/FOOD') 
+UNION
+SELECT
+  glu.gl_user_gid
+  user_id
+FROM
+  gl_user glu
+INNER JOIN
+  contact con ON glu.gl_user_gid = con.contact_gid
+WHERE
+  glu.domain_name = 'SCOULAR/FOOD' 
+AND
+  con.email_address IS NULL
+ORDER BY
+  user_id]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

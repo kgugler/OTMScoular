@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_EVENTS_MISSING" description="Events Missing" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  sh.shipment_xid,
+  TO_CHAR(TO_DATE(sh.end_time,'dd-mm-rr'), 'MM/DD/YY') 
+  start_time,
+  sh.servprov_gid,
+  (SELECT shs.status_value_gid
+  FROM shipment_status shs
+  WHERE shs.shipment_gid = sh.shipment_gid
+  AND shs.status_type_gid = 'SCOULAR/FOOD.SECURE RESOURCES') 
+  resources,
+  (SELECT shs.status_value_gid
+  FROM shipment_status shs
+  WHERE shs.shipment_gid = sh.shipment_gid
+  AND shs.status_type_gid = 'SCOULAR/FOOD.ENROUTE') 
+  enroute,
+  (SELECT bsc.description
+  FROM bs_status_code bsc
+  INNER JOIN ie_shipmentstatus ies ON bsc.bs_status_code_gid = ies.status_code_gid
+  WHERE ies.shipment_gid = sh.shipment_gid
+  AND ies.insert_date = (
+  SELECT MAX(ie.insert_date)
+  FROM ie_shipmentstatus ie
+  WHERE ie.status_code_gid = ies.status_code_gid
+  AND ie.shipment_gid = ies.shipment_gid)
+  AND ROWNUM = 1) 
+  code_description
+FROM
+	shipment sh
+INNER JOIN
+	shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+WHERE
+	sh.shipment_type_gid = 'TRANSPORT'
+AND
+	ss.status_value_gid != 'SCOULAR/FOOD.ENROUTE_COMPLETED'
+AND
+	ss.status_type_gid = 'SCOULAR/FOOD.ENROUTE'
+AND
+	(TO_DATE(sh.end_time,'dd-mm-rr') > (TO_DATE(SYSDATE,'dd-mm-rr') - interval '14' day)
+AND
+	TO_DATE(sh.end_time,'dd-mm-rr') < (TO_DATE(SYSDATE,'dd-mm-rr') - interval '1' day))
+ORDER BY 
+  sh.servprov_gid, 
+  sh.end_time]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="START_TIME" value="START_TIME" />
+      <element name="SERVPROV_GID" value="SERVPROV_GID" />
+      <element name="RESOURCES" value="RESOURCES" />
+      <element name="ENROUTE" value="ENROUTE" />
+      <element name="CODE_DESCRIPTION" value="CODE_DESCRIPTION" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_FREIGHT_MATRIX_ORIGIN" description="Freight Matrix Origin" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :START_DATE from_dt,
+  :END_DATE to_dt
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+s.source_location_gid,
+  s.shipment_gid,
+  TRIM(loc.location_name)
+  orig_loc_name,
+  loc.city
+  orig_loc_city,
+  loc.province_code
+  orig_loc_prov,
+  sref1.shipment_refnum_value
+  commodity,
+  (CASE WHEN
+  (SELECT ifeat.item_feature_value
+  FROM item_feature ifeat 
+  WHERE 'SCOULAR.' || sref1.shipment_refnum_value = ifeat.item_gid
+  AND ifeat.item_feature_qual_gid = s.source_location_gid
+  AND (NVL(ifeat.effective_date,SYSDATE) <= SYSDATE AND NVL(ifeat.expiration_date,SYSDATE) >= SYSDATE)) IS NULL THEN
+    (SELECT ifeat.item_feature_value
+    FROM item_feature ifeat 
+    WHERE 'SCOULAR.' || sref1.shipment_refnum_value = ifeat.item_gid
+    AND NVL(SUBSTR(ifeat.item_feature_qual_gid,0,INSTR(ifeat.item_feature_qual_gid,'_')-1),ifeat.item_feature_qual_gid) = s.source_location_gid
+    AND (NVL(ifeat.effective_date,SYSDATE) <= SYSDATE AND NVL(ifeat.expiration_date,SYSDATE) >= SYSDATE))
+  ELSE
+    (SELECT ifeat.item_feature_value
+    FROM item_feature ifeat 
+    WHERE 'SCOULAR.' || sref1.shipment_refnum_value = ifeat.item_gid
+    AND ifeat.item_feature_qual_gid = s.source_location_gid
+    AND (NVL(ifeat.effective_date,SYSDATE) <= SYSDATE AND NVL(ifeat.expiration_date,SYSDATE) >= SYSDATE)) 
+  END)
+  blend,
+  sref2.shipment_refnum_value
+  packaging,
+  sref3.shipment_refnum_value
+  loc_code,
+  s.total_net_weight_base,
+  (SELECT SUM(sc.cost)
+  FROM shipment_cost sc
+  WHERE sc.shipment_gid = s.shipment_gid
+  AND sc.cost_type = 'B')
+  scost_fr,
+  (SELECT SUM(sc.cost)
+  FROM shipment_cost sc
+  WHERE sc.shipment_gid = s.shipment_gid
+  AND sc.cost_type = 'A'
+  AND sc.accessorial_code_gid = 'SCOULAR/FOOD.FSC')
+  scost_fu
+FROM
+  shipment s
+INNER JOIN
+  location loc ON s.source_location_gid = loc.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.insert_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.insert_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+order by s.shipment_gid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

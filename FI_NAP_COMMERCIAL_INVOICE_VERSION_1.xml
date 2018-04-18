@@ -1,0 +1,358 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_NAP_COMMERCIAL_INVOICE_VERSION_1" description="NAP Commercial Invoice Version 1" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties></properties>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <!-- Query Start -->
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT 
+	TO_CHAR(SYSDATE,'MM/DD/YYYY') 
+  invoice_date,
+	l1.location_name 
+  from_name, 
+	(SELECT listagg (la.address_line, ' ') 
+	WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+	WHERE la.location_gid = l1.location_gid) from_address, 
+	l1.city || ', ' || l1.province_code || ' ' || l1.postal_code 
+  from_city_state_zip, 
+	cc.country_name,
+	l2.location_name 
+  to_name, 
+	(SELECT listagg (la.address_line, ' ') 
+	WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+	WHERE la.location_gid = l2.location_gid) 
+  to_address, 
+	l2.city || ', ' || l2.province_code || ' ' || l2.postal_code 
+  to_city_state_zip, 
+	l3.location_name 
+  vessel, 
+	TO_CHAR(s.start_time,'MM/DD/YYYY') 
+  shipment_date,
+	l2.city || ', ' || l2.province_code 
+  port,
+	oob.order_base_xid 
+  contract_num, 
+	sr.shipment_refnum_value 
+  bill_of_lading
+FROM 
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+INNER JOIN
+	location l1 ON l1.location_gid = s.source_location_gid
+INNER JOIN
+	country_code cc ON cc.country_code3_gid = l1.country_code3_gid
+INNER JOIN  
+	location l2 ON l2.location_gid = s.dest_location_gid
+LEFT OUTER JOIN
+	location l3 ON l3.location_gid = s.servprov_gid  
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+  sr.shipment_refnum_qual_gid = 'BILL OF LADING NUMBER'
+WHERE 
+	s.shipment_gid = :SHIPMENT_ID
+AND 
+	:P_RUN = 'FINAL'
+UNION
+SELECT 
+	TO_CHAR(SYSDATE,'MM/DD/YYYY') 
+  invoice_date,
+	NVL(l1.location_name, 'Data Missing in System') 
+  from_name, 
+	NVL((SELECT listagg (la.address_line, ' ') 
+	WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+	WHERE la.location_gid = l1.location_gid), 'Data Missing in System') 
+  from_address, 
+	NVL(l1.city || ', ' || l1.province_code || ' ' || l1.postal_code, 'Data Missing in System') 
+  from_city_state_zip, 
+	NVL(cc.country_name, 'Data Missing in System') 
+  country_name,
+	NVL(l2.location_name, 'Data Missing in System') 
+  to_name, 
+	NVL((SELECT listagg (la.address_line, ' ') 
+	WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+	WHERE la.location_gid = l2.location_gid), 'Data Missing in System') 
+  to_address, 
+	NVL(l2.city || ', ' || l2.province_code || ' ' || l2.postal_code, 'Data Missing in System') 
+  to_city_state_zip, 
+	NVL(l3.location_name, 'Data Missing in System') 
+  vessel, 
+	NVL(TO_CHAR(s.start_time,'MM/DD/YYYY'), 'Data Missing in System') 
+  shipment_date,
+	NVL(l2.city || ', ' || l2.province_code, 'Data Missing in System') 
+  port,
+	NVL(oob.order_base_xid, 'Data Missing in System') 
+  contract_num, 
+	NVL(sr.shipment_refnum_value, 'Data Missing in System') 
+  bill_of_lading
+FROM 
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+INNER JOIN
+	location l1 ON l1.location_gid = s.source_location_gid
+INNER JOIN
+	country_code cc ON cc.country_code3_gid = l1.country_code3_gid
+INNER JOIN  
+	location l2 ON l2.location_gid = s.dest_location_gid
+LEFT OUTER JOIN
+	location l3 ON l3.location_gid = s.servprov_gid  
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+  sr.shipment_refnum_qual_gid = 'BILL OF LADING NUMBER'
+WHERE 
+	s.shipment_gid = :SHIPMENT_ID
+AND 
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	TO_CHAR(ssu.unit_net_weight) || ' ' || ssu.unit_net_weight_uom_code quantity, 
+	it.description, 
+	'USD$' || REGEXP_REPLACE (TO_CHAR (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END, '999,999,990.99'), '\s*', '') total_price,
+    	'1 X 40'' CONTAINER' container, 
+    	'19 TOTES OF APPROX. 1,000 KG' totes,
+    	'PER CONTAINER' per_container, 
+    	'CONTAINER NUMBER:' contain_num, 
+    	ssur.refnum_value cont_number,
+    	'HTS NUMBER: ' || gic.gtm_prod_class_code_gid hts
+FROM
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	s_ship_unit_line ssul, 
+	packaged_item pi,
+	item it, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1,
+	ob_refnum oref2,
+	s_ship_unit_refnum ssur,
+	gtm_item_classification gic
+WHERE 
+	sstopd.shipment_gid = :SHIPMENT_ID
+AND 
+	ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+AND 
+	ssul.s_ship_unit_gid = ssu.s_ship_unit_gid 
+AND 
+	pi.packaged_item_gid = ssul.packaged_item_gid
+AND 
+	it.item_gid = pi.item_gid
+AND 
+	su.ship_unit_gid = ssu.ship_unit_gid
+AND 
+	orel.order_release_gid = su.order_release_gid
+AND 
+	oref1.order_base_gid = orel.order_base_gid
+AND 
+	oref2.order_base_gid = orel.order_base_gid
+AND 
+	gic.gtm_item_gid(+) = it.item_gid
+AND 
+	ssur.s_ship_unit_gid(+) = ssu.s_ship_unit_gid
+AND 
+	sstopd.stop_num = 1
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE'
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'  
+AND 
+	ssur.s_ship_unit_refnum_qual_gid(+) = 'SCOULAR/FOOD.CONTAINER ID'
+AND 
+	gic.gtm_prod_class_type_gid(+) = 'HTS US'
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(ssu.unit_net_weight), 'Data Missing in System') || ' ' || NVL(ssu.unit_net_weight_uom_code, 'Data Missing in System') quantity, 
+	NVL(it.description, 'Data Missing in System') description, 
+	NVL('USD$' || REGEXP_REPLACE (TO_CHAR (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END, '999,999,990.99'), '\s*', ''), 'Data Missing in System') total_price,
+    	'1 X 40'' CONTAINER' container, 
+    	'19 TOTES OF APPROX. 1,000 KG' totes,
+    	'PER CONTAINER' per_container, 
+    	'CONTAINER NUMBER:' contain_num, 
+    	NVL(ssur.refnum_value, 'Data Missing in System') cont_number,
+    	'HTS NUMBER: ' || NVL(gic.gtm_prod_class_code_gid, 'Data Missing in System') hts
+FROM
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	s_ship_unit_line ssul, 
+	packaged_item pi,
+	item it, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1,
+	ob_refnum oref2,
+	s_ship_unit_refnum ssur,
+	gtm_item_classification gic
+WHERE 
+	sstopd.shipment_gid = :SHIPMENT_ID
+AND 
+	ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+AND 
+	ssul.s_ship_unit_gid = ssu.s_ship_unit_gid 
+AND 
+	pi.packaged_item_gid = ssul.packaged_item_gid
+AND 
+	it.item_gid = pi.item_gid
+AND 
+	su.ship_unit_gid = ssu.ship_unit_gid
+AND 
+	orel.order_release_gid = su.order_release_gid
+AND 
+	oref1.order_base_gid = orel.order_base_gid
+AND 
+	oref2.order_base_gid = orel.order_base_gid
+AND 
+	gic.gtm_item_gid(+) = it.item_gid
+AND 
+	ssur.s_ship_unit_gid(+) = ssu.s_ship_unit_gid
+AND 
+	sstopd.stop_num = 1
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE'
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'  
+AND 
+	ssur.s_ship_unit_refnum_qual_gid(+) = 'SCOULAR/FOOD.CONTAINER ID'
+AND 
+	gic.gtm_prod_class_type_gid(+) = 'HTS US'
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+	'USD$' || REGEXP_REPLACE (
+            TO_CHAR (
+               (SUM (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END)),
+               '999,999,990.99'),
+            '\s*',
+            '')
+            total
+FROM
+	shipment s,
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1,
+	ob_refnum oref2
+WHERE
+	s.shipment_gid =  :SHIPMENT_ID
+AND
+	sstopd.shipment_gid(+) = s.shipment_gid
+AND
+	ssu.s_ship_unit_gid(+) = sstopd.s_ship_unit_gid
+AND 
+	su.ship_unit_gid(+) = ssu.ship_unit_gid
+AND
+	orel.order_release_gid(+) = su.order_release_gid
+AND 
+	oref1.order_base_gid(+) = orel.order_base_gid
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE'
+AND 
+	oref2.order_base_gid(+) = orel.order_base_gid 
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'  
+AND 
+	sstopd.stop_num(+) = 1
+AND
+	:P_RUN = 'FINAL'
+GROUP BY 1
+UNION
+SELECT
+	'USD$' || NVL(REGEXP_REPLACE (
+            TO_CHAR (
+               (SUM (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END)),
+               '999,999,990.99'),
+            '\s*',
+            ''), 'Data Missing in System')
+            total
+FROM
+	shipment s,
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1,
+	ob_refnum oref2
+WHERE
+	s.shipment_gid =  :SHIPMENT_ID
+AND
+	sstopd.shipment_gid(+) = s.shipment_gid
+AND
+	ssu.s_ship_unit_gid(+) = sstopd.s_ship_unit_gid
+AND 
+	su.ship_unit_gid(+) = ssu.ship_unit_gid
+AND
+	orel.order_release_gid(+) = su.order_release_gid
+AND 
+	oref1.order_base_gid(+) = orel.order_base_gid
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE'
+AND 
+	oref2.order_base_gid(+) = orel.order_base_gid 
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'       
+AND 
+	sstopd.stop_num(+) = 1
+AND
+	:P_RUN = 'DRAFT'
+GROUP BY 1]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="INVOICE_DATE" value="INVOICE_DATE" />
+      <element name="FROM_NAME" value="FROM_NAME" />
+      <element name="FROM_ADDRESS" value="FROM_ADDRESS" />
+      <element name="FROM_CITY_STATE_ZIP" value="FROM_CITY_STATE_ZIP" />
+      <element name="TO_NAME" value="TO_NAME" />
+      <element name="TO_ADDRESS" value="TO_ADDRESS" />
+      <element name="TO_CITY_STATE_ZIP" value="TO_CITY_STATE_ZIP" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="SHIPMENT_DATE" value="SHIPMENT_DATE" />
+      <element name="PORT" value="PORT" />
+      <element name="CONTRACT_NUM" value="CONTRACT_NUM" />
+      <element name="BILL_OF_LADING" value="BILL_OF_LADING" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="TOTAL_PRICE" value="TOTAL_PRICE" />
+      <element name="CONTAINER" value="CONTAINER" />
+      <element name="TOTES" value="TOTES" />
+      <element name="PER_CONTAINER" value="PER_CONTAINER" />
+      <element name="CONTAIN_NUM" value="CONTAIN_NUM" />
+      <element name="CONT_NUMBER" value="CONT_NUMBER" />
+      <element name="HTS" value="HTS" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL" value="TOTAL" />
+    </group>
+  </dataStructure>
+</dataTemplate>

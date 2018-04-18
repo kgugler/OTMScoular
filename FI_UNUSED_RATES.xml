@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_UNUSED_RATES" description="Unused Rates Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="EQUIPMENT_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  TO_CHAR(SYSDATE,'MM/DD/YYYY') sys_date
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.carrier_id,
+  a.carrier_name,
+  a.rate_off_id,
+  a.rate_rec_id,
+  a.insert_date,
+  b.last_used_date,
+  b.ship_count
+FROM
+(SELECT DISTINCT 
+  loc.location_xid 
+  carrier_id,
+  loc.location_name 
+  carrier_name,
+  ro.rate_offering_xid 
+  rate_off_id,
+  rg.rate_geo_gid,
+  TO_CHAR(rg.insert_date,'MM/DD/YYYY')
+  insert_date,
+  rg.rate_geo_xid 
+  rate_rec_id
+FROM 
+  rate_geo rg
+INNER JOIN
+  rate_offering ro ON rg.rate_offering_gid = ro.rate_offering_gid
+INNER JOIN
+  location loc ON ro.servprov_gid = loc.location_gid
+WHERE
+  rg.is_active = 'Y'
+AND 
+  rg.domain_name = 'SCOULAR/FOOD'
+AND 
+  (rg.expiration_date IS NULL
+OR 
+  TRUNC(rg.expiration_date) > TRUNC(SYSDATE))
+AND 
+  ro.is_active = 'Y'  
+AND 
+  ro.servprov_gid NOT IN ('SCOULAR.FOBCARR','SCOULAR.SPOT BID CARRIER')
+AND 
+  rg.rate_geo_gid NOT IN
+  (SELECT DISTINCT s.rate_geo_gid
+  FROM shipment s
+  WHERE s.domain_name = 'SCOULAR/FOOD'
+  AND s.shipment_type_gid = 'TRANSPORT'
+  AND s.rate_geo_gid IS NOT NULL
+  AND TRUNC(s.start_time) >= TRUNC(SYSDATE - 180))) a
+LEFT OUTER JOIN
+(SELECT 
+  rg.rate_geo_gid,
+  TO_CHAR(MAX(TRUNC(s.start_time)),'MM/DD/YYYY') 
+  last_used_date,
+  COUNT(s.shipment_gid) 
+  ship_count
+FROM
+  shipment s
+INNER JOIN
+  rate_geo rg ON s.rate_geo_gid = rg.rate_geo_gid
+AND 
+  s.domain_name = 'SCOULAR/FOOD'
+AND 
+  s.servprov_gid NOT IN ('SCOULAR.FOBCARR','SCOULAR.SPOT BID CARRIER')
+AND 
+  s.shipment_type_gid = 'TRANSPORT'
+GROUP BY rg.rate_geo_gid) b
+ON a.rate_geo_gid = b.rate_geo_gid
+ORDER BY 
+  1,2,3]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

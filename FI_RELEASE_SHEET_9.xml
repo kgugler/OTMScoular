@@ -1,0 +1,256 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_RELEASE_SHEET_9" description="FI Release Sheet 9" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_PKG_RELEASE_SHEET_9" version="1.0">
+  <parameters>
+    <parameter name="P_WAREHOUSE_GID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_LOCATION"><![CDATA[SELECT location_name
+  FROM location
+ WHERE location_gid = :P_WAREHOUSE_GID]]></sqlStatement>
+    <sqlStatement name="Q_TOT_OUT"><![CDATA[SELECT   COUNT(*) Total_out
+  FROM glogowner.xxscou_release_sht_9_tbl
+  WHERE inbound_outbound = 'OUTBOUND'
+  AND location_gid = :P_WAREHOUSE_GID]]></sqlStatement>
+    <sqlStatement name="Q_TOT_IN"><![CDATA[SELECT   COUNT(*) Total_in
+  FROM glogowner.xxscou_release_sht_9_tbl
+  WHERE inbound_outbound = 'INBOUND'
+  AND location_gid = :P_WAREHOUSE_GID]]></sqlStatement>
+    <sqlStatement name="Q_NOTES"><![CDATA[SELECT remark_text
+  FROM location_remark
+ WHERE location_gid = :P_WAREHOUSE_GID]]></sqlStatement>
+    <!-- Query Start -->
+    <sqlStatement name="Q_OUTBOUND"><![CDATA[SELECT   NMC,
+         TO_CHAR(start_date,'MM/DD/YYYY') start_date,
+         start_date_ch,
+         shipment,
+         shipment_ch,
+         (SELECT DISTINCT orr.order_release_xid
+          FROM shipment sh,
+          shipment_stop_d ssd,
+          s_ship_unit ssu,
+          s_ship_unit_line ssul,
+          order_release orr
+          WHERE 1 = 1
+          AND sh.shipment_gid = ssd.shipment_gid
+          AND ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+          AND ssd.stop_num = 1
+          AND ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+          AND orr.order_release_gid = ssul.order_release_gid
+          AND sh.shipment_gid = glogowner.xxscou_release_sht_9_tbl.shipment_gid
+          AND ssu.s_ship_unit_gid = glogowner.xxscou_release_sht_9_tbl.attribute1)
+         ordrel,
+         mode1,
+         mode_ch,
+         carrier,
+         carrier_ch,
+         customer,
+         customer_ch,
+         address,
+         address_ch,
+         po,
+         po_ch,
+         product,
+         product_ch,
+         (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE TO_CHAR(quantity,'999,999,990') END) quantity,
+         quantity_ch,
+         (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE uom END) uom,
+         uom_ch,
+         (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE packaging_num END) packaging_num,
+         packaging_num_ch,
+         (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE packaging_uom END)  packaging_uom,
+         packaging_uom_ch,
+         (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE packaging_ltl END) packaging_ltl,
+         packaging_ltl_ch,
+         (CASE WHEN
+          (SELECT ssur.refnum_value
+           FROM s_ship_unit_refnum ssur
+           WHERE ssur.s_ship_unit_gid = glogowner.xxscou_release_sht_9_tbl.attribute1
+           AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.BAG COUNT') IS NULL
+         THEN
+           glogowner.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_bags_fcn(glogowner.xxscou_release_sht_9_tbl.shipment_gid)
+         ELSE
+          (SELECT ssur.refnum_value
+           FROM s_ship_unit_refnum ssur
+           WHERE ssur.s_ship_unit_gid = glogowner.xxscou_release_sht_9_tbl.attribute1
+           AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.BAG COUNT')         
+         END)
+         bag_count,
+         fda_hold,
+         fda_hold_ch,
+         TRIM(notes || ' ' || 
+         (SELECT ssur.refnum_value
+         FROM s_ship_unit_refnum ssur
+         WHERE ssur.s_ship_unit_gid = glogowner.xxscou_release_sht_9_tbl.attribute1
+         AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.LOT NUMBER'
+         )) notes,
+         notes_ch,
+         inbound_outbound outbound   
+  FROM glogowner.xxscou_release_sht_9_tbl
+  WHERE inbound_outbound = 'OUTBOUND'
+  AND location_gid = :P_WAREHOUSE_GID
+  ORDER BY 
+    TO_DATE(start_date,'mm-dd-yy')]]></sqlStatement>
+    <sqlStatement name="Q_INBOUND"><![CDATA[SELECT   
+  NMC,
+  TO_CHAR(start_date,'MM/DD/YYYY') start_date,
+  start_date_ch,
+  shipment,
+  shipment_ch,
+  (SELECT DISTINCT orr.order_release_xid
+  FROM shipment sh,
+  shipment_stop_d ssd,
+  s_ship_unit ssu,
+  s_ship_unit_line ssul,
+  order_release orr
+  WHERE 1 = 1
+  AND sh.shipment_gid = ssd.shipment_gid
+  AND ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  AND ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND orr.order_release_gid = ssul.order_release_gid
+  AND sh.shipment_gid = glogowner.xxscou_release_sht_9_tbl.shipment_gid
+  AND ssu.s_ship_unit_gid = glogowner.xxscou_release_sht_9_tbl.attribute1)
+  ordrel,         
+  mode1,
+  mode_ch,
+  carrier,
+  carrier_ch,
+  customer,
+  customer_ch,
+  address,
+  address_ch,
+  po,
+  po_ch,
+  product,
+  product_ch,
+  (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE TO_CHAR(quantity,'999,999,990') END) quantity,
+  quantity_ch,
+  (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE uom END) uom,
+  uom_ch,
+  (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE packaging_num END) packaging_num,
+  packaging_num_ch,
+  (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE packaging_uom END) packaging_uom,
+  packaging_uom_ch,
+  (CASE WHEN attribute2 = 'Call Scoular' THEN attribute2 ELSE packaging_ltl END) packaging_ltl,
+  packaging_ltl_ch,
+  (CASE WHEN packaging_num  = 0 THEN
+    'Call Scoular'
+  ELSE
+    (CASE WHEN packaging_uom = 'LB' AND uom = 'LB' THEN
+      TRIM(TO_CHAR(ROUND(quantity / packaging_num,0),'999,999,990'))
+    WHEN packaging_uom = 'LB' AND uom = 'KG' THEN
+      TRIM(TO_CHAR(ROUND((quantity * 2.20462) / packaging_num,0),'999,999,990'))
+    WHEN packaging_uom = 'KG' AND uom = 'LB' THEN
+      TRIM(TO_CHAR(ROUND((quantity / 2.20462) / packaging_num,0),'999,999,990'))
+    WHEN packaging_uom = 'KG' AND uom = 'KG' THEN
+      TRIM(TO_CHAR(ROUND(quantity / packaging_num,0),'999,999,990'))
+    END)
+  END)
+  bag_count,
+  notes,
+  notes_ch,
+  fda_hold,
+  fda_hold_ch,         
+  lot_number,
+  lot_number_ch,
+  inbound_outbound inbound      
+FROM glogowner.xxscou_release_sht_9_tbl
+WHERE inbound_outbound = 'INBOUND'
+AND location_gid = :P_WAREHOUSE_GID
+ORDER BY TO_DATE(start_date,'mm-dd-yy')]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay, Month DD, yyyy hh:mi AM')) CURR_DATE from dual]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_PKG_RELEASE_SHEET_9.before_report" />
+  <dataStructure>
+    <group name="G_LOCATION" source="Q_LOCATION">
+      <element name="LOCATION_NAME" value="LOCATION_NAME" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_TOT_OUT" source="Q_TOT_OUT">
+      <element name="TOTAL_OUT" value="TOTAL_OUT" />
+    </group>
+    <group name="G_TOT_IN" source="Q_TOT_IN">
+      <element name="TOTAL_IN" value="TOTAL_IN" />
+    </group>
+    <group name="G_OUTBOUND" source="Q_OUTBOUND">
+      <element name="NMC" value="NMC" />
+      <element name="START_DATE" value="START_DATE" />
+      <element name="START_DATE_CH" value="START_DATE_CH" />
+      <element name="SHIPMENT" value="SHIPMENT" />
+      <element name="SHIPMENT_CH" value="SHIPMENT_CH" />
+      <element name="ORDREL" value="ORDREL" />
+      <element name="MODE1" value="MODE1"></element>
+      <element name="MODE_CH" value="MODE_CH" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="CARRIER_CH" value="CARRIER_CH" />
+      <element name="CUSTOMER" value="CUSTOMER" />
+      <element name="CUSTOMER_CH" value="CUSTOMER_CH" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="ADDRESS_CH" value="ADDRESS_CH" />
+      <element name="PO" value="PO" />
+      <element name="PO_CH" value="PO_CH" />
+      <element name="PRODUCT" value="PRODUCT" />
+      <element name="PRODUCT_CH" value="PRODUCT_CH" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="QUANTITY_CH" value="QUANTITY_CH" />
+      <element name="UOM" value="UOM" />
+      <element name="UOM_CH" value="UOM_CH" />
+      <element name="PACKAGING_NUM" value="PACKAGING_NUM" />
+      <element name="PACKAGING_NUM_CH" value="PACKAGING_NUM_CH" />
+      <element name="PACKAGING_UOM" value="PACKAGING_UOM" />
+      <element name="PACKAGING_UOM_CH" value="PACKAGING_UOM_CH" />
+      <element name="PACKAGING_LTL" value="PACKAGING_LTL" />
+      <element name="PACKAGING_LTL_CH" value="PACKAGING_LTL_CH" />
+      <element name="BAG_COUNT" value="BAG_COUNT" />
+      <element name="NOTES" value="NOTES"></element>
+      <element name="NOTES_CH" value="NOTES_CH"></element>
+      <element name="FDA_HOLD" value="FDA_HOLD" />
+      <element name="FDA_HOLD_CH" value="FDA_HOLD_CH"></element>
+      <element name="OUTBOUND" value="OUTBOUND" />
+    </group>
+    <group name="G_NOTES" source="Q_NOTES">
+      <element name="REMARK_TEXT" value="REMARK_TEXT" />
+    </group>
+    <group name="G_INBOUND" source="Q_INBOUND">
+      <element name="NMC" value="NMC" />
+      <element name="START_DATE" value="START_DATE" />
+      <element name="START_DATE_CH" value="START_DATE_CH" />
+      <element name="SHIPMENT" value="SHIPMENT" />
+      <element name="SHIPMENT_CH" value="SHIPMENT_CH" />
+      <element name="ORDREL" value="ORDREL" />
+      <element name="MODE1" value="MODE1"></element>
+      <element name="MODE_CH" value="MODE_CH" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="CARRIER_CH" value="CARRIER_CH" />
+      <element name="CUSTOMER" value="CUSTOMER" />
+      <element name="CUSTOMER_CH" value="CUSTOMER_CH" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="ADDRESS_CH" value="ADDRESS_CH" />
+      <element name="PO" value="PO" />
+      <element name="PO_CH" value="PO_CH" />
+      <element name="PRODUCT" value="PRODUCT" />
+      <element name="PRODUCT_CH" value="PRODUCT_CH" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="QUANTITY_CH" value="QUANTITY_CH" />
+      <element name="UOM" value="UOM" />
+      <element name="UOM_CH" value="UOM_CH" />
+      <element name="PACKAGING_NUM" value="PACKAGING_NUM" />
+      <element name="PACKAGING_NUM_CH" value="PACKAGING_NUM_CH" />
+      <element name="PACKAGING_UOM" value="PACKAGING_UOM" />
+      <element name="PACKAGING_UOM_CH" value="PACKAGING_UOM_CH" />
+      <element name="PACKAGING_LTL" value="PACKAGING_LTL" />
+      <element name="PACKAGING_LTL_CH" value="PACKAGING_LTL_CH" />
+      <element name="BAG_COUNT" value="BAG_COUNT" />
+      <element name="NOTES" value="NOTES"></element>
+      <element name="NOTES_CH" value="NOTES_CH" />
+      <element name="FDA_HOLD" value="FDA_HOLD" />
+      <element name="FDA_HOLD_CH" value="FDA_HOLD_CH"></element>
+      <element name="LOT_NUMBER" value="LOT_NUMBER" />
+      <element name="LOT_NUMBER_CH" value="LOT_NUMBER_CH" />
+      <element name="INBOUND" value="INBOUND" />
+    </group>
+  </dataStructure>
+</dataTemplate>

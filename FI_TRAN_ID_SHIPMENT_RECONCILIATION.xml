@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_TRAN_ID_SHIPMENT_RECONCILIATION" description="Tran ID, Shipment Reconciliation Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
+  v.*, 
+  ssur.refnum_value tran_id
+FROM 
+  shipment_stop_d sstopd
+INNER JOIN
+  s_ship_unit_refnum ssur ON sstopd.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND 
+  ssur.s_ship_unit_refnum_qual_gid IN ('SCOULAR/FOOD.TRUCK ID','SCOULAR/FOOD.RAILCAR ID','SCOULAR/FOOD.TRAIN ID','SCOULAR/FOOD.CONTAINER ID')
+CROSS JOIN
+(SELECT
+  ship.shipment_gid,
+  sref1.shipment_refnum_value 
+  loc_code,
+  sprov.servprov_xid 
+  serv_prov_id,  
+  ship.shipment_xid 
+  shipment_id,
+  sref2.shipment_refnum_value 
+  charge_type, 
+  '$' || REGEXP_REPLACE(TO_CHAR(ship.total_actual_cost, '999,999,990.99'), '\s*', '') 
+  freight_charge
+FROM 
+  shipment ship 
+INNER JOIN 
+  shipment_refnum sref1 ON ship.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+INNER JOIN 
+  shipment_refnum sref2 ON ship.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.CHARGE TYPE'  
+INNER JOIN 
+  servprov sprov ON ship.servprov_gid = sprov.servprov_gid
+WHERE
+ ship.shipment_type_gid = 'TRANSPORT'
+AND
+  NOT EXISTS (SELECT ivship.shipment_gid
+              FROM invoice_shipment ivship
+              WHERE ivship.shipment_gid = ship.shipment_gid)
+UNION
+SELECT
+  ship.shipment_gid,
+  sref1.shipment_refnum_value 
+  loc_code,
+  sprov.servprov_xid 
+  serv_prov_id,  
+  ship.shipment_xid 
+  shipment_id,
+  sref2.shipment_refnum_value 
+  charge_type, 
+  '$' || REGEXP_REPLACE(TO_CHAR(ship.total_actual_cost, '999,999,990.99'), '\s*', '') 
+  freight_charge
+FROM 
+  shipment ship 
+INNER JOIN 
+  shipment_refnum sref1 ON ship.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN 
+  shipment_refnum sref2 ON ship.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.CHARGE TYPE'  
+INNER JOIN 
+  servprov sprov ON ship.servprov_gid = sprov.servprov_gid
+INNER JOIN 
+  invoice_shipment ivship ON ship.shipment_gid = ivship.shipment_gid
+INNER JOIN 
+  invoice_status ivstat ON ivship.invoice_gid = ivstat.invoice_gid
+AND
+  ivstat.status_type_gid = 'SCOULAR/FOOD.APPROVAL'
+AND 
+  ivstat.status_value_gid = 'SCOULAR/FOOD.APPROVAL_APPROVED_MANUAL'
+WHERE
+  ship.shipment_type_gid = 'TRANSPORT') v
+WHERE
+  v.shipment_gid = sstopd.shipment_gid
+AND
+  sstopd.stop_num = 1
+ORDER BY 
+  v.loc_code,
+  v.shipment_id]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="SERV_PROV_ID" value="SERV_PROV_ID" />
+      <element name="TRAN_ID" value="TRAN_ID" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="CHARGE_TYPE" value="CHARGE_TYPE" />
+      <element name="FREIGHT_CHARGE" value="FREIGHT_CHARGE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

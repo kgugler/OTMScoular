@@ -1,0 +1,2086 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_INVENTORY_WEEKLY" description="IFI Inventory Weekly" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_FI_INVENTORY_WEEKLY_PKG" version="1.0">
+  <parameters>
+    <parameter name="COMMODITY_GID" dataType="character"></parameter>
+    <parameter name="P_GL_USER" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  glog_util.remove_domain(:P_COMMODITY_GID) || ' - ' || 
+  (SELECT itm.description 
+  FROM packaged_item pi 
+  INNER JOIN item itm ON pi.item_gid = itm.item_gid 
+  WHERE packaged_item_gid = :P_COMMODITY_GID)
+  commodity,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON'),'MM/DD/YYYY')
+  day1,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 7,'MM/DD/YYYY')
+  day2,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 14,'MM/DD/YYYY')
+  day3,  
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 21,'MM/DD/YYYY')
+  day4,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 28,'MM/DD/YYYY')
+  day5,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 35,'MM/DD/YYYY')
+  day6,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 42,'MM/DD/YYYY')
+  day7,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 49,'MM/DD/YYYY')
+  day8,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 56,'MM/DD/YYYY')
+  day9,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 63,'MM/DD/YYYY')
+  day10,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 70,'MM/DD/YYYY')
+  day11,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 77,'MM/DD/YYYY')
+  day12,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 84,'MM/DD/YYYY')
+  day13,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 91,'MM/DD/YYYY')
+  day14,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 98,'MM/DD/YYYY')
+  day15,
+  TO_CHAR(NEXT_DAY(SYSDATE-6, 'MON') + 105,'MM/DD/YYYY')
+  day16
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_HINV"><![CDATA[SELECT 
+  SUM(b.hinv1)
+  hinv1,
+  SUM(b.hinv2)
+  hinv2,
+  SUM(b.hinv3)
+  hinv3,  
+  SUM(b.hinv4)
+  hinv4,
+  SUM(b.hinv5)
+  hinv5,
+  SUM(b.hinv6)
+  hinv6,
+  SUM(b.hinv7)
+  hinv7,
+  SUM(b.hinv8)
+  hinv8,
+  SUM(b.hinv9)
+  hinv9,
+  SUM(b.hinv10)
+  hinv10,
+  SUM(b.hinv11)
+  hinv11,
+  SUM(b.hinv12)
+  hinv12,
+  SUM(b.hinv13)
+  hinv13,
+  SUM(b.hinv14)
+  hinv14,
+  SUM(b.hinv15)
+  hinv15,
+  SUM(b.hinv16)
+  hinv16
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv16
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_HINB"><![CDATA[SELECT 
+  SUM(b.hinb1)
+  hinb1,
+  SUM(b.hinb2)
+  hinb2,
+  SUM(b.hinb3)
+  hinb3,  
+  SUM(b.hinb4)
+  hinb4,
+  SUM(b.hinb5)
+  hinb5,
+  SUM(b.hinb6)
+  hinb6,
+  SUM(b.hinb7)
+  hinb7,
+  SUM(b.hinb8)
+  hinb8,
+  SUM(b.hinb9)
+  hinb9,
+  SUM(b.hinb10)
+  hinb10,
+  SUM(b.hinb11)
+  hinb11,
+  SUM(b.hinb12)
+  hinb12,
+  SUM(b.hinb13)
+  hinb13,
+  SUM(b.hinb14)
+  hinb14,
+  SUM(b.hinb15)
+  hinb15,
+  SUM(b.hinb16)
+  hinb16
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb16
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_HOUTB"><![CDATA[SELECT 
+  SUM(b.houtb1)
+  houtb1,
+  SUM(b.houtb2)
+  houtb2,
+  SUM(b.houtb3)
+  houtb3,  
+  SUM(b.houtb4)
+  houtb4,
+  SUM(b.houtb5)
+  houtb5,
+  SUM(b.houtb6)
+  houtb6,
+  SUM(b.houtb7)
+  houtb7,
+  SUM(b.houtb8)
+  houtb8,
+  SUM(b.houtb9)
+  houtb9,
+  SUM(b.houtb10)
+  houtb10,
+  SUM(b.houtb11)
+  houtb11,
+  SUM(b.houtb12)
+  houtb12,
+  SUM(b.houtb13)
+  houtb13,
+  SUM(b.houtb14)
+  houtb14,
+  SUM(b.houtb15)
+  houtb15,
+  SUM(b.houtb16)
+  houtb16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb16
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_HNET"><![CDATA[SELECT 
+  SUM(b.hnet1)
+  hnet1,
+  SUM(b.hnet2)
+  hnet2,
+  SUM(b.hnet3)
+  hnet3,  
+  SUM(b.hnet4)
+  hnet4,
+  SUM(b.hnet5)
+  hnet5,
+  SUM(b.hnet6)
+  hnet6,
+  SUM(b.hnet7)
+  hnet7,
+  SUM(b.hnet8)
+  hnet8,
+  SUM(b.hnet9)
+  hnet9,
+  SUM(b.hnet10)
+  hnet10,
+  SUM(b.hnet11)
+  hnet11,
+  SUM(b.hnet12)
+  hnet12,
+  SUM(b.hnet13)
+  hnet13,
+  SUM(b.hnet14)
+  hnet14,
+  SUM(b.hnet15)
+  hnet15,
+  SUM(b.hnet16)
+  hnet16
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet16
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JINV"><![CDATA[SELECT 
+  SUM(b.jinv1)
+  jinv1,
+  SUM(b.jinv2)
+  jinv2,
+  SUM(b.jinv3)
+  jinv3,  
+  SUM(b.jinv4)
+  jinv4,
+  SUM(b.jinv5)
+  jinv5,
+  SUM(b.jinv6)
+  jinv6,
+  SUM(b.jinv7)
+  jinv7,
+  SUM(b.jinv8)
+  jinv8,
+  SUM(b.jinv9)
+  jinv9,
+  SUM(b.jinv10)
+  jinv10,
+  SUM(b.jinv11)
+  jinv11,
+  SUM(b.jinv12)
+  jinv12,
+  SUM(b.jinv13)
+  jinv13,
+  SUM(b.jinv14)
+  jinv14,
+  SUM(b.jinv15)
+  jinv15,
+  SUM(b.jinv16)
+  jinv16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv16
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JINB"><![CDATA[SELECT 
+  SUM(b.jinb1)
+  jinb1,
+  SUM(b.jinb2)
+  jinb2,
+  SUM(b.jinb3)
+  jinb3,  
+  SUM(b.jinb4)
+  jinb4,
+  SUM(b.jinb5)
+  jinb5,
+  SUM(b.jinb6)
+  jinb6,
+  SUM(b.jinb7)
+  jinb7,
+  SUM(b.jinb8)
+  jinb8,
+  SUM(b.jinb9)
+  jinb9,
+  SUM(b.jinb10)
+  jinb10,
+  SUM(b.jinb11)
+  jinb11,
+  SUM(b.jinb12)
+  jinb12,
+  SUM(b.jinb13)
+  jinb13,
+  SUM(b.jinb14)
+  jinb14,
+  SUM(b.jinb15)
+  jinb15,
+  SUM(b.jinb16)
+  jinb16
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb16
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JOUTB"><![CDATA[SELECT 
+  SUM(b.joutb1)
+  joutb1,
+  SUM(b.joutb2)
+  joutb2,
+  SUM(b.joutb3)
+  joutb3,  
+  SUM(b.joutb4)
+  joutb4,
+  SUM(b.joutb5)
+  joutb5,
+  SUM(b.joutb6)
+  joutb6,
+  SUM(b.joutb7)
+  joutb7,
+  SUM(b.joutb8)
+  joutb8,
+  SUM(b.joutb9)
+  joutb9,
+  SUM(b.joutb10)
+  joutb10,
+  SUM(b.joutb11)
+  joutb11,
+  SUM(b.joutb12)
+  joutb12,
+  SUM(b.joutb13)
+  joutb13,
+  SUM(b.joutb14)
+  joutb14,
+  SUM(b.joutb15)
+  joutb15,
+  SUM(b.joutb16)
+  joutb16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb16
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JNET"><![CDATA[SELECT 
+  SUM(b.jnet1)
+  jnet1,
+  SUM(b.jnet2)
+  jnet2,
+  SUM(b.jnet3)
+  jnet3,  
+  SUM(b.jnet4)
+  jnet4,
+  SUM(b.jnet5)
+  jnet5,
+  SUM(b.jnet6)
+  jnet6,
+  SUM(b.jnet7)
+  jnet7,
+  SUM(b.jnet8)
+  jnet8,
+  SUM(b.jnet9)
+  jnet9,
+  SUM(b.jnet10)
+  jnet10,
+  SUM(b.jnet11)
+  jnet11,
+  SUM(b.jnet12)
+  jnet12,
+  SUM(b.jnet13)
+  jnet13,
+  SUM(b.jnet14)
+  jnet14,
+  SUM(b.jnet15)
+  jnet15,
+  SUM(b.jnet16)
+  jnet16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet16
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LINV"><![CDATA[SELECT 
+  SUM(b.linv1)
+  linv1,
+  SUM(b.linv2)
+  linv2,
+  SUM(b.linv3)
+  linv3,  
+  SUM(b.linv4)
+  linv4,
+  SUM(b.linv5)
+  linv5,
+  SUM(b.linv6)
+  linv6,
+  SUM(b.linv7)
+  linv7,
+  SUM(b.linv8)
+  linv8,
+  SUM(b.linv9)
+  linv9,
+  SUM(b.linv10)
+  linv10,
+  SUM(b.linv11)
+  linv11,
+  SUM(b.linv12)
+  linv12,
+  SUM(b.linv13)
+  linv13,
+  SUM(b.linv14)
+  linv14,
+  SUM(b.linv15)
+  linv15,
+  SUM(b.linv16)
+  linv16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv16
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LINB"><![CDATA[SELECT 
+  SUM(b.linb1)
+  linb1,
+  SUM(b.linb2)
+  linb2,
+  SUM(b.linb3)
+  linb3,  
+  SUM(b.linb4)
+  linb4,
+  SUM(b.linb5)
+  linb5,
+  SUM(b.linb6)
+  linb6,
+  SUM(b.linb7)
+  linb7,
+  SUM(b.linb8)
+  linb8,
+  SUM(b.linb9)
+  linb9,
+  SUM(b.linb10)
+  linb10,
+  SUM(b.linb11)
+  linb11,
+  SUM(b.linb12)
+  linb12,
+  SUM(b.linb13)
+  linb13,
+  SUM(b.linb14)
+  linb14,
+  SUM(b.linb15)
+  linb15,
+  SUM(b.linb16)
+  linb16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb16
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LOUTB"><![CDATA[SELECT 
+  SUM(b.loutb1)
+  loutb1,
+  SUM(b.loutb2)
+  loutb2,
+  SUM(b.loutb3)
+  loutb3,  
+  SUM(b.loutb4)
+  loutb4,
+  SUM(b.loutb5)
+  loutb5,
+  SUM(b.loutb6)
+  loutb6,
+  SUM(b.loutb7)
+  loutb7,
+  SUM(b.loutb8)
+  loutb8,
+  SUM(b.loutb9)
+  loutb9,
+  SUM(b.loutb10)
+  loutb10,
+  SUM(b.loutb11)
+  loutb11,
+  SUM(b.loutb12)
+  loutb12,
+  SUM(b.loutb13)
+  loutb13,
+  SUM(b.loutb14)
+  loutb14,
+  SUM(b.loutb15)
+  loutb15,
+  SUM(b.loutb16)
+  loutb16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb16
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LNET"><![CDATA[SELECT 
+  SUM(b.lnet1)
+  lnet1,
+  SUM(b.lnet2)
+  lnet2,
+  SUM(b.lnet3)
+  lnet3,  
+  SUM(b.lnet4)
+  lnet4,
+  SUM(b.lnet5)
+  lnet5,
+  SUM(b.lnet6)
+  lnet6,
+  SUM(b.lnet7)
+  lnet7,
+  SUM(b.lnet8)
+  lnet8,
+  SUM(b.lnet9)
+  lnet9,
+  SUM(b.lnet10)
+  lnet10,
+  SUM(b.lnet11)
+  lnet11,
+  SUM(b.lnet12)
+  lnet12,
+  SUM(b.lnet13)
+  lnet13,
+  SUM(b.lnet14)
+  lnet14,
+  SUM(b.lnet15)
+  lnet15,
+  SUM(b.lnet16)
+  lnet16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet16
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NINV"><![CDATA[SELECT 
+  SUM(b.ninv1)
+  ninv1,
+  SUM(b.ninv2)
+  ninv2,
+  SUM(b.ninv3)
+  ninv3,  
+  SUM(b.ninv4)
+  ninv4,
+  SUM(b.ninv5)
+  ninv5,
+  SUM(b.ninv6)
+  ninv6,
+  SUM(b.ninv7)
+  ninv7,
+  SUM(b.ninv8)
+  ninv8,
+  SUM(b.ninv9)
+  ninv9,
+  SUM(b.ninv10)
+  ninv10,
+  SUM(b.ninv11)
+  ninv11,
+  SUM(b.ninv12)
+  ninv12,
+  SUM(b.ninv13)
+  ninv13,
+  SUM(b.ninv14)
+  ninv14,
+  SUM(b.ninv15)
+  ninv15,
+  SUM(b.ninv16)
+  ninv16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv16
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NINB"><![CDATA[SELECT 
+  SUM(b.ninb1)
+  ninb1,
+  SUM(b.ninb2)
+  ninb2,
+  SUM(b.ninb3)
+  ninb3,  
+  SUM(b.ninb4)
+  ninb4,
+  SUM(b.ninb5)
+  ninb5,
+  SUM(b.ninb6)
+  ninb6,
+  SUM(b.ninb7)
+  ninb7,
+  SUM(b.ninb8)
+  ninb8,
+  SUM(b.ninb9)
+  ninb9,
+  SUM(b.ninb10)
+  ninb10,
+  SUM(b.ninb11)
+  ninb11,
+  SUM(b.ninb12)
+  ninb12,
+  SUM(b.ninb13)
+  ninb13,
+  SUM(b.ninb14)
+  ninb14,
+  SUM(b.ninb15)
+  ninb15,
+  SUM(b.ninb16)
+  ninb16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb16
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NOUTB"><![CDATA[SELECT 
+  SUM(b.noutb1)
+  noutb1,
+  SUM(b.noutb2)
+  noutb2,
+  SUM(b.noutb3)
+  noutb3,  
+  SUM(b.noutb4)
+  noutb4,
+  SUM(b.noutb5)
+  noutb5,
+  SUM(b.noutb6)
+  noutb6,
+  SUM(b.noutb7)
+  noutb7,
+  SUM(b.noutb8)
+  noutb8,
+  SUM(b.noutb9)
+  noutb9,
+  SUM(b.noutb10)
+  noutb10,
+  SUM(b.noutb11)
+  noutb11,
+  SUM(b.noutb12)
+  noutb12,
+  SUM(b.noutb13)
+  noutb13,
+  SUM(b.noutb14)
+  noutb14,
+  SUM(b.noutb15)
+  noutb15,
+  SUM(b.noutb16)
+  noutb16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb16
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NNET"><![CDATA[SELECT 
+  SUM(b.nnet1)
+  nnet1,
+  SUM(b.nnet2)
+  nnet2,
+  SUM(b.nnet3)
+  nnet3,  
+  SUM(b.nnet4)
+  nnet4,
+  SUM(b.nnet5)
+  nnet5,
+  SUM(b.nnet6)
+  nnet6,
+  SUM(b.nnet7)
+  nnet7,
+  SUM(b.nnet8)
+  nnet8,
+  SUM(b.nnet9)
+  nnet9,
+  SUM(b.nnet10)
+  nnet10,
+  SUM(b.nnet11)
+  nnet11,
+  SUM(b.nnet12)
+  nnet12,
+  SUM(b.nnet13)
+  nnet13,
+  SUM(b.nnet14)
+  nnet14,
+  SUM(b.nnet15)
+  nnet15,
+  SUM(b.nnet16)
+  nnet16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet16
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TINV"><![CDATA[SELECT 
+  SUM(b.tinv1)
+  tinv1,
+  SUM(b.tinv2)
+  tinv2,
+  SUM(b.tinv3)
+  tinv3,  
+  SUM(b.tinv4)
+  tinv4,
+  SUM(b.tinv5)
+  tinv5,
+  SUM(b.tinv6)
+  tinv6,
+  SUM(b.tinv7)
+  tinv7,
+  SUM(b.tinv8)
+  tinv8,
+  SUM(b.tinv9)
+  tinv9,
+  SUM(b.tinv10)
+  tinv10,
+  SUM(b.tinv11)
+  tinv11,
+  SUM(b.tinv12)
+  tinv12,
+  SUM(b.tinv13)
+  tinv13,
+  SUM(b.tinv14)
+  tinv14,
+  SUM(b.tinv15)
+  tinv15,
+  SUM(b.tinv16)
+  tinv16  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv16
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TINB"><![CDATA[SELECT 
+  SUM(b.tinb1)
+  tinb1,
+  SUM(b.tinb2)
+  tinb2,
+  SUM(b.tinb3)
+  tinb3,  
+  SUM(b.tinb4)
+  tinb4,
+  SUM(b.tinb5)
+  tinb5,
+  SUM(b.tinb6)
+  tinb6,
+  SUM(b.tinb7)
+  tinb7,
+  SUM(b.tinb8)
+  tinb8,
+  SUM(b.tinb9)
+  tinb9,
+  SUM(b.tinb10)
+  tinb10,
+  SUM(b.tinb11)
+  tinb11,
+  SUM(b.tinb12)
+  tinb12,
+  SUM(b.tinb13)
+  tinb13,
+  SUM(b.tinb14)
+  tinb14,
+  SUM(b.tinb15)
+  tinb15,
+  SUM(b.tinb16)
+  tinb16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb16
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TOUTB"><![CDATA[SELECT 
+  SUM(b.toutb1)
+  toutb1,
+  SUM(b.toutb2)
+  toutb2,
+  SUM(b.toutb3)
+  toutb3,  
+  SUM(b.toutb4)
+  toutb4,
+  SUM(b.toutb5)
+  toutb5,
+  SUM(b.toutb6)
+  toutb6,
+  SUM(b.toutb7)
+  toutb7,
+  SUM(b.toutb8)
+  toutb8,
+  SUM(b.toutb9)
+  toutb9,
+  SUM(b.toutb10)
+  toutb10,
+  SUM(b.toutb11)
+  toutb11,
+  SUM(b.toutb12)
+  toutb12,
+  SUM(b.toutb13)
+  toutb13,
+  SUM(b.toutb14)
+  toutb14,
+  SUM(b.toutb15)
+  toutb15,
+  SUM(b.toutb16)
+  toutb16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb16
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TNET"><![CDATA[SELECT 
+  SUM(b.tnet1)
+  tnet1,
+  SUM(b.tnet2)
+  tnet2,
+  SUM(b.tnet3)
+  tnet3,  
+  SUM(b.tnet4)
+  tnet4,
+  SUM(b.tnet5)
+  tnet5,
+  SUM(b.tnet6)
+  tnet6,
+  SUM(b.tnet7)
+  tnet7,
+  SUM(b.tnet8)
+  tnet8,
+  SUM(b.tnet9)
+  tnet9,
+  SUM(b.tnet10)
+  tnet10,
+  SUM(b.tnet11)
+  tnet11,
+  SUM(b.tnet12)
+  tnet12,
+  SUM(b.tnet13)
+  tnet13,
+  SUM(b.tnet14)
+  tnet14,
+  SUM(b.tnet15)
+  tnet15,
+  SUM(b.tnet16)
+  tnet16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet16
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_ONET"><![CDATA[SELECT 
+  SUM(b.onet1)
+  onet1,
+  SUM(b.onet2)
+  onet2,
+  SUM(b.onet3)
+  onet3,  
+  SUM(b.onet4)
+  onet4,
+  SUM(b.onet5)
+  onet5,
+  SUM(b.onet6)
+  onet6,
+  SUM(b.onet7)
+  onet7,
+  SUM(b.onet8)
+  onet8,
+  SUM(b.onet9)
+  onet9,
+  SUM(b.onet10)
+  onet10,
+  SUM(b.onet11)
+  onet11,
+  SUM(b.onet12)
+  onet12,
+  SUM(b.onet13)
+  onet13,
+  SUM(b.onet14)
+  onet14,
+  SUM(b.onet15)
+  onet15,
+  SUM(b.onet16)
+  onet16 
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON'),'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet1,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet2,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet4,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet5,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 35,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet6,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 42,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet7,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 49,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet8,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 56,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet9,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 63,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet10,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 70,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet11,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 77,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet12,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 84,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet13,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 91,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet14,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 98,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet15,
+  (CASE WHEN a.inventory_date = TO_DATE(NEXT_DAY(SYSDATE-6, 'MON') + 105,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet16
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_weekly
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID) a) b]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_FI_INVENTORY_WEEKLY_PKG.before_report" />
+</dataTemplate>

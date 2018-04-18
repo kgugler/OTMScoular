@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_LANE_SUMMARY" description="Lane Summary Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="EQUIPMENT_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :START_DATE from_date,
+  :END_DATE to_date,
+  NVL(REPLACE(:EQUIPMENT_ID,'SCOULAR.',''),'ALL') equipments
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  COUNT(a.shipment_xid) 
+  shipment_count,
+  a.transport_mode, 
+  a.equipment_group, 
+  a.source_city,
+  a.source_zip,
+  a.source_province, 
+  a.source_country, 
+  a.destination_city, 
+  a.destination_zip,
+  a.destination_province, 
+  a.destination_country, 
+  a.packaging_type,
+  a.carrier,
+  TO_CHAR(ROUND(SUM(a.total_actual_cost_base) / COUNT(a.shipment_xid),2),'999,999,990.00') || ' USD' cost,
+  a.rate_basis,
+  TO_CHAR(a.effective_date,'MM/DD/YYYY')
+  effective_date,
+  TO_CHAR(a.expiry_date,'MM/DD/YYYY')
+  expiry_date,
+  (SUM(a.rate_amount) / COUNT(a.shipment_xid))
+  avg_rate,
+  (SUM(a.min_cost) / COUNT(a.shipment_xid))
+  min_cost,
+  a.all_in
+FROM
+(SELECT DISTINCT
+  s.shipment_xid,
+  tm.transport_mode_xid 
+  transport_mode,
+  eqg.equipment_group_xid 
+  equipment_group,
+  loc1.city 
+  source_city,
+  loc1.postal_code
+  source_zip,
+  loc1.province_code 
+  source_province,
+  loc1.country_code3_gid 
+  source_country,
+  loc2.city 
+  destination_city,
+  loc2.postal_code
+  destination_zip,
+  loc2.province_code 
+  destination_province,
+  loc2.country_code3_gid 
+  destination_country,
+  sref.shipment_refnum_value 
+  packaging_type,
+  lsp.location_name 
+  carrier,
+  s.total_actual_cost_base,
+  DECODE(NVL(rgc.charge_unit_uom_code,rgc.charge_multiplier),'PER SHIPMENT','SHIPMENT','PER TON','TON',NVL(rgc.charge_unit_uom_code,rgc.charge_multiplier)) 
+  rate_basis,
+  rgc.charge_amount_base 
+  rate_amount,
+  rgc.min_cost 
+  min_cost,
+  trunc(rg.effective_date) 
+  effective_date,
+  trunc(rg.expiration_date) 
+  expiry_date,
+  (CASE WHEN rfrj.rate_geo_gid IS NULL THEN 
+    'ALL IN' 
+  ELSE 
+    '+FUEL' 
+  END)
+  all_in
+FROM
+	shipment s
+INNER JOIN
+	transport_mode tm ON s.transport_mode_gid = tm.transport_mode_gid
+INNER JOIN 
+  location lsp ON lsp.location_gid = s.servprov_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN 
+  s_equipment seq ON ssej.s_equipment_gid = seq.s_equipment_gid
+LEFT OUTER JOIN
+  equipment_group eqg ON seq.equipment_group_gid = eqg.equipment_group_gid
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+LEFT OUTER JOIN
+  rate_geo rg ON rg.rate_geo_gid = s.rate_geo_gid
+LEFT OUTER JOIN
+  rate_geo_cost rgc ON rgc.rate_geo_cost_group_gid = rg.rate_geo_gid
+LEFT OUTER JOIN
+  rate_factor_rule_join rfrj ON rg.rate_geo_gid = rfrj.rate_geo_gid
+WHERE
+	(s.start_time >= TO_DATE(:START_DATE,'YYYY-MM-DD') 
+AND 
+  s.start_time <= TO_DATE(:END_DATE, 'YYYY-MM-DD'))
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+AND
+  (:EQUIPMENT_ID IS NULL 
+OR
+  (NOT :EQUIPMENT_ID IS NULL
+AND
+  seq.equipment_group_gid IN (SELECT REGEXP_SUBSTR(:EQUIPMENT_ID,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:EQUIPMENT_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))) a
+GROUP BY
+  a.transport_mode, 
+  a.equipment_group, 
+  a.packaging_type, 
+  a.source_city, 
+  a.source_zip,
+  a.source_province, 
+  a.source_country, 
+  a.destination_city, 
+  a.destination_zip,
+  a.destination_province, 
+  a.destination_country, 
+  a.carrier, 
+  a.rate_basis, 
+  a.effective_date, 
+  a.expiry_date, 
+  a.all_in, 
+  TO_CHAR(a.effective_date,'MM/DD/YYYY'), 
+  TO_CHAR(a.expiry_date,'MM/DD/YYYY')
+ORDER BY
+  a.source_city, 
+  a.source_province, 
+  a.source_country, 
+  a.destination_city, 
+  a.destination_country,
+  a.transport_mode, 
+  a.equipment_group, 
+  a.carrier,
+  a.packaging_type, 
+  COUNT(a.shipment_xid) DESC]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

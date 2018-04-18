@@ -1,0 +1,265 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_SHIPMENT_SUMMARY_BY_CREATE_DATE" description="Shipment Summary by Create Date" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  :START_DATE start_dt, :END_DATE end_dt
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  sh.insert_date sortone,
+  sh.shipment_gid || 'A' sorter,
+  sh.shipment_xid shipment_id,
+  (CASE WHEN sh.transport_mode_gid =  'TL' OR sh.transport_mode_gid = 'LTL' THEN
+    (SELECT refnum_value
+    FROM s_ship_unit_refnum ssur
+    WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND ssur.s_ship_unit_refnum_qual_gid LIKE '%TRUCK ID%'
+    AND ROWNUM = 1)
+  WHEN sh.transport_mode_gid = 'RAIL' THEN
+    (SELECT refnum_value
+    FROM s_ship_unit_refnum ssur
+    WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND ssur.s_ship_unit_refnum_qual_gid LIKE '%RAIL CAR ID%'
+    AND ROWNUM = 1)
+  WHEN sh.transport_mode_gid = 'VESSEL-CO' THEN
+    (SELECT refnum_value
+    FROM s_ship_unit_refnum ssur
+    WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND ssur.s_ship_unit_refnum_qual_gid LIKE '%CONTAINER ID%'
+    AND ROWNUM = 1)
+  END)
+  tran_id,
+  sh.shipment_type_gid shipment_type,  
+  'FT' charge_type,
+  glog_util.remove_domain(sh.original_shipment_gid) primary_shipment,  
+  (CASE WHEN (SELECT SUM(ssunit.unit_net_weight_base)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssunit ON ssd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  WHERE ssd.shipment_gid = sh.shipment_gid
+  AND ssd.activity = 'P') = 0 THEN '0.00'
+  ELSE
+  TRIM(TO_CHAR(ROUND(sh.total_actual_cost_base * (ssu.unit_net_weight_base / 
+  ROUND((SELECT SUM(ssunit.unit_net_weight_base)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssunit ON ssd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  WHERE ssd.shipment_gid = sh.shipment_gid
+  AND ssd.activity = 'P'),2)),2),'999,999,990.00'))
+  END)
+  actual_cost,
+  TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base,2),'999,999,990.00'))
+  actual_weight,
+  (SELECT refnum_value
+  FROM s_ship_unit_refnum ssur
+  WHERE ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'COMMODITY ID'
+  AND ROWNUM = 1)
+  commodity,
+  (SELECT loc.city
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN location loc on orel.dest_location_gid = loc.location_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)  
+  dest_city,
+  (SELECT loc.location_name
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN location loc on orel.dest_location_gid = loc.location_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)  
+  dest_name,
+  (SELECT loc.province_code
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN location loc on orel.dest_location_gid = loc.location_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)    
+  dest_state,
+  (TO_CHAR(from_tz(CAST(sh.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY'))
+  insert_date,
+  (SELECT oref.order_release_refnum_value
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN order_release_refnum oref on orel.order_release_gid = oref.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)  
+  loc_cd,
+  sh.transport_mode_gid trans_mode,
+  (SELECT loc.city
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN location loc on orel.source_location_gid = loc.location_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)  
+  origin_city,
+  (SELECT loc.location_name
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN location loc on orel.source_location_gid = loc.location_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)  
+  origin_name,
+  (SELECT loc.province_code
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  LEFT OUTER JOIN location loc on orel.source_location_gid = loc.location_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)    
+  origin_state,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') planner,
+  con2.contact_xid servprov,
+  (SELECT ssurem.remark_text
+  FROM s_ship_unit_remark ssurem
+  WHERE ssurem.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssurem.remark_qual_gid = 'SCOULAR.TRAN ID DATE'
+  AND ROWNUM = 1)
+  ship_date
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND
+  ssd.activity = 'P'
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid 
+LEFT OUTER JOIN
+  contact con1 ON sh.insert_user = con1.contact_gid
+LEFT OUTER JOIN
+  contact con2 ON sh.servprov_gid = con2.contact_gid
+WHERE
+  sh.domain_name = 'SCOULAR/FOOD'
+AND
+  sh.shipment_type_gid = 'TRANSPORT' 
+AND 
+  (TO_DATE(TO_CHAR(from_tz(CAST(sh.insert_date AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(TO_CHAR(from_tz(CAST(sh.insert_date AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND NOT EXISTS
+  (SELECT ss.status_value_gid
+  FROM shipment_status ss
+  WHERE ss.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND ss.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES'
+  AND ss.shipment_gid = sh.shipment_gid)
+UNION
+SELECT
+  s.insert_date sortone,
+  sh.original_shipment_gid || 'B' sorter,  
+  sh.shipment_xid shipment_id,
+  '' tran_id,  
+  sh.shipment_type_gid shipment_type,
+  sref3.shipment_refnum_value charge_type,
+  glog_util.remove_domain(sh.original_shipment_gid) primary_shipment,  
+  TRIM(TO_CHAR(ROUND(sh.total_actual_cost_base,2),'999,999,990.00'))
+  actual_cost,
+  TRIM(TO_CHAR(ROUND((SELECT SUM(ssu.unit_net_weight_base)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = sh.shipment_gid
+  AND ssd.activity = 'P'),2),'999,999,990.00'))
+  actual_weight,
+  sref1.shipment_refnum_value commodity,
+  loc1.city dest_city,
+  loc1.location_name dest_name,
+  loc1.province_code dest_state,
+  (TO_CHAR(from_tz(CAST(sh.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY'))
+  insert_date,
+  sref2.shipment_refnum_value loc_cd,
+  sh.transport_mode_gid trans_mode,
+  loc2.city origin_city,
+  loc2.location_name origin_name,
+  loc2.province_code origin_state,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') planner,
+  con2.contact_xid servprov,
+  'NA'
+  ship_date
+FROM 
+  shipment s
+INNER JOIN
+  shipment sh ON s.shipment_gid = sh.original_shipment_gid
+AND
+  sh.shipment_type_gid = 'SECONDARY CHARGE'
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON sh.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.CHARGE TYPE'   
+LEFT OUTER JOIN
+  location loc1 ON sh.dest_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.source_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  contact con1 ON sh.insert_user = con1.contact_gid
+LEFT OUTER JOIN
+  contact con2 ON sh.servprov_gid = con2.contact_gid
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT' 
+AND 
+  (TO_DATE(TO_CHAR(from_tz(CAST(s.insert_date AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(TO_CHAR(from_tz(CAST(s.insert_date AS TIMESTAMP), 'GMT') 
+    AT TIME ZONE 'US/Central', 'MM/DD/YY'),'MM/DD/YY') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND NOT EXISTS
+  (SELECT ss.status_value_gid
+  FROM shipment_status ss
+  WHERE ss.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND ss.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES'
+  AND ss.shipment_gid = s.shipment_gid)      
+AND NOT EXISTS
+  (SELECT ss.status_value_gid
+  FROM shipment_status ss
+  WHERE ss.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND ss.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES'
+  AND ss.shipment_gid = sh.shipment_gid)    
+ORDER BY
+  sortone DESC, sorter]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="START_DT" value="START_DT"></element>
+      <element name="END_DT" value="END_DT"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID"></element>
+      <element name="SHIPMENT_TYPE" value="SHIPMENT_TYPE"></element>
+      <element name="PRIMARY_SHIPMENT" value="PRIMARY_SHIPMENT"></element>
+      <element name="CHARGE_TYPE" value="CHARGE_TYPE"></element>
+      <element name="ACTUAL_COST" value="ACTUAL_COST"></element>
+      <element name="ACTUAL_WEIGHT" value="ACTUAL_WEIGHT"></element>
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE" />
+      <element name="DEST_CITY" value="DEST_CITY" />
+      <element name="DEST_NAME" value="DEST_NAME" />
+      <element name="DEST_STATE" value="DEST_STATE" />
+      <element name="FIRST_EQUIP_GP_ID" value="FIRST_EQUIP_GP_ID"></element>
+      <element name="FREIGHT" value="FREIGHT" />
+      <element name="FUEL" value="FUEL"></element>
+      <element name="INSERT_DATE" value="INSERT_DATE"></element>
+      <element name="LOC" value="LOC"></element>
+      <element name="MILES" value="MILES"></element>
+      <element name="TRANS_MODE" value="TRANS_MODE"></element>
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY"></element>
+      <element name="ORIGIN_NAME" value="ORIGIN_NAME"></element>
+      <element name="ORIGIN_STATE" value="ORIGIN_STATE"></element>
+      <element name="PLANNER" value="PLANNER"></element>
+      <element name="SERVPROV" value="SERVPROV"></element>
+      <element name="SHIP_DATE" value="SHIP_DATE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,217 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_RAIL_ACT_DATES" description="Contract Listing" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters>
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <!-- Query Start -->
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TRIM(TO_CHAR(SYSDATE,'FMDay, Month DD, yyyy'))
+  curr_date
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  (SELECT  
+    loc.location_name || DECODE(loc.city,NULL,NULL,','||loc.city) || DECODE(loc.province_code,NULL,NULL,',' || loc.province_code) 
+  FROM location loc
+  WHERE 1 = 1 
+  AND loc.location_gid = sh.source_location_gid) || '    ->    ' || 
+  (SELECT   
+    loc.location_name || DECODE(loc.city,NULL,NULL,','||loc.city) || DECODE(loc.province_code,NULL,NULL,',' || loc.province_code)
+  FROM location loc
+  WHERE 1 = 1 
+  AND loc.location_gid = sh.dest_location_gid)
+  soudest,
+  sh.source_location_gid 
+  l_source,
+  sh.dest_location_gid 
+  l_dest,
+  SUM(DECODE(TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY'),0,1,
+  (TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY')))) / 
+  COUNT(*) 
+  avg
+FROM
+  shipment sh
+INNER JOIN       
+  shipment_refnum sh_ref ON sh.shipment_gid = sh_ref.shipment_gid
+AND
+  sh_ref.shipment_refnum_qual_gid LIKE '%LOC_CODE%'       
+INNER JOIN
+  location loc ON sh.servprov_gid = loc.location_gid
+INNER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+WHERE     
+  1 = 1
+AND 
+  :P_RUN = 'FINAL'
+GROUP BY
+  sh.source_location_gid, 
+  sh.dest_location_gid
+UNION
+SELECT 
+  NVL((SELECT  
+    loc.location_name || DECODE(loc.city,NULL,NULL,','||loc.city) || DECODE(loc.province_code,NULL,NULL,',' || loc.province_code) 
+  FROM location loc
+  WHERE 1 = 1 
+  AND loc.location_gid = sh.source_location_gid) || '    ->    ' || 
+  (SELECT   
+    loc.location_name || DECODE(loc.city,NULL,NULL,','||loc.city) || DECODE(loc.province_code,NULL,NULL,',' || loc.province_code)
+  FROM location loc
+  WHERE 1 = 1 
+  AND loc.location_gid = sh.dest_location_gid),'Data Missing in System')
+  soudest,
+  sh.source_location_gid 
+  l_source,
+  sh.dest_location_gid 
+  l_dest,
+  SUM(DECODE(TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY'),0,1,
+  (TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY')))) / 
+  COUNT(*)
+  avg
+FROM
+  shipment sh
+INNER JOIN       
+  shipment_refnum sh_ref ON sh.shipment_gid = sh_ref.shipment_gid
+AND
+  sh_ref.shipment_refnum_qual_gid LIKE '%LOC_CODE%'       
+INNER JOIN
+  location loc ON sh.servprov_gid = loc.location_gid
+INNER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+WHERE     
+  1 = 1
+AND 
+  :P_RUN = 'DRAFT'
+GROUP BY
+  sh.source_location_gid, 
+  sh.dest_location_gid]]></sqlStatement>
+    <sqlStatement name="Q_DETAIL"><![CDATA[SELECT 
+  sh.dest_location_gid,
+  sh_ref.shipment_refnum_value 
+  loc,
+  loc.location_name 
+  carrier,
+  (SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur
+  INNER JOIN s_ship_unit_refnum_qual ssurq ON ssur.s_ship_unit_refnum_qual_gid = ssurq.s_ship_unit_refnum_qual_gid
+  WHERE ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssurq.s_ship_unit_refnum_qual_xid = 'CONTAINER ID'
+  AND ROWNUM = 1)
+  car,
+  TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY HH24:MI') || ' ' || loc1.time_zone_gid 
+  actual_pickup,
+  TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY HH24:MI') || ' ' || loc2.time_zone_gid 
+  actual_delivery,
+  DECODE(TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY'),0,1,
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY'))
+  days,
+  sh.shipment_gid
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_refnum sh_ref ON sh.shipment_gid = sh_ref.shipment_gid
+AND 
+  sh_ref.shipment_refnum_qual_gid LIKE '%LOC_CODE%'
+INNER JOIN
+  location loc ON sh.servprov_gid = loc.location_gid
+INNER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+INNER JOIN       
+  location loc2 ON sh.dest_location_gid = loc2.location_gid 
+INNER JOIN       
+  shipment_stop_d ssd ON ssd.shipment_gid = sh.shipment_gid
+AND 
+  ssd.stop_num = 1
+WHERE     
+  1 = 1
+AND 
+  :P_RUN = 'FINAL'
+AND 
+  sh.source_location_gid = :l_source
+AND 
+  sh.dest_location_gid = :l_dest
+UNION
+SELECT
+  sh.dest_location_gid,
+  NVL(sh_ref.shipment_refnum_value,'Data Missing in System')   
+  loc,
+  NVL(loc.location_name,'Data Missing in System')  
+  carrier,
+  NVL((SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur
+  INNER JOIN s_ship_unit_refnum_qual ssurq ON ssur.s_ship_unit_refnum_qual_gid = ssurq.s_ship_unit_refnum_qual_gid
+  WHERE ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssurq.s_ship_unit_refnum_qual_xid = 'CONTAINER ID'
+  AND ROWNUM = 1),'Data Missing in System')  
+  car,
+  NVL(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY HH24:MI') || ' ' || loc1.time_zone_gid,'Data Missing in System')   
+  actual_pickup,
+  NVL(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY HH24:MI') || ' ' || loc2.time_zone_gid,'Data Missing in System')   
+  actual_delivery,
+  DECODE(TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY'),0,1,
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.end_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc2.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY') -
+  TO_DATE(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc1.time_zone_gid),'MM/DD/YYYY'),'MM/DD/YYYY'))
+  days,
+  sh.shipment_gid
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_refnum sh_ref ON sh.shipment_gid = sh_ref.shipment_gid
+AND 
+  sh_ref.shipment_refnum_qual_gid LIKE '%LOC_CODE%'
+INNER JOIN
+  location loc ON sh.servprov_gid = loc.location_gid
+INNER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+INNER JOIN       
+  location loc2 ON sh.dest_location_gid = loc2.location_gid 
+INNER JOIN       
+  shipment_stop_d ssd ON ssd.shipment_gid = sh.shipment_gid
+AND 
+  ssd.stop_num = 1
+WHERE     
+  1 = 1
+AND 
+  :P_RUN = 'DRAFT' 
+AND 
+  sh.source_location_gid = :l_source
+AND 
+  sh.dest_location_gid = :l_dest]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="L_SOURCE" value="L_SOURCE" />
+      <element name="L_DEST" value="L_DEST" />
+      <element name="SOUDEST" value="SOUDEST" />
+      <element name="AVG" value="AVG" />
+      <group name="G_DETAIL" source="Q_DETAIL">
+        <element name="LOC" value="LOC" />
+        <element name="CARRIER" value="CARRIER" />
+        <element name="CAR" value="CAR" />
+        <element name="ACTUAL_PICKUP" value="ACTUAL_PICKUP" />
+        <element name="ACTUAL_DELIVERY" value="ACTUAL_DELIVERY" />
+        <element name="DAYS" value="DAYS" />
+      </group>
+    </group>
+  </dataStructure>
+</dataTemplate>

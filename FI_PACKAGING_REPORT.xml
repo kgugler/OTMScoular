@@ -1,0 +1,245 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_PACKAGING_REPORT" description="Packaging Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  :START_DATE start_dt, :END_DATE end_dt
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+ssul.s_ship_unit_gid,
+  sh.shipment_xid
+  shipment_id,
+  sref1.shipment_refnum_value 
+  loc,
+  REPLACE(ss1.status_value_gid,'SCOULAR/FOOD.ENROUTE_','')
+  enroute_status,
+  REPLACE(ss2.status_value_gid,'SCOULAR/FOOD.PAYMENT_','')
+  invoice_status,
+  sref2.shipment_refnum_value 
+  record_type,  
+  REPLACE(ss3.status_value_gid,'SCOULAR/FOOD.SHIPMENT_CANCELLED_','')
+  cancelled,  
+  REPLACE(REPLACE(ssul.packaged_item_gid,'SCOULAR/FOOD.',''),'SCOULAR.','')
+  product_item,
+  oref1.order_release_refnum_value 
+  packaging_description,
+  oref2.order_release_refnum_value 
+  packaging_number,
+  oref3.order_release_refnum_value 
+  packaging_uom,  
+  sref3.shipment_refnum_value 
+  cust_id,
+  TO_CHAR((CASE WHEN sh.source_location_gid IS NULL THEN
+    sh.start_time
+  ELSE
+    utc.get_local_date(sh.start_time,sh.source_location_gid)
+  END),'MM/DD/YYYY')
+  pickup_date,  
+  TO_CHAR((CASE WHEN sh.dest_location_gid IS NULL THEN
+    sh.end_time
+  ELSE
+    utc.get_local_date(sh.end_time,sh.dest_location_gid)
+  END),'MM/DD/YYYY')
+  delivery_date,  
+  loc1.location_name origin_name,
+  loc1.city origin_city,  
+  loc1.postal_code origin_postal_code,
+  loc1.province_code origin_province,  
+  loc2.location_name dest_name,
+  loc2.city dest_city,  
+  loc2.postal_code dest_postal_code,
+  loc2.province_code dest_province,   
+  ssulr.remark_text
+  lot_number,
+  TO_CHAR(ssul.weight_base)
+  weight,
+  REPLACE(ss4.status_value_gid,'SCOULAR/FOOD.SECURE RESOURCES_','')
+  tender_status,    
+  sh.transport_mode_gid
+  transport_mode,
+  sh.inco_term_gid
+  inco_term,
+  TRIM(TO_CHAR(ROUND(sh.total_actual_cost_base,2),'999,999,990.00'))
+  actual_cost,  
+  TRIM(TO_CHAR(ROUND(sh.attribute_currency1,2),'999,999,990.00'))
+  freight,
+  TRIM(TO_CHAR(ROUND(sh.attribute_currency2,2),'999,999,990.00'))
+  fuel,
+  sref4.shipment_refnum_value 
+  cust_po_num,
+  sref5.shipment_refnum_value 
+  cust_release_num,  
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','')
+  planner,
+  REPLACE(sh.servprov_gid,'SCOULAR.','')
+  serv_prov,  
+  REPLACE(ss5.status_value_gid,'SCOULAR/FOOD.SAR_AS400_','')
+  actuals_sent,    
+  REPLACE(ss6.status_value_gid,'SCOULAR/FOOD.LOT POPULATION COMPLETE FOR SHIPMENT_','')
+  lot_complete,    
+  REPLACE(ss7.status_value_gid,'SCOULAR/FOOD.INVOICE_PAID_FOR_SHIPMENT_','')
+  invoice_approved,    
+  REPLACE(ss8.status_value_gid,'SCOULAR/FOOD.INVOICE DISCREPANCY_','')
+  invoice_discrepancy,      
+  eg.equipment_group_xid
+  first_equip_group
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid  
+INNER JOIN
+  order_release orel ON ssul.order_release_gid = orel.order_release_gid  
+LEFT OUTER JOIN
+  s_ship_unit_line_remark ssulr ON ssul.s_ship_unit_gid = ssulr.s_ship_unit_gid
+AND
+  ssul.s_ship_unit_line_no = ssulr.s_ship_unit_line_no
+AND
+  ssulr.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'  
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON sh.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER_ID'  
+LEFT OUTER JOIN
+  shipment_refnum sref4 ON sh.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR.SHIPPER_PURCHASE_ORDER_NUMBER'  
+LEFT OUTER JOIN
+  shipment_refnum sref5 ON sh.shipment_gid = sref5.shipment_gid
+AND
+  sref5.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'      
+LEFT OUTER JOIN
+  order_release_refnum oref1 ON orel.order_release_gid = oref1.order_release_gid
+AND
+  oref1.order_release_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'  
+LEFT OUTER JOIN
+  order_release_refnum oref2 ON orel.order_release_gid = oref2.order_release_gid
+AND
+  oref2.order_release_refnum_qual_gid = 'SCOULAR.PACKAGING NUMBER'  
+LEFT OUTER JOIN
+  order_release_refnum oref3 ON orel.order_release_gid = oref3.order_release_gid
+AND
+  oref3.order_release_refnum_qual_gid = 'SCOULAR.PACKAGING UNIT OF MEASURE'  
+LEFT OUTER JOIN
+  shipment_status ss1 ON sh.shipment_gid = ss1.shipment_gid
+AND
+  ss1.status_type_gid = 'SCOULAR/FOOD.ENROUTE'
+LEFT OUTER JOIN
+  shipment_status ss2 ON sh.shipment_gid = ss2.shipment_gid
+AND
+  ss2.status_type_gid = 'SCOULAR/FOOD.PAYMENT'  
+LEFT OUTER JOIN
+  shipment_status ss3 ON sh.shipment_gid = ss3.shipment_gid
+AND
+  ss3.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED' 
+LEFT OUTER JOIN
+  shipment_status ss4 ON sh.shipment_gid = ss4.shipment_gid
+AND
+  ss4.status_type_gid = 'SCOULAR/FOOD.SECURE RESOURCES'    
+LEFT OUTER JOIN
+  shipment_status ss5 ON sh.shipment_gid = ss5.shipment_gid
+AND
+  ss5.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'  
+LEFT OUTER JOIN
+  shipment_status ss6 ON sh.shipment_gid = ss6.shipment_gid
+AND
+  ss6.status_type_gid = 'SCOULAR/FOOD.LOT POPULATION COMPLETE FOR SHIPMENT'  
+LEFT OUTER JOIN
+  shipment_status ss7 ON sh.shipment_gid = ss7.shipment_gid
+AND
+  ss7.status_type_gid = 'SCOULAR/FOOD.INVOICE_PAID_FOR_SHIPMENT'  
+LEFT OUTER JOIN
+  shipment_status ss8 ON sh.shipment_gid = ss8.shipment_gid
+AND
+  ss8.status_type_gid = 'SCOULAR/FOOD.INVOICE_DISCREPANCY'    
+LEFT OUTER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  equipment_group eg ON sh.first_equipment_group_gid = eg.equipment_group_gid
+WHERE
+  sh.domain_name = 'SCOULAR/FOOD'
+AND
+  sh.shipment_type_gid = 'TRANSPORT' 
+AND 
+  (TO_DATE(TO_CHAR((CASE WHEN sh.source_location_gid IS NULL THEN
+    sh.start_time
+  ELSE
+    utc.get_local_date(sh.start_time,sh.source_location_gid)
+  END),'MM/DD/YYYY'),'MM/DD/YY') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(TO_CHAR((CASE WHEN sh.source_location_gid IS NULL THEN
+    sh.start_time
+  ELSE
+    utc.get_local_date(sh.start_time,sh.source_location_gid)
+  END),'MM/DD/YYYY'),'MM/DD/YY') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  TO_DATE(TO_CHAR((CASE WHEN sh.source_location_gid IS NULL THEN
+    sh.start_time
+  ELSE
+    utc.get_local_date(sh.start_time,sh.source_location_gid)
+  END),'MM/DD/YYYY'),'MM/DD/YY') ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="START_DT" value="START_DT"></element>
+      <element name="END_DT" value="END_DT"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID"></element>
+      <element name="LOC" value="LOC"></element>
+      <element name="ENROUTE_STATUS" value="ENROUTE_STATUS" />
+      <element name="INVOICE_STATUS" value="INVOICE_STATUS" />
+      <element name="RECORD_TYPE" value="RECORD_TYPE" />
+      <element name="CANCELLED" value="CANCELLED" />
+      <element name="PRODUCT_ITEM" value="PRODUCT_ITEM" />
+      <element name="PACKAGING_DESCRIPTION" value="PACKAGING_DESCRIPTION"></element>
+      <element name="PACKAGING_NUMBER" value="PACKAGING_NUMBER" />
+      <element name="PACKAGING_UOM" value="PACKAGING_UOM"></element>
+      <element name="CUST_ID" value="CUST_ID"></element>
+      <element name="PICKUP_DATE" value="PICKUP_DATE"></element>
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE"></element>
+      <element name="ORIGIN_NAME" value="ORIGIN_NAME"></element>
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY"></element>
+      <element name="ORIGIN_POSTAL_CODE" value="ORIGIN_POSTAL_CODE"></element>
+      <element name="ORIGIN_PROVINCE" value="ORIGIN_PROVINCE"></element>
+      <element name="DEST_NAME" value="DEST_NAME"></element>
+      <element name="DEST_CITY" value="DEST_CITY"></element>
+      <element name="DEST_POSTAL_CODE" value="DEST_POSTAL_CODE"></element>
+      <element name="DEST_PROVINCE" value="DEST_PROVINCE"></element>
+      <element name="LOT_NUMBER" value="LOT_NUMBER"></element>
+      <element name="WEIGHT" value="WEIGHT"></element>
+      <element name="TENDER_STATUS" value="TENDER_STATUS"></element>
+      <element name="TRANSPORT_MODE" value="TRANSPORT_MODE"></element>
+      <element name="INCO_TERM" value="INCO_TERM"></element>
+      <element name="ACTUAL_COST" value="ACTUAL_COST"></element>
+      <element name="FREIGHT" value="FREIGHT"></element>
+      <element name="FUEL" value="FUEL"></element>
+      <element name="CUST_PO_NUM" value="CUST_PO_NUM"></element>
+      <element name="CUST_RELEASE_NUM" value="CUST_RELEASE_NUM"></element>
+      <element name="PLANNER" value="PLANNER"></element>
+      <element name="SERV_PROV" value="SERV_PROV"></element>
+      <element name="ACTUALS_SENT" value="ACTUALS_SENT"></element>
+      <element name="LOT_COMPLETE" value="LOT_COMPLETE"></element>
+      <element name="INVOICE_APPROVED" value="INVOICE_APPROVED"></element>
+      <element name="INVOICE_DISCREPANCY" value="INVOICE_DISCREPANCY"></element>
+      <element name="FIRST_EQUIP_GROUP" value="FIRST_EQUIP_GROUP"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

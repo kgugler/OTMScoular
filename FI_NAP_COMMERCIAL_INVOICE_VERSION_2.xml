@@ -1,0 +1,335 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_NAP_COMMERCIAL_INVOICE_VERSION_2" description="NAP Commercial Invoice Version 2" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties></properties>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:P_RUN draft_final 
+FROM DUAL]]></sqlStatement>
+    <!-- Query Start -->
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT 
+	TO_CHAR(SYSDATE,'FMMONTH DD, YYYY') invoice_date,
+	s.shipment_xid invoice_num,
+	l1.location_name to_name, 
+	(SELECT LISTAGG (la.address_line, ' ') 
+        WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+        WHERE la.location_gid = l1.location_gid) to_address,
+	l1.city || ', ' || l1.province_code || ' ' || l1.postal_code to_city_state_zip,
+	cc1.country_name,
+	c.phone1 to_phone,
+	l1.city || ', ' || cc1.country_name shipped_to,
+	TO_CHAR(s.start_time,'FMMONTH DD, YYYY') shipment_date, 
+	l2.city || ', ' || cc2.country_name shipped_from,
+	sr.shipment_refnum_value booking_number,
+	l3.location_name vessel,
+	s.shipment_xid reference_num,
+	(SELECT LISTAGG (pmc.payment_method_code_desc, ' ')
+        WITHIN GROUP (ORDER BY pmc.payment_method_code_desc) 
+        FROM shipment_s_equipment_join ssej
+        INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+        INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+        INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+        INNER JOIN payment_method_code pmc ON orel.payment_method_code_gid = pmc.payment_method_code_gid
+        WHERE ssej.shipment_gid = s.shipment_gid) terms,
+	(SELECT LISTAGG (oref.ob_refnum_value, ' ')
+        WITHIN GROUP (ORDER BY oref.ob_refnum_value) 
+        FROM shipment_s_equipment_join ssej
+        INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+        INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+        INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+        INNER JOIN ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+        AND oref.ob_refnum_qual_gid = 'SCOULAR/FOOD.NAMED_PLACE'
+        WHERE ssej.shipment_gid = s.shipment_gid) basis
+FROM 
+	shipment s
+LEFT OUTER JOIN
+	location l1 ON s.dest_location_gid = l1.location_gid
+LEFT OUTER JOIN
+	country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid
+LEFT OUTER JOIN  
+	contact c ON l1.location_gid = c.location_gid
+LEFT OUTER JOIN  
+	location l2 ON s.source_location_gid = l2.location_gid
+LEFT OUTER JOIN  
+	country_code cc2 ON l2.country_code3_gid = cc2.country_code3_gid
+LEFT OUTER JOIN  
+	location l3 ON s.servprov_gid = l3.location_gid
+LEFT OUTER JOIN  
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND 
+	sr.shipment_refnum_qual_gid = 'BN'  
+WHERE 
+	s.shipment_gid = :SHIPMENT_ID
+AND 
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	TO_CHAR(SYSDATE,'FMMONTH DD, YYYY') invoice_date,
+	NVL(s.shipment_xid, 'Data Missing in System') invoice_num,
+	NVL(l1.location_name, 'Data Missing in System') to_name, 
+	NVL((SELECT LISTAGG (la.address_line, ' ') 
+        WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+        WHERE la.location_gid = l1.location_gid), 'Data Missing in System') to_address,
+	NVL(l1.city || ', ' || l1.province_code || ' ' || l1.postal_code, 'Data Missing in System') to_city_state_zip,
+	NVL(cc1.country_name, 'Data Missing in System') country_name,
+	NVL(c.phone1, 'Data Missing in System') to_phone,
+	NVL(l1.city || ', ' || cc1.country_name, 'Data Missing in System') shipped_to,
+	NVL(TO_CHAR(s.start_time,'FMMONTH DD, YYYY'), 'Data Missing in System') shipment_date, 
+	NVL(l2.city || ', ' || cc2.country_name, 'Data Missing in System') shipped_from,
+	NVL(sr.shipment_refnum_value, 'Data Missing in System') booking_number,
+	NVL(l3.location_name, 'Data Missing in System') vessel,
+	NVL(s.shipment_xid, 'Data Missing in System') reference_num,
+	NVL((SELECT LISTAGG (pmc.payment_method_code_desc, ' ')
+        WITHIN GROUP (ORDER BY pmc.payment_method_code_desc) 
+        FROM shipment_s_equipment_join ssej
+        INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+        INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+        INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+        INNER JOIN payment_method_code pmc ON orel.payment_method_code_gid = pmc.payment_method_code_gid
+        WHERE ssej.shipment_gid = s.shipment_gid), 'Data Missing in System')  terms,
+	NVL((SELECT LISTAGG (oref.ob_refnum_value, ' ')
+        WITHIN GROUP (ORDER BY oref.ob_refnum_value) 
+        FROM shipment_s_equipment_join ssej
+        INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+        INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+        INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+        INNER JOIN ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+        AND oref.ob_refnum_qual_gid = 'SCOULAR/FOOD.NAMED_PLACE'
+        WHERE ssej.shipment_gid = s.shipment_gid), 'Data Missing in System') basis
+FROM 
+	shipment s
+LEFT OUTER JOIN
+	location l1 ON s.dest_location_gid = l1.location_gid
+LEFT OUTER JOIN
+	country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid
+LEFT OUTER JOIN  
+	contact c ON l1.location_gid = c.location_gid
+LEFT OUTER JOIN  
+	location l2 ON s.source_location_gid = l2.location_gid
+LEFT OUTER JOIN  
+	country_code cc2 ON l2.country_code3_gid = cc2.country_code3_gid
+LEFT OUTER JOIN  
+	location l3 ON s.servprov_gid = l3.location_gid
+LEFT OUTER JOIN  
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND 
+	sr.shipment_refnum_qual_gid = 'BN'
+WHERE 
+	s.shipment_gid = :SHIPMENT_ID
+AND 
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	TO_CHAR(ssu.unit_net_weight) || ' ' || ssu.unit_net_weight_uom_code || ' NET' quantity, 
+	it.description,
+	'$ ' || REGEXP_REPLACE (TO_CHAR (oref1.ob_refnum_value, '999990'), '\s*', '') || '/' || oref2.ob_refnum_value price,
+	'USD $ ' || REGEXP_REPLACE (TO_CHAR (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END, '999,999,990.99'), '\s*', '') total_price,
+	'1 BIG RED FLEXI-TANK' container,
+	'PER CONTAINER:' per_container, 
+	'PONU208580-4, SEAL # ML US7414027, 42,450 LBS. NET' misc
+FROM
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	s_ship_unit_line ssul, 
+	packaged_item pi,
+	item it, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1, 
+	ob_refnum oref2
+WHERE 
+	sstopd.shipment_gid = :SHIPMENT_ID
+AND 
+	ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+AND 
+	ssul.s_ship_unit_gid = ssu.s_ship_unit_gid 
+AND 
+	pi.packaged_item_gid = ssul.packaged_item_gid
+AND 
+	it.item_gid = pi.item_gid
+AND 
+	su.ship_unit_gid = ssu.ship_unit_gid
+AND 
+	orel.order_release_gid = su.order_release_gid
+AND 
+	oref1.order_base_gid = orel.order_base_gid
+AND 
+	oref2.order_base_gid = orel.order_base_gid
+AND 
+	sstopd.stop_num = 1
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE'
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(TO_CHAR(ssu.unit_net_weight), 'Data Missing in System') || ' ' || NVL(ssu.unit_net_weight_uom_code, 'Data Missing in System') || ' NET' quantity, 
+	NVL(it.description, 'Data Missing in System') description,
+	NVL('$ ' || REGEXP_REPLACE (TO_CHAR (oref1.ob_refnum_value, '999990'), '\s*', '') || '/' || oref2.ob_refnum_value, 'Data Missing in System') price,
+	NVL('USD $ ' || REGEXP_REPLACE (TO_CHAR (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END, '999,999,990.99'), '\s*', ''), 'Data Missing in System') total_price,
+	'1 BIG RED FLEXI-TANK' container,
+	'PER CONTAINER:' per_container, 
+	'PONU208580-4, SEAL # ML US7414027, 42,450 LBS. NET' misc
+FROM
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	s_ship_unit_line ssul, 
+	packaged_item pi,
+	item it, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1, 
+	ob_refnum oref2
+WHERE 
+	sstopd.shipment_gid = :SHIPMENT_ID
+AND 
+	ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+AND 
+	ssul.s_ship_unit_gid = ssu.s_ship_unit_gid 
+AND 
+	pi.packaged_item_gid = ssul.packaged_item_gid
+AND 
+	it.item_gid = pi.item_gid
+AND 
+	su.ship_unit_gid = ssu.ship_unit_gid
+AND 
+	orel.order_release_gid = su.order_release_gid
+AND 
+	oref1.order_base_gid = orel.order_base_gid
+AND 
+	oref2.order_base_gid = orel.order_base_gid
+AND 
+	sstopd.stop_num = 1
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE'
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+    'USD $ ' || REGEXP_REPLACE (
+            TO_CHAR (
+               (SUM (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END)),
+               '999,999,990.99'),
+            '\s*',
+            '')
+            total
+FROM
+	shipment s,
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1,
+	ob_refnum oref2
+WHERE
+	s.shipment_gid =  :SHIPMENT_ID
+AND
+	sstopd.shipment_gid(+) = s.shipment_gid
+AND
+	ssu.s_ship_unit_gid(+) = sstopd.s_ship_unit_gid
+AND 
+	su.ship_unit_gid(+) = ssu.ship_unit_gid
+AND
+	orel.order_release_gid(+) = su.order_release_gid
+AND 
+	oref1.order_base_gid(+) = orel.order_base_gid
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE' 
+AND 
+	oref2.order_base_gid(+) = orel.order_base_gid
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'          
+AND 
+	sstopd.stop_num(+) = 1
+AND
+	:P_RUN = 'FINAL'
+GROUP BY 1
+UNION
+SELECT
+    'USD $ ' || NVL(REGEXP_REPLACE (
+            TO_CHAR (
+               (SUM (CASE WHEN oref2.ob_refnum_value = 'ST' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2000)
+                WHEN oref2.ob_refnum_value = 'MT' THEN ((ssu.unit_net_weight * oref1.ob_refnum_value) / 2204.62262)
+                 ELSE ssu.unit_net_weight * oref1.ob_refnum_value END)),
+               '999,999,990.99'),
+            '\s*',
+            ''),'Data Missing in System')
+            total
+FROM
+	shipment s,
+	shipment_stop_d sstopd, 
+	s_ship_unit ssu, 
+	ship_unit su,
+	order_release orel,
+	ob_refnum oref1,
+	ob_refnum oref2
+WHERE
+	s.shipment_gid =  :SHIPMENT_ID
+AND
+	sstopd.shipment_gid(+) = s.shipment_gid
+AND
+	ssu.s_ship_unit_gid(+) = sstopd.s_ship_unit_gid
+AND 
+	su.ship_unit_gid(+) = ssu.ship_unit_gid
+AND
+	orel.order_release_gid(+) = su.order_release_gid
+AND 
+	oref1.order_base_gid(+) = orel.order_base_gid
+AND 
+	oref1.ob_refnum_qual_gid(+) = 'SCOULAR.CONTRACT_PRICE' 
+AND 
+	oref2.order_base_gid(+) = orel.order_base_gid
+AND 
+	oref2.ob_refnum_qual_gid(+) = 'SCOULAR.PRICE_UOM'          
+AND 
+	sstopd.stop_num(+) = 1
+AND
+	:P_RUN = 'DRAFT'
+GROUP BY 1]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="INVOICE_DATE" value="INVOICE_DATE" />
+      <element name="INVOICE_NUM" value="INVOICE_NUM" />
+      <element name="TO_NAME" value="TO_NAME" />
+      <element name="TO_ADDRESS" value="TO_ADDRESS" />
+      <element name="TO_CITY_STATE_ZIP" value="TO_CITY_STATE_ZIP" />
+      <element name="COUNTRY_NAME" value="COUNTRY_NAME" />
+      <element name="TO_PHONE" value="TO_PHONE" />
+      <element name="SHIPPED_TO" value="SHIPPED_TO" />
+      <element name="SHIPMENT_DATE" value="SHIPMENT_DATE" />
+      <element name="SHIPPED_FROM" value="SHIPPED_FROM" />
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="REFERENCE_NUM" value="REFERENCE_NUM" />
+      <element name="TERMS" value="TERMS" />
+      <element name="BASIS" value="BASIS" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="PRICE" value="PRICE" />
+      <element name="TOTAL_PRICE" value="TOTAL_PRICE" />
+      <element name="CONTAINER" value="CONTAINER" />
+      <element name="PER_CONTAINER" value="PER_CONTAINER" />
+      <element name="MISC" value="MISC" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL" value="TOTAL" />
+    </group>
+  </dataStructure>
+</dataTemplate>

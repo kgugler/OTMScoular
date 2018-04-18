@@ -1,0 +1,290 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_SHIPPING_SCHEDULES" description="FI Shipping Schedules" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_FI_SHIPPING_SCHEDULES" version="1.0">
+  <parameters>
+    <parameter name="CUSTOMER_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  a.shipment_xid || (CASE WHEN oref2.order_release_refnum_value IS NULL THEN
+    a.order_release_xid
+  ELSE
+    oref2.order_release_refnum_value
+  END)
+  grouper,
+  (CASE WHEN oref2.order_release_refnum_value IS NULL THEN
+    a.order_release_xid
+  ELSE
+    oref2.order_release_refnum_value
+  END)
+  po_release_no,
+  oref3.order_release_refnum_value
+  invoice_no,
+  oref4.order_release_refnum_value
+  product_code,
+  (SELECT LISTAGG(oref.order_release_refnum_value,', ')
+  WITHIN GROUP (ORDER BY oref.order_release_refnum_value)
+  FROM order_release_refnum oref
+  WHERE oref.order_release_gid = a.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR/FOOD.LOT NO')
+  lot_no,
+  ROUND(a.total_weight_base / 2204.62262,3)
+  quantity,
+  (CASE WHEN loc.country_code3_gid = 'USA' OR loc.country_code3_gid = 'CAN' THEN
+    loc.city || ', ' || loc.province_code
+  ELSE
+    loc.city || ', ' || loc.country_code3_gid
+  END)
+  destination,
+  (CASE WHEN a.shipment_gid IS NULL THEN
+    (CASE WHEN a.source_location_gid IS NULL THEN
+      TO_CHAR(a.early_pickup_date,'fmMM/DD/YYYY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(a.early_pickup_date,a.source_location_gid)),'fmMM/DD/YYYY')
+    END)
+  ELSE
+    (CASE WHEN a.ship_source_location_gid IS NULL THEN
+      TO_CHAR(a.start_time,'fmMM/DD/YYYY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(a.start_time,a.ship_source_location_gid)),'fmMM/DD/YYYY')
+    END)
+  END)
+  etd,
+  (CASE WHEN a.shipment_gid IS NULL THEN
+    (CASE WHEN a.dest_location_gid IS NULL THEN
+      TO_CHAR(a.late_delivery_date,'fmMM/DD/YYYY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(a.late_delivery_date,a.dest_location_gid)),'fmMM/DD/YYYY')
+    END)  
+  ELSE
+    (CASE WHEN a.ship_dest_location_gid IS NULL THEN
+      TO_CHAR(a.end_time,'fmMM/DD/YYYY')
+    ELSE
+      TO_CHAR(TO_DATE(glogowner.utc.get_local_date(a.end_time,a.ship_dest_location_gid)),'fmMM/DD/YYYY')
+    END)
+  END)
+  eta,
+  oref5.order_release_refnum_value
+  cust_po_no,
+  TO_CHAR(a.attribute_date1,'fmMM/DD/YYYY')
+  sample_sent_dt,
+  oref6.order_release_refnum_value
+  sample_track_no,  
+  orem1.remark_text
+  sample_approved,
+  TO_CHAR(TRIM(LEADING 0 FROM a.shipment_xid))
+  shipment_xid,
+  a.booked,
+  orem2.remark_text
+  comments
+FROM
+(SELECT
+  orel.order_release_xid,
+  orel.order_release_gid,
+  orel.order_base_gid,
+  orel.source_location_gid,
+  orel.dest_location_gid,
+  orel.early_pickup_date,
+  orel.late_delivery_date,
+  orel.total_weight_base,
+  orel.attribute_date1,
+  s.shipment_gid,
+  s.shipment_xid,
+  s.transport_mode_gid
+  ship_transport_mode_gid,
+  s.source_location_gid
+  ship_source_location_gid,
+  s.dest_location_gid
+  ship_dest_location_gid,
+  s.start_time,
+  s.end_time,  
+  'Yes' booked,
+  it.item_gid
+FROM
+  order_release orel
+INNER JOIN
+  order_release_refnum oref1 ON orel.order_release_gid = oref1.order_release_gid
+AND
+  oref1.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND
+  oref1.order_release_refnum_value IN ('5036','5136')
+INNER JOIN 
+  s_ship_unit_line ssul ON orel.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN 
+  shipment s ON ssej.shipment_gid = s.shipment_gid 
+INNER JOIN
+  shipment_status ss
+ON
+  ss.shipment_gid = s.shipment_gid
+AND 
+  ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400' 
+LEFT OUTER JOIN
+	packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+LEFT OUTER JOIN
+	item it ON pi.item_gid = it.item_gid    
+LEFT OUTER JOIN
+  order_release_refnum oref ON orel.order_release_gid = oref.order_release_gid
+AND
+  oref.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER'   
+LEFT OUTER JOIN
+  ob_involved_party oip1 ON 'SCOULAR/FOOD.' || SUBSTR(oref.order_release_refnum_value,1, INSTR(oref.order_release_refnum_value,'-',1,1)-1) = oip1.order_base_gid
+AND
+  oip1.involved_party_qual_gid = 'CUSTOMER'  
+LEFT OUTER JOIN
+  ob_involved_party oip2 ON orel.order_base_gid = oip2.order_base_gid
+AND
+  oip2.involved_party_qual_gid = 'CUSTOMER'
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  ss.status_value_gid NOT IN ('SCOULAR/FOOD.SAR_AS400_YES','SCOULAR/FOOD.SAR_AS400_MANUAL')
+AND
+  NOT EXISTS
+  (SELECT oref.order_release_gid
+  FROM order_release_refnum oref 
+  WHERE oref.order_release_gid = orel.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR.PREADVISE'
+  AND oref.order_release_refnum_value IN ('Yes','YES'))
+AND
+  (:CUSTOMER_ID IS NULL
+OR
+  (NOT :CUSTOMER_ID IS NULL
+AND
+  ((oip1.involved_party_contact_gid IS NULL AND
+    (oip2.involved_party_contact_gid IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+            FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))
+OR 
+  (NOT oip1.involved_party_contact_gid IS NULL AND
+    (oip1.involved_party_contact_gid IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+            FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL))))))  
+UNION
+SELECT
+  orel.order_release_xid,
+  orel.order_release_gid,
+  orel.order_base_gid,
+  orel.source_location_gid,
+  orel.dest_location_gid,
+  orel.early_pickup_date,
+  orel.late_delivery_date,
+  orel.total_weight_base,
+  orel.attribute_date1,  
+  NULL shipment_gid,
+  NULL shipment_xid,
+  NULL ship_transport_mode_gid,
+  NULL ship_source_location_gid,
+  NULL ship_dest_location_gid,
+  NULL start_time,
+  NULL end_time,
+  (CASE WHEN oref2.order_release_refnum_value IS NULL THEN
+    'No'
+  ELSE (CASE WHEN oref2.order_release_refnum_value = 'YES' THEN
+    'Yes'
+  ELSE
+    'No'
+  END) END)
+  booked,
+  NULL item_gid
+FROM
+  order_release orel
+INNER JOIN
+  order_release_refnum oref1 ON orel.order_release_gid = oref1.order_release_gid
+AND
+  oref1.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND
+  oref1.order_release_refnum_value IN ('5036','5136')
+INNER JOIN 
+  order_release_status ors ON orel.order_release_gid = ors.order_release_gid
+AND 
+  ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+AND 
+  ors.status_value_gid IN ('SCOULAR/FOOD.PLANNING_NEW','SCOULAR/FOOD.PLANNING_PLANNED - FAILED','SCOULAR/FOOD.PLANNING_PLANNED - HOLD','SCOULAR/FOOD.PLANNING_UNSCHEDULED')
+LEFT OUTER JOIN
+  order_release_refnum oref ON orel.order_release_gid = oref.order_release_gid
+AND
+  oref.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER' 
+LEFT OUTER JOIN
+  ob_involved_party oip1 ON 'SCOULAR/FOOD.' || SUBSTR(oref.order_release_refnum_value,1, INSTR(oref.order_release_refnum_value,'-',1,1)-1) = oip1.order_base_gid
+AND
+  oip1.involved_party_qual_gid = 'CUSTOMER'  
+LEFT OUTER JOIN
+  ob_involved_party oip2 ON orel.order_base_gid = oip2.order_base_gid
+AND
+  oip2.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  order_release_refnum oref2 ON orel.order_release_gid = oref2.order_release_gid
+AND
+  oref2.order_release_refnum_qual_gid = 'SCOULAR/FOOD.BOOKED'    
+WHERE
+  orel.domain_name = 'SCOULAR/FOOD'
+AND
+  NOT EXISTS
+  (SELECT oref.order_release_gid
+  FROM order_release_refnum oref 
+  WHERE oref.order_release_gid = orel.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR.PREADVISE'
+  AND oref.order_release_refnum_value IN ('Yes','YES'))
+AND
+  (:CUSTOMER_ID IS NULL
+OR
+  (NOT :CUSTOMER_ID IS NULL
+AND
+  ((oip1.involved_party_contact_gid IS NULL AND
+    (oip2.involved_party_contact_gid IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+            FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))
+OR 
+  (NOT oip1.involved_party_contact_gid IS NULL AND
+    (oip1.involved_party_contact_gid IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+            FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL))))))) a
+LEFT OUTER JOIN
+  order_release_refnum oref2 ON a.order_release_gid = oref2.order_release_gid
+AND
+  oref2.order_release_refnum_qual_gid = 'SCOULAR/FOOD.OVERRIDE ORDER RELEASE ID'  
+LEFT OUTER JOIN
+  order_release_refnum oref3 ON a.order_release_gid = oref3.order_release_gid
+AND
+  oref3.order_release_refnum_qual_gid = 'SCOULAR/FOOD.INVOICE NUMBER'
+LEFT OUTER JOIN
+  order_release_refnum oref4 ON a.order_release_gid = oref4.order_release_gid
+AND
+  oref4.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  order_release_refnum oref5 ON a.order_release_gid = oref5.order_release_gid
+AND
+  oref5.order_release_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'
+LEFT OUTER JOIN
+  order_release_refnum oref6 ON a.order_release_gid = oref6.order_release_gid
+AND
+  oref6.order_release_refnum_qual_gid = 'SCOULAR/FOOD.SAMPLE TRACKING NO'  
+LEFT OUTER JOIN
+  order_release_remark orem1 ON a.order_release_gid = orem1.order_release_gid
+AND
+  orem1.remark_qual_gid = 'SCOULAR/FOOD.SAMPLE APPROVED'  
+LEFT OUTER JOIN
+  order_release_remark orem2 ON a.order_release_gid = orem2.order_release_gid
+AND
+  orem2.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES'   
+LEFT OUTER JOIN
+  location loc ON a.dest_location_gid = loc.location_gid            
+ORDER BY
+  (CASE WHEN a.shipment_gid IS NULL THEN
+    (CASE WHEN a.source_location_gid IS NULL THEN
+      a.early_pickup_date
+    ELSE
+      TO_DATE(glogowner.utc.get_local_date(a.early_pickup_date,a.source_location_gid))
+    END)
+  ELSE
+    (CASE WHEN a.ship_source_location_gid IS NULL THEN
+      a.start_time
+    ELSE
+      TO_DATE(glogowner.utc.get_local_date(a.start_time,a.ship_source_location_gid))
+    END)
+  END)]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_FI_SHIPPING_SCHEDULES.before_report" />
+</dataTemplate>

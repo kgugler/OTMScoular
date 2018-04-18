@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_LANE_SUMMARY_CARRIER_BID" description="Lane Summary for Carrier Bid" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="EQUIPMENT_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :START_DATE from_date,
+  :END_DATE to_date,
+  NVL(REPLACE(:EQUIPMENT_ID,'SCOULAR.',''),'ALL') equipments
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.transport_mode_gid,
+  COUNT(a.shipment_xid) 
+  shipment_count,
+  a.equipment_group, 
+  a.source_city,
+  a.source_zip,
+  a.source_province, 
+  a.source_country, 
+  a.destination_city, 
+  a.destination_zip,
+  a.destination_province, 
+  a.destination_country, 
+  a.packaging_type,
+  a.uom,
+  AVG(a.total_net_weight_base)
+  avg_ship_lbs
+FROM
+(SELECT DISTINCT
+  s.shipment_xid,
+  s.transport_mode_gid,
+  TRIM(DECODE(eqg.equipment_group_xid,'MULTI-CONTAINER EQUIPMENT','CONTAINER','20 FT STANDARD CONTAINER','CONTAINER','40 FT STANDARD CONTAINER','CONTAINER','53 FT DRY VAN','VAN','48 FT DRY VAN','VAN','53 FT INTERMODAL VAN','VAN','48 FT REEFER','REEFER','53 FT REEFER','REEFER','FT HOPPER','HOPPER','FT END DUMP','HOPPER','BARGE','BARGE','TANK TRAILER','TANK','20 FT ISO TANK','TANK','HOPPPER RAILCAR','HOPPER RAILCAR',eqg.equipment_group_xid) ||
+  ' ' || (CASE WHEN s.transport_mode_gid = 'LTL' THEN 'LTL' ELSE '' END))
+  equipment_group,
+  loc1.city 
+  source_city,
+  loc1.postal_code
+  source_zip,
+  loc1.province_code 
+  source_province,
+  loc1.country_code3_gid 
+  source_country,
+  loc2.city 
+  destination_city,
+  loc2.postal_code
+  destination_zip,
+  loc2.province_code 
+  destination_province,
+  loc2.country_code3_gid 
+  destination_country,
+  sref1.shipment_refnum_value 
+  packaging_type,
+  TRIM(sref2.shipment_refnum_value || ' ' || sref3.shipment_refnum_value)
+  uom,
+  s.total_net_weight_base
+FROM
+	shipment s
+INNER JOIN 
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN 
+  s_equipment seq ON ssej.s_equipment_gid = seq.s_equipment_gid
+LEFT OUTER JOIN
+  equipment_group eqg ON seq.equipment_group_gid = eqg.equipment_group_gid
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.PACKAGING NUMBER' 
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.PACKAGING UNIT OF MEASURE'
+WHERE
+	(s.start_time >= TO_DATE(:START_DATE,'YYYY-MM-DD') 
+AND 
+  s.start_time <= TO_DATE(:END_DATE, 'YYYY-MM-DD'))
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+AND
+  (:EQUIPMENT_ID IS NULL 
+OR
+  (NOT :EQUIPMENT_ID IS NULL
+AND
+  seq.equipment_group_gid IN (SELECT REGEXP_SUBSTR(:EQUIPMENT_ID,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:EQUIPMENT_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))) a
+GROUP BY
+  a.transport_mode_gid,
+  a.equipment_group, 
+  a.packaging_type, 
+  a.uom,
+  a.source_city, 
+  a.source_zip,
+  a.source_province, 
+  a.source_country, 
+  a.destination_city, 
+  a.destination_zip,
+  a.destination_province, 
+  a.destination_country
+ORDER BY
+  a.source_city, 
+  a.source_province, 
+  a.source_country, 
+  a.destination_city, 
+  a.destination_country,
+  a.transport_mode_gid,  
+  a.equipment_group, 
+  COUNT(a.shipment_xid) DESC]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

@@ -1,0 +1,167 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_FUEL_SURCHARGE" description="Fuel Surcharge" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties></properties>
+  <parameters>
+    <parameter name="P_START_DATE" dataType="character" />
+    <parameter name="P_END_DATE" dataType="character" />
+    <parameter name="P_LOC_CODE" dataType="character" />
+    <parameter name="P_SHIPMENT_ID" dataType="character" />
+    <parameter name="P_ORIGIN" dataType="character" />
+    <parameter name="P_DESTINATION" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  TO_DATE(ssur.remark_text,'yyyy-mm-dd') sorter,
+  sh.shipment_xid,
+  orel.order_release_xid,
+  (SELECT oob.order_base_xid
+  FROM ob_order_base oob
+  WHERE oob.order_base_gid = orel.order_base_gid)
+  order_base_xid,
+  TO_CHAR(ROUND(sh.total_actual_cost,2),'999999990.00')
+  shipment_cost,
+  sh.t_actual_cost_currency_gid 
+  shipment_uom,
+  (SELECT loc.location_name||decode(loc.city,NULL,NULL,', '||loc.city)||decode(loc.province_code,NULL,NULL,', '||loc.province_code)||decode(loc.postal_code,NULL,NULL,', '||loc.postal_code)||decode(loc.country_code3_gid,NULL,NULL,', '||loc.country_code3_gid)
+  FROM location loc
+  WHERE loc.location_gid = sh.dest_location_gid)
+  deliver_to,
+  sh.dest_location_gid,
+  (SELECT loc.location_name||decode(loc.city,NULL,NULL,', '||loc.city)||decode(loc.province_code,NULL,NULL,', '||loc.province_code)||decode(loc.postal_code,NULL,NULL,', '||loc.postal_code)||decode(loc.country_code3_gid,NULL,NULL,', '||loc.country_code3_gid)
+  FROM location loc
+  WHERE loc.location_gid = sh.source_location_gid)
+  source_loc, 
+  (SELECT pi.packaged_item_xid
+  FROM packaged_item pi
+  WHERE pi.packaged_item_gid = orl.packaged_item_gid)
+  commodity_code,
+  TO_CHAR(sh.end_time,'MM/DD/YYYY') 
+  delivery_date,
+  TO_CHAR(TO_DATE(ssur.remark_text,'yyyy-mm-dd'),'MM/DD/YYYY') 
+  bl_date,
+  glog_util.remove_domain(sip.involved_party_contact_gid)
+  customer_id,
+  TO_CHAR((ROUND(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_fuel_surcharge_fcn (
+  sh.shipment_gid,
+  sh.transport_mode_gid,
+  orel.order_release_gid),2)),'999999990.00')
+  fuel,  
+  DECODE(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_fuel_surcharge_fcn (
+  sh.shipment_gid,
+  sh.transport_mode_gid,
+  orel.order_release_gid),NULL,NULL,
+  (SELECT DISTINCT aord.cost_currency_gid
+  FROM allocation_order_release_d aord
+  WHERE aord.order_release_gid = orel.order_release_gid))
+  fuel_uom,
+  TO_CHAR((ROUND(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_freight_fcn (
+  sh.shipment_gid,
+  sh.transport_mode_gid,
+  orel.order_release_gid),2)),'999999990.00') 
+  freight,
+  DECODE(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_freight_fcn (
+  sh.shipment_gid,
+  sh.transport_mode_gid,
+  orel.order_release_gid),NULL,NULL,
+  (SELECT DISTINCT aord.cost_currency_gid
+  FROM allocation_order_release_d aord
+  WHERE aord.order_release_gid = orel.order_release_gid))
+  freight_uom,
+  TO_CHAR(ROUND(sh.loaded_distance,2),'999999990.00') 
+  mileage,
+  sref.shipment_refnum_value 
+  loc_code
+FROM
+  shipment sh
+INNER JOIN
+  shipment_stop_d sstopd ON sh.shipment_gid = sstopd.shipment_gid
+INNER JOIN
+  s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_remark ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND
+  ssur.remark_qual_gid = 'SCOULAR.TRAN ID DATE'
+INNER JOIN
+  shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+INNER JOIN
+  status_type st ON ss.status_type_gid = st.status_type_gid
+AND 
+  st.status_type_xid = 'SAR_AS400'
+INNER JOIN
+  status_value sv ON ss.status_value_gid = sv.status_value_gid
+AND 
+  sv.status_value_xid = 'SAR_AS400_YES'  
+INNER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND 
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN
+  order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND 
+  orr.order_release_refnum_value = 'Y'  
+INNER JOIN
+  order_release_refnum_qual orrq ON orr.order_release_refnum_qual_gid = orrq.order_release_refnum_qual_gid
+AND
+  orrq.order_release_refnum_qual_xid = 'PLUS FUEL SURCHARGE'  
+INNER JOIN
+  order_release_line orl ON orel.order_release_gid = orl.order_release_gid
+INNER JOIN
+  shipment_involved_party sip ON sh.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+WHERE     
+  (TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)) >= NVL(TO_DATE(NVL(:P_START_DATE,'1900-01-01'),'yyyy-mm-dd'),TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)))
+AND 
+  TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)) <= NVL(TO_DATE(NVL(:P_END_DATE,'2999-01-01'),'yyyy-mm-dd'),TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE))))
+AND (TRIM(:P_LOC_CODE) IS NULL
+  OR (NOT TRIM(:P_LOC_CODE) IS NULL
+  AND sref.shipment_refnum_value = TRIM(:P_LOC_CODE)))
+AND (TRIM(:P_SHIPMENT_ID) IS NULL
+  OR (NOT TRIM(:P_SHIPMENT_ID) IS NULL
+  AND sh.shipment_gid = TRIM(:P_SHIPMENT_ID)))
+AND (TRIM(:P_ORIGIN) IS NULL
+  OR (NOT TRIM(:P_ORIGIN) IS NULL
+  AND sh.source_location_gid = TRIM(:P_ORIGIN)))
+AND (TRIM(:P_DESTINATION) IS NULL
+  OR (NOT TRIM(:P_DESTINATION) IS NULL
+  AND sh.dest_location_gid = TRIM(:P_DESTINATION)))
+ORDER BY 
+  TO_DATE(ssur.remark_text,'yyyy-mm-dd') DESC]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TRIM(TO_CHAR(SYSDATE,'FMDay, Month DD, yyyy ')) 
+  curr_date
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="ORDER_RELEASE_XID" value="ORDER_RELEASE_XID" />
+      <element name="ORDER_BASE_XID" value="ORDER_BASE_XID" />
+      <element name="CUSTOMER_ID" value="CUSTOMER_ID" />
+      <element name="SHIPMENT_COST" value="SHIPMENT_COST" />
+      <element name="SHIPMENT_UOM" value="SHIPMENT_UOM" />
+      <element name="COMMODITY_CODE" value="COMMODITY_CODE" />
+      <element name="SOURCE_LOC" value="SOURCE_LOC" />
+      <element name="DELIVER_TO" value="DELIVER_TO" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE" />
+      <element name="BL_DATE" value="BL_DATE" />
+      <element name="MILEAGE" value="MILEAGE" />
+      <element name="FUEL" value="FUEL" />
+      <element name="FUEL_UOM" value="FUEL_UOM" />
+      <element name="FREIGHT" value="FREIGHT" />
+      <element name="FREIGHT_UOM" value="FREIGHT_UOM" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,388 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_SHIP_CONFIRM" description="Scoular Shipment Confirmation Report" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG" version="1.0">
+  <parameters>
+    <parameter name="P_SHIPMENT_GID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_SHIPMENT"><![CDATA[SELECT DISTINCT
+  (SELECT DECODE (r_version,
+  1, sh.shipment_xid || ' - A New shipment Created',
+  sh.shipment_xid || ' - Shipment Information Updated')
+  FROM glogowner.xxscou_ship_confirm_tbl xsct
+  WHERE xsct.shipment_gid = sh.shipment_gid
+  AND ROWNUM < 2) 
+  event,
+  shipment_xid,
+  (SELECT LISTAGG(ssur.refnum_value,', ')
+  WITHIN GROUP (ORDER BY ssur.refnum_value)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.CONTAINER ID'
+  WHERE ssd.shipment_gid = sh.shipment_gid
+  AND ssd.stop_num = 1)
+  containers,
+  (SELECT glogowner.xxscou_ship_confirm_pkg.xxscou_get_ship_ref_num_fcn(sh.shipment_gid,'LOC_CODE') FROM dual) 
+  loc_code,
+  (SELECT glogowner.xxscou_ship_confirm_pkg.xxscou_get_rel_ref_num_fcn(sh.shipment_gid) FROM dual) 
+  ref_num,
+  NVL((SELECT glogowner.xxscou_ship_confirm_pkg.xxscou_get_rel_pick_fcn(sh.shipment_gid) FROM dual),shipment_xid) 
+  pickup_num,
+  (SELECT glogowner.xxscou_ship_confirm_pkg.xxscou_get_rel_delivery_fcn(sh.shipment_gid,'SCOULAR.DELIVERY NUMBER') FROM dual) 
+  delivery_num,
+  (SELECT location_name FROM location WHERE location_gid = sh.source_location_gid) 
+  s_location_name,
+  (SELECT  City||'  '|| Province_Code ||'  '|| postal_code ||'  '||country_code3_gid FROM location WHERE location_gid = sh.source_location_gid) 
+  s_location_det,
+  (SELECT address_line FROM location_address WHERE location_gid = sh.source_location_gid AND line_sequence = 1) 
+  s_addr1,
+  (SELECT address_line FROM location_address WHERE location_gid = sh.source_location_gid AND line_sequence = 2) 
+  s_addr2,
+  (SELECT glogowner.xxscou_ship_confirm_pkg.xxscou_get_phone_fcn(sh.source_location_gid) FROM dual)
+  s_contact,
+  (SELECT location_name FROM location WHERE location_gid = sh.dest_location_gid) 
+  d_location_name,
+  (SELECT  City||'  '|| Province_Code ||'  '|| postal_code ||'  '||country_code3_gid FROM location WHERE location_gid = sh.dest_location_gid) 
+  d_location_det,
+  (SELECT address_line FROM location_address WHERE location_gid = sh.dest_location_gid AND line_sequence = 1) 
+  d_addr1,
+  (SELECT address_line FROM location_address WHERE location_gid = sh.dest_location_gid AND line_sequence = 2) 
+  d_addr2,
+  (SELECT glogowner.xxscou_ship_confirm_pkg.xxscou_get_phone_fcn(sh.dest_location_gid) FROM dual)  
+  d_contact,
+  (CASE WHEN (SELECT pit.packaged_item_type_xid
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN packaged_item_type pit ON pi.packaged_item_type_gid = pit.packaged_item_type_gid
+  WHERE sstopd.shipment_gid = :P_SHIPMENT_GID
+  AND sstopd.stop_num = 1
+  AND ROWNUM = 1) IS NULL THEN
+    GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_item_fcn (
+    orel.order_release_gid,
+    'LTL PACKAGING DESCRIPTION')
+  ELSE
+		(SELECT pit.packaged_item_type_xid
+		FROM shipment_stop_d sstopd
+		INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+		INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+		INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+		INNER JOIN packaged_item_type pit ON pi.packaged_item_type_gid = pit.packaged_item_type_gid
+    WHERE sstopd.shipment_gid = :P_SHIPMENT_GID
+		AND	sstopd.stop_num = 1
+    AND ROWNUM = 1) 
+  END) 
+  packaging,
+  (SELECT email_address  FROM contact WHERE contact_gid = sh.insert_user) 
+  email,
+  (SELECT phone1 || ',' || phone2  FROM contact WHERE contact_gid = sh.insert_user) 
+  phone,
+  (SELECT first_name ||' '|| last_name  FROM contact WHERE contact_gid = sh.insert_user)
+  name
+FROM 
+  shipment sh
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN 
+  order_release orel ON ssul.order_base_gid = orel.order_base_gid 
+WHERE 
+  sh.shipment_gid = :P_SHIPMENT_GID]]></sqlStatement>
+    <sqlStatement name="Q_ITEM"><![CDATA[SELECT DISTINCT
+  itm.item_xid,
+  itm.description,
+  (CASE WHEN GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn (ssd.shipment_gid) = 'Call Scoular' THEN 
+    'Call Scoular' 
+  ELSE
+    TO_CHAR(ROUND(ssu.unit_net_weight_base,2)) 
+  END) 
+  weight,
+  (CASE WHEN GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn (ssd.shipment_gid) = 'Call Scoular' THEN 
+    'Call Scoular'
+  ELSE       
+    DECODE(ssu.unit_net_weight_base,NULL,NULL,'LB') 
+  END)
+  weight_uom_code,
+  (CASE WHEN GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn (ssd.shipment_gid) = 'Call Scoular' THEN 
+    'Call Scoular' 
+  ELSE        
+    (CASE WHEN (SELECT TO_CHAR(SUM(pi.package_ship_unit_weight))
+		FROM shipment_stop_d sstopd
+		INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+		INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+		INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+		WHERE sstopd.shipment_gid = ssd.shipment_gid
+		AND	sstopd.stop_num = 1)
+		IS NULL THEN
+       GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_item_fcn(ssul.order_release_gid,'PACKAGING NUMBER')
+    WHEN (SELECT SUM(pi.package_ship_unit_weight)
+		FROM shipment_stop_d sstopd
+		INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+		INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+		INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+		WHERE sstopd.shipment_gid = ssd.shipment_gid
+		AND	sstopd.stop_num = 1) = 0 THEN
+      GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_item_fcn(ssul.order_release_gid,'PACKAGING NUMBER')
+		ELSE 
+      (SELECT TO_CHAR(SUM(pi.package_ship_unit_weight))
+      FROM shipment_stop_d sstopd
+      INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+      INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+      WHERE sstopd.shipment_gid = ssd.shipment_gid
+      AND	sstopd.stop_num = 1) 
+    END) 
+  END)
+  packaging_num,
+  (CASE WHEN GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn (ssd.shipment_gid) = 'Call Scoular' THEN 
+    'Call Scoular' 
+  ELSE           
+    (CASE WHEN (SELECT TO_CHAR(pi.package_ship_unit_weight)
+		FROM shipment_stop_d sstopd
+		INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+		INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+		INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+		WHERE sstopd.shipment_gid = ssd.shipment_gid
+		AND	sstopd.stop_num = 1
+    AND ROWNUM = 1) IS NULL THEN
+      GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_item_fcn(ssul.order_release_gid,'PACKAGING UNIT OF MEASURE')
+    WHEN (SELECT pi.package_ship_unit_weight
+    FROM shipment_stop_d sstopd
+    INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+    INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+    WHERE sstopd.shipment_gid = ssd.shipment_gid
+    AND	sstopd.stop_num = 1
+    AND ROWNUM = 1) = 0 THEN
+      GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_item_fcn(ssul.order_release_gid,'PACKAGING UNIT OF MEASURE')
+    ELSE 
+      (SELECT pi.package_ship_unit_weight_uom
+      FROM shipment_stop_d sstopd
+      INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+      INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+      WHERE sstopd.shipment_gid = ssd.shipment_gid
+      AND sstopd.stop_num = 1
+      AND ROWNUM = 1)
+    END) 
+  END)
+  packaging_uom,
+  (CASE WHEN GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn(ssd.shipment_gid) = 'Call Scoular' THEN 
+    'Call Scoular' 
+  ELSE 
+    (CASE WHEN (SELECT pit.packaged_item_type_xid
+		FROM shipment_stop_d sstopd
+		INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+		INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+		INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+		INNER JOIN packaged_item_type pit ON pi.packaged_item_type_gid = pit.packaged_item_type_gid
+		WHERE sstopd.shipment_gid = ssd.shipment_gid
+		AND	sstopd.stop_num = 1
+    AND ROWNUM = 1)IS NULL THEN
+      GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_item_fcn(ssul.order_release_gid,'LTL PACKAGING DESCRIPTION')
+		ELSE 
+      (SELECT pit.packaged_item_type_xid
+      FROM shipment_stop_d sstopd
+      INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+      INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+      INNER JOIN packaged_item_type pit ON pi.packaged_item_type_gid = pit.packaged_item_type_gid
+      WHERE sstopd.shipment_gid = ssd.shipment_gid
+      AND	sstopd.stop_num = 1
+      AND ROWNUM = 1) 
+    END) 
+  END) 
+  packaging_ltl,
+  GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn(ssd.shipment_gid)
+  pallets,
+  GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_bags_fcn(ssd.shipment_gid)
+  bags,
+  (CASE WHEN GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn(ssd.shipment_gid) = 'Call Scoular' THEN 
+    'Call Scoular'
+  ELSE 
+    (CASE WHEN regexp_replace(GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn(ssd.shipment_gid),'[^0-9]+','XXYYZZ') = 'XXYYZZ' THEN
+      ''
+    ELSE
+      TRIM(TO_CHAR((TO_NUMBER(regexp_replace(GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_rel_pallets_fcn(ssd.shipment_gid),'[^0-9]+','0')) * 50) + ROUND(ssu.unit_net_weight_base,2)))
+    END)
+  END) 
+  gr_weight
+FROM 
+  shipment s
+INNER JOIN 
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1  
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+INNER JOIN
+  item itm ON pi.packaged_item_gid = itm.item_gid
+WHERE     
+  1 = 1
+AND 
+  s.shipment_gid = :P_SHIPMENT_GID]]></sqlStatement>
+    <sqlStatement name="Q_STOP"><![CDATA[SELECT 
+  ss.stop_num, 
+  loc.location_name,
+  TO_CHAR(ss.planned_arrival,'MM/DD/YYYY') 
+  planned_arrival
+FROM 
+  shipment_stop ss
+INNER JOIN 
+  location loc ON ss.location_gid = loc.location_gid
+WHERE
+  ss.shipment_gid = :P_SHIPMENT_GID]]></sqlStatement>
+    <sqlStatement name="Q_SERVPROV"><![CDATA[SELECT 
+  ser.servprov_xid,
+  (SELECT loc.location_name 
+  FROM location loc 
+  WHERE ser.servprov_gid = loc.location_gid) 
+  location_xid,
+  (SELECT scac_xid 
+  FROM scac 
+  WHERE ser.scac_gid = scac.scac_gid) 
+  scac_xid,
+  (SELECT contact_xid 
+  FROM contact con 
+  WHERE con.contact_gid = ser.sourcing_contact_gid)  
+  contact_xid,
+  (SELECT equipment_group_xid 
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment se ON ssej.s_equipment_gid = se.s_equipment_gid
+  INNER JOIN equipment_group eg ON se.equipment_group_gid = eg.equipment_group_gid
+  WHERE sh.shipment_gid = ssej.shipment_gid) 
+  equipment_group_xid
+FROM 
+  shipment sh
+INNER JOIN 
+  servprov ser ON sh.servprov_gid = ser.servprov_gid
+WHERE
+  shipment_gid = :P_SHIPMENT_GID]]></sqlStatement>
+    <sqlStatement name="Q_MODIFIED"><![CDATA[SELECT 
+  column_name, 
+  old_value, 
+  new_value
+FROM 
+  glogowner.xxscou_ship_confirm_tbl
+WHERE 
+  modified = 'Y'
+AND
+  shipment_gid = :P_SHIPMENT_GID]]></sqlStatement>
+    <sqlStatement name="Q_REM"><![CDATA[SELECT 
+  (SELECT GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_loc_remark_fcn(sh.source_location_gid)
+  FROM DUAL)
+  source_rem,
+  (SELECT GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_loc_remark_fcn(sh.dest_location_gid)
+  FROM DUAL)
+  dest_rem,
+  (SELECT GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.xxscou_get_ship_remark_fcn(sh.shipment_gid)
+  FROM DUAL)
+  ship_rem,
+  srem1.remark_text source_notes,
+  srem2.remark_text dest_notes
+FROM 
+  shipment sh
+LEFT OUTER JOIN
+  location_remark srem1 ON sh.source_location_gid = srem1.location_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR.SOURCE NOTES'
+LEFT OUTER JOIN
+  location_remark srem2 ON sh.dest_location_gid = srem2.location_gid
+AND
+  srem2.remark_qual_gid = 'SCOULAR.DESTINATION NOTES'
+WHERE 
+  1 = 1 
+AND 
+  sh.shipment_gid = :P_SHIPMENT_GID]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TRIM(TO_CHAR(SYSDATE,'FMDay, Month DD, yyyy '))
+  curr_date
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_VERSION"><![CDATA[SELECT 
+  r_version,
+  r_version-1 
+  o_version 
+FROM 
+  glogowner.xxscou_ship_confirm_tbl 
+WHERE 
+  shipment_gid = :P_SHIPMENT_GID 
+AND ROWNUM < 2]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_SHIP_CONFIRM_PKG.before_report" />
+  <dataStructure>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_VERSION" source="Q_VERSION">
+      <element name="R_VERSION" value="R_VERSION" />
+      <element name="O_VERSION" value="O_VERSION" />
+    </group>
+    <group name="G_SHIPMENT" source="Q_SHIPMENT">
+      <element name="EVENT" value="EVENT" />
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="CONTAINERS" value="CONTAINERS"></element>
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="REF_NUM" value="REF_NUM" />
+      <element name="PICKUP_NUM" value="PICKUP_NUM" />
+      <element name="DELIVERY_NUM" value="DELIVERY_NUM" />
+      <element name="S_LOCATION_NAME" value="S_LOCATION_NAME" />
+      <element name="S_LOCATION_DET" value="S_LOCATION_DET" />
+      <element name="S_ADDR1" value="S_ADDR1" />
+      <element name="S_ADDR2" value="S_ADDR2" />
+      <element name="S_CONTACT" value="S_CONTACT" />
+      <element name="D_LOCATION_NAME" value="D_LOCATION_NAME" />
+      <element name="D_LOCATION_DET" value="D_LOCATION_DET" />
+      <element name="D_ADDR1" value="D_ADDR1" />
+      <element name="D_ADDR2" value="D_ADDR2" />
+      <element name="D_CONTACT" value="D_CONTACT" />
+      <element name="PACKAGING" value="PACKAGING" />
+      <element name="EMAIL" value="EMAIL" />
+      <element name="PHONE" value="PHONE" />
+      <element name="NAME" value="NAME" />
+    </group>
+    <group name="G_ITEM" source="Q_ITEM">
+      <element name="ITEM_XID" value="ITEM_XID" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="WEIGHT" value="WEIGHT" />
+      <element name="WEIGHT_UOM_CODE" value="WEIGHT_UOM_CODE" />
+      <element name="PACKAGING_NUM" value="PACKAGING_NUM" />
+      <element name="PACKAGING_UOM" value="PACKAGING_UOM" />
+      <element name="PACKAGING_LTL" value="PACKAGING_LTL" />
+      <element name="PALLETS" value="PALLETS" />
+      <element name="BAGS" value="BAGS" />
+      <element name="GR_WEIGHT" value="GR_WEIGHT"></element>
+    </group>
+    <group name="G_STOP" source="Q_STOP">
+      <element name="STOP_NUM" value="STOP_NUM" />
+      <element name="LOCATION_NAME" value="LOCATION_NAME" />
+      <element name="PLANNED_ARRIVAL" value="PLANNED_ARRIVAL" />
+    </group>
+    <group name="G_SERVPROV" source="Q_SERVPROV">
+      <element name="LOCATION_XID" value="LOCATION_XID" />
+      <element name="SERVPROV_XID" value="SERVPROV_XID" />
+      <element name="SCAC_XID" value="SCAC_XID" />
+      <element name="CONTACT_XID" value="CONTACT_XID" />
+      <element name="EQUIPMENT_GROUP_XID" value="EQUIPMENT_GROUP_XID" />
+    </group>
+    <group name="G_MODIFIED" source="Q_MODIFIED">
+      <element name="COLUMN_NAME" value="COLUMN_NAME" />
+      <element name="OLD_VALUE" value="OLD_VALUE" />
+      <element name="NEW_VALUE" value="NEW_VALUE" />
+    </group>
+    <group name="G_REM" source="Q_REM">
+      <element name="SOURCE_REM" value="SOURCE_REM" />
+      <element name="DEST_REM" value="DEST_REM" />
+      <element name="SHIP_REM" value="SHIP_REM" />
+      <element name="SOURCE_NOTES" value="SOURCE_NOTES" />
+      <element name="DEST_NOTES" value="DEST_NOTES" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,255 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_NAP_BILL_OF_LADING" description="Scoular Bill of Lading Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters>
+    <parameter name="P_SHIPMENT_NUM" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  (CASE WHEN SUBSTR((SELECT DISTINCT glog_util.remove_domain(ssul.order_base_gid) 
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  WHERE ssej.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1),0,1) = 'S' THEN
+    'SCOULAR' || CHR(13)
+    || '250 MARQUETTE AVENEUE, SUITE 1050' || CHR(13)
+    || 'MINNEAPOLIS, MINNESOTA 55401 USA'
+  ELSE
+    (SELECT lc.location_name || 
+    DECODE(lc.city, NULL, NULL, ',' || lc.city) || 
+    DECODE(lc.province_code, NULL, NULL, ',' || lc.province_code) ||
+    DECODE(lc.postal_code, NULL, NULL, ',' || lc.postal_code) || 
+    DECODE(lc.country_code3_gid, NULL, NULL, ',' || lc.country_code3_gid)
+    FROM location lc
+    WHERE lc.location_gid =
+    (SELECT sip.involved_party_contact_gid
+    FROM shipment_involved_party sip
+    WHERE sip.shipment_gid = sh.shipment_gid 
+    AND sip.involved_party_qual_gid = 'CUSTOMER')
+    AND ROWNUM = 1)         
+  END) 
+  shipper,
+  sh.source_location_gid
+  source_gid,
+  loc_s.location_name
+  source_name,  
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_location_addr_fcn(sh.source_location_gid)  
+  source_addr,
+  loc_s.city || 
+  DECODE(loc_s.province_code, NULL, NULL, ',' || loc_s.province_code) ||
+  DECODE(loc_s.postal_code, NULL, NULL, ',' || loc_s.postal_code) 
+  source_csz,  
+  (SELECT con_s.phone1 || DECODE(con_s.phone2, NULL, NULL, ',' || con_s.phone2)
+  FROM contact con_s
+  WHERE con_s.location_gid = loc_s.location_gid
+  AND ROWNUM = 1)  
+  source_phone,
+  sh.dest_location_gid
+  dest_gid,  
+  loc_d.location_name
+  dest_name,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_location_addr_fcn(sh.dest_location_gid)
+  dest_addr,  
+  loc_d.city || 
+  DECODE(loc_d.province_code, NULL, NULL, ',' || loc_d.province_code) ||
+  DECODE(loc_d.postal_code, NULL, NULL, ',' || loc_d.postal_code) 
+  dest_csz,
+  (SELECT con_d.phone1 || DECODE(con_d.phone2, NULL, NULL, ',' || con_d.phone2)  
+  FROM contact con_d
+  WHERE con_d.location_gid = loc_d.location_gid
+  AND ROWNUM = 1)
+  dest_phone,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_po_num_fcn(sh.shipment_gid)  
+  po_number
+FROM   
+  shipment sh
+INNER JOIN
+  location loc_s ON sh.source_location_gid = loc_s.location_gid
+INNER JOIN  
+  location loc_d ON sh.dest_location_gid = loc_d.location_gid
+WHERE
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM
+AND 
+  :P_RUN = 'FINAL'
+UNION
+SELECT 
+  NVL((CASE WHEN SUBSTR((SELECT DISTINCT glog_util.remove_domain(ssul.order_base_gid) 
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  WHERE ssej.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1),0,1) = 'S' THEN
+    'SCOULAR' || CHR(13)
+    || '250 MARQUETTE AVENEUE, SUITE 1050' || CHR(13)
+    || 'MINNEAPOLIS, MINNESOTA 55401 USA'
+  ELSE
+    (SELECT lc.location_name || 
+    DECODE(lc.city, NULL, NULL, ',' || lc.city) || 
+    DECODE(lc.province_code, NULL, NULL, ',' || lc.province_code) ||
+    DECODE(lc.postal_code, NULL, NULL, ',' || lc.postal_code) || 
+    DECODE(lc.country_code3_gid, NULL, NULL, ',' || lc.country_code3_gid)
+    FROM location lc
+    WHERE lc.location_gid =
+    (SELECT sip.involved_party_contact_gid
+    FROM shipment_involved_party sip
+    WHERE sip.shipment_gid = sh.shipment_gid 
+    AND sip.involved_party_qual_gid = 'CUSTOMER')
+    AND ROWNUM = 1)         
+  END), 'Data Missing in System') 
+  shipper,
+  NVL(sh.source_location_gid, 'Data Missing in System') 
+  source_gid,
+  NVL(loc_s.location_name, 'Data Missing in System') 
+  source_name,  
+  NVL(GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_location_addr_fcn(sh.source_location_gid), 'Data Missing in System') 
+  source_addr,
+  NVL(loc_s.city || 
+  DECODE(loc_s.province_code, NULL, NULL, ',' || loc_s.province_code) ||
+  DECODE(loc_s.postal_code, NULL, NULL, ',' || loc_s.postal_code), 'Data Missing in System') 
+  source_csz,  
+  NVL((SELECT con_s.phone1 || DECODE(con_s.phone2, NULL, NULL, ',' || con_s.phone2)
+  FROM contact con_s
+  WHERE con_s.location_gid = loc_s.location_gid
+  AND ROWNUM = 1), 'Data Missing in System') 
+  source_phone,
+  NVL(sh.dest_location_gid, 'Data Missing in System') 
+  dest_gid,  
+  NVL(loc_d.location_name, 'Data Missing in System') 
+  dest_name,
+  NVL(GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_location_addr_fcn(sh.dest_location_gid), 'Data Missing in System') 
+  dest_addr,  
+  NVL(loc_d.city || 
+  DECODE(loc_d.province_code, NULL, NULL, ',' || loc_d.province_code) ||
+  DECODE(loc_d.postal_code, NULL, NULL, ',' || loc_d.postal_code), 'Data Missing in System') 
+  dest_csz,
+  NVL((SELECT con_d.phone1 || DECODE(con_d.phone2, NULL, NULL, ',' || con_d.phone2)  
+  FROM contact con_d
+  WHERE con_d.location_gid = loc_d.location_gid
+  AND ROWNUM = 1), 'Data Missing in System') 
+  dest_phone,
+  NVL(GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_po_num_fcn(sh.shipment_gid), 'Data Missing in System')  
+  po_number
+FROM   
+  shipment sh
+INNER JOIN
+  location loc_s ON sh.source_location_gid = loc_s.location_gid
+INNER JOIN  
+  location loc_d ON sh.dest_location_gid = loc_d.location_gid
+WHERE
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  (SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur
+  WHERE 1 =1
+  AND ssur.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.NUM_PACKAGES')
+  num_packages,
+  itm.description || DECODE(itm.nmfc_article_gid, NULL, NULL, ',' || itm.nmfc_article_gid) 
+  item_description,
+  ssul.weight || ' ' || ssul.weight_uom_code 
+  weight,
+  (SELECT rgr.rate_geo_refnum_value
+  FROM rate_geo_refnum rgr
+  WHERE 1 = 1
+  AND rgr.rate_geo_gid = sh.rate_geo_gid
+  AND rgr.rate_geo_refnum_qual_gid = 'SCOULAR.NMFC_CLASS') 
+  class_gid
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1  
+INNER JOIN
+  s_ship_unit_line ssul ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  packaged_item pki ON ssul.packaged_item_gid = pki.packaged_item_gid
+INNER JOIN
+  item itm ON pki.item_gid = itm.item_gid
+WHERE 
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM
+AND 
+  :P_RUN  = 'FINAL'
+UNION 
+SELECT
+  NVL((SELECT ssur.refnum_value
+  FROM s_ship_unit_refnum ssur
+  WHERE 1 =1
+  AND ssur.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.NUM_PACKAGES'), 'Data Missing in System')
+  num_packages,
+  NVL(itm.description || DECODE(itm.nmfc_article_gid, NULL, NULL, ',' || itm.nmfc_article_gid), 'Data Missing in System') 
+  item_description,
+  NVL(ssul.weight || ' ' || ssul.weight_uom_code, 'Data Missing in System')
+  weight,
+  NVL((SELECT rgr.rate_geo_refnum_value
+  FROM rate_geo_refnum rgr
+  WHERE 1 = 1
+  AND rgr.rate_geo_gid = sh.rate_geo_gid
+  AND rgr.rate_geo_refnum_qual_gid = 'SCOULAR.NMFC_CLASS'), 'Data Missing in System')
+  class_gid
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1  
+INNER JOIN
+  s_ship_unit_line ssul ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  packaged_item pki ON ssul.packaged_item_gid = pki.packaged_item_gid
+INNER JOIN
+  item itm ON pki.item_gid = itm.item_gid
+WHERE 
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM
+AND 
+  :P_RUN  = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TO_CHAR(TRUNC(SYSDATE), 'Mon DD, YYYY')
+  curr_date
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SOURCE_GID" value="SOURCE_GID" />
+      <element name="DEST_GID" value="DEST_GID" />
+      <element name="SOURCE_NAME" value="SOURCE_NAME" />
+      <element name="SHIPPER" value="SHIPPER" />
+      <element name="SOURCE_ADDR" value="SOURCE_ADDR" />
+      <element name="SOURCE_CSZ" value="SOURCE_CSZ" />
+      <element name="SOURCE_PHONE" value="SOURCE_PHONE" />
+      <element name="DEST_NAME" value="DEST_NAME" />
+      <element name="DEST_ADDR" value="DEST_ADDR" />
+      <element name="DEST_CSZ" value="DEST_CSZ" />
+      <element name="DEST_PHONE" value="DEST_PHONE" />
+      <element name="PO_NUMBER" value="PO_NUMBER" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="NUM_PACKAGES" value="NUM_PACKAGES" />
+      <element name="ITEM_DESCRIPTION" value="ITEM_DESCRIPTION" />
+      <element name="WEIGHT" value="WEIGHT" />
+      <element name="CLASS_GID" value="CLASS_GID" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

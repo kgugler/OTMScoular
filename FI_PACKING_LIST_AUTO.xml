@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_PACKING_LIST_AUTO" description="Packing List - Auto" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_FI_PACKING_LIST_PKG" version="1.0">
+  <parameters>
+    <parameter name="P_SHIPMENT_NUM" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  TO_CHAR(SYSDATE, 'MM/DD/YYYY HH:MI AM') 
+  curr_date,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_po_num_fcn(sh.shipment_gid) 
+  scoular_order,
+  sref1.shipment_refnum_value 
+  shipper_order,
+  sh.shipment_xid 
+  shipment_num,
+  sref2.shipment_refnum_value 
+  hbl_num,
+  (CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+    'Y'
+  ELSE
+    'N'
+  END) 
+  hbl_num_null,
+  sref8.shipment_refnum_value 
+  invoice_num,
+  (CASE WHEN sref8.shipment_refnum_value IS NULL THEN
+    'Y'
+  ELSE
+    'N'
+  END)   
+  inv_num_null,
+  it.description || CHR(13) || srem2.remark_text
+  description,
+  (CASE WHEN srem3.remark_text IS NULL THEN
+    TO_CHAR(sh.total_weight) || ' ' || sh.total_weight_uom_code
+  ELSE
+    srem3.remark_text
+  END)
+  net_weight,
+  srem4.remark_text
+  gross_weight,
+  (CASE WHEN srem4.remark_text IS NULL THEN
+    'Y'
+  ELSE
+    'N'
+  END)
+  gross_wt_null,
+  srem1.remark_text 
+  notes,
+  (CASE WHEN sh.transport_mode_gid = 'VESSEL-CO' OR sh.transport_mode_gid = 'LCL' THEN
+    'Container Number'
+  ELSE
+    'Shipment Number'
+  END)
+  container_header,
+  (CASE WHEN
+    (SELECT COUNT(ssus.equipment_seal)
+    FROM shipment_stop_d sstopd
+    INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    INNER JOIN s_ship_unit_seal ssus ON ssu.s_ship_unit_gid = ssus.s_ship_unit_gid
+    WHERE sstopd.shipment_gid = :P_SHIPMENT_NUM
+    AND sstopd.stop_num = 1) > 0 THEN
+    'N'
+  ELSE
+    'Y'
+  END)
+  seal_head_null
+FROM
+  shipment sh
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.HBL NUMBER_FI PACKING LIST'   
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON sh.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.BAG COUNT'   
+LEFT OUTER JOIN
+  shipment_refnum sref4 ON sh.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'   
+LEFT OUTER JOIN
+  shipment_refnum sref5 ON sh.shipment_gid = sref5.shipment_gid
+AND
+  sref5.shipment_refnum_qual_gid = 'SCOULAR.PACKAGING NUMBER'   
+LEFT OUTER JOIN
+  shipment_refnum sref6 ON sh.shipment_gid = sref6.shipment_gid
+AND
+  sref6.shipment_refnum_qual_gid = 'SCOULAR.PACKAGING UNIT OF MEASURE'   
+LEFT OUTER JOIN
+  shipment_refnum sref7 ON sh.shipment_gid = sref7.shipment_gid
+AND
+  sref7.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN
+  item it ON sref7.shipment_refnum_value = it.item_xid   
+LEFT OUTER JOIN
+  shipment_refnum sref8 ON sh.shipment_gid = sref8.shipment_gid
+AND
+  sref8.shipment_refnum_qual_gid = 'SCOULAR.INVOICE NUMBER_FI PACKING LIST'     
+LEFT OUTER JOIN
+  shipment_remark srem1 ON sh.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR.PACKING LIST REMARKS_FI PACKING LIST'
+LEFT OUTER JOIN
+  shipment_remark srem2 ON sh.shipment_gid = srem2.shipment_gid
+AND
+  srem2.remark_qual_gid = 'SCOULAR.DESCRIPTION REMARKS_FI PACKING LIST'  
+LEFT OUTER JOIN
+  shipment_remark srem3 ON sh.shipment_gid = srem3.shipment_gid
+AND
+  srem3.remark_qual_gid = 'SCOULAR.TOTAL NET WEIGHT OVERRIDE_FI PACKING LIST'    
+LEFT OUTER JOIN
+  shipment_remark srem4 ON sh.shipment_gid = srem4.shipment_gid
+AND
+  srem4.remark_qual_gid = 'SCOULAR.GROSS WEIGHT TOTAL_FI PACKING LIST'    
+WHERE
+  sh.shipment_gid = :P_SHIPMENT_NUM]]></sqlStatement>
+    <sqlStatement name="Q_ENTITY"><![CDATA[SELECT DISTINCT
+  loc1.location_name,
+	(SELECT LISTAGG(la1.address_line, CHR(13)) 
+	WITHIN GROUP (ORDER BY la1.line_sequence) 
+  FROM location_address la1 
+	WHERE la1.location_gid = loc1.location_gid) 
+  address_line,
+	loc1.city || ', ' || loc1.province_code || ' ' || loc1.postal_code city_state_zip,
+	(CASE WHEN cc1.country_name = 'UNITED STATES' THEN
+    'USA'
+  ELSE
+    cc1.country_name
+  END)
+  country_name
+FROM
+  shipment sh
+INNER JOIN
+	location loc1 ON sh.dest_location_gid = loc1.location_gid
+INNER JOIN
+	country_code cc1 ON loc1.country_code3_gid = cc1.country_code3_gid
+WHERE
+  sh.shipment_gid = :P_SHIPMENT_NUM]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  (CASE WHEN sref1.refnum_value IS NULL THEN
+    sref2.refnum_value
+  ELSE
+    sref1.refnum_value
+  END)
+  cont_num,
+  itm.item_xid
+  commodity_code,
+  itm.description
+  commodity,
+  TRIM(TO_CHAR(ssul.weight) || ' ' || ssul.weight_uom_code)
+  cont_net_wt,
+  ssul.tracking_tag1
+  lot_num,
+  ssus.equipment_seal
+  seal_num,
+  (CASE WHEN ssus.equipment_seal IS NULL THEN
+    'Y'
+  ELSE
+    'N'
+  END)
+  seal_num_null
+FROM
+	shipment_stop_d sstopd
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref1 ON ssu.s_ship_unit_gid = sref1.s_ship_unit_gid
+AND
+  sref1.s_ship_unit_refnum_qual_gid LIKE '%CONTAINER ID%'
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref2 ON ssu.s_ship_unit_gid = sref2.s_ship_unit_gid
+AND
+  sref2.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.TRUCK ID' 
+LEFT OUTER JOIN
+  packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+LEFT OUTER JOIN
+  item itm ON pi.item_gid = itm.item_gid
+LEFT OUTER JOIN
+  s_ship_unit_seal ssus ON ssu.s_ship_unit_gid = ssus.s_ship_unit_gid
+WHERE
+	sstopd.shipment_gid = :P_SHIPMENT_NUM
+AND 
+	sstopd.stop_num = 1
+ORDER BY
+  ssul.tracking_tag1]]></sqlStatement>
+    <sqlStatement name="Q_VERSION"><![CDATA[SELECT 
+  r_version
+  ver
+FROM 
+  glogowner.xxscou_fi_packing_list_tbl
+WHERE 
+  shipment_gid = :P_SHIPMENT_NUM 
+AND 
+  ROWNUM < 2]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_FI_PACKING_LIST_PKG.before_report" />
+</dataTemplate>

@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_NAP_PACKING_LIST" description="NAP Packing List" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters>
+    <parameter name="P_SHIPMENT_NUM" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT 
+  sh.shipment_xid
+  sh_xid,
+  TO_CHAR(SYSDATE, 'MM/DD/YYYY')
+  sys_date,
+  loc_buy.location_name
+  buyer_line1,
+  loc_buy.city || DECODE(loc_buy.province_code,NULL,NULL,',' || loc_buy.province_code) || DECODE(loc_buy.postal_code,NULL,NULL,',' || loc_buy.postal_code) 
+  buyer_line2,
+  cc_buy.country_name
+  buyer_line3,
+  loc_vsl.location_name
+  vessel,
+  TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time, 'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc_sh.time_zone_gid),'MM/DD/YYYY') 
+  -- The time zone of start_time depends upon the source location
+  s_date,
+  loc_sh.location_name
+  shipper_line1,
+  loc_sh.city || DECODE(loc_sh.province_code,NULL,NULL,',' || loc_sh.province_code) || DECODE(loc_sh.postal_code,NULL,NULL,',' || loc_sh.postal_code) 
+  shipper_line2,
+  cc_sh.country_name
+  shipper_line3,
+  sh.total_weight || ' ' || sh.total_weight_uom_code || ', ITEM COUNT ' || sh.total_ship_unit_count
+  quantity,
+  sh.total_weight || ' ' || sh.total_weight_uom_code
+  total_wt
+FROM  
+  shipment sh
+INNER JOIN
+  location loc_sh ON sh.source_location_gid = loc_sh.location_gid
+INNER JOIN
+  location loc_buy ON sh.dest_location_gid = loc_buy.location_gid
+INNER JOIN
+  location loc_vsl ON sh.servprov_gid = loc_vsl.location_gid
+INNER JOIN
+  country_code cc_sh ON loc_sh.country_code3_gid = cc_sh.country_code3_gid
+INNER JOIN
+  country_code cc_buy ON loc_buy.country_code3_gid = cc_buy.country_code3_gid
+WHERE 
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM
+AND 
+  :P_RUN = 'FINAL'
+UNION
+SELECT 
+  NVL(sh.shipment_xid,'Data Missing in System')
+  sh_xid,
+  TO_CHAR (SYSDATE, 'MM/DD/YYYY')
+  sys_date,
+  NVL(loc_buy.location_name,'Data Missing in System')
+  buyer_line1,
+  loc_buy.city || DECODE(loc_buy.province_code,NULL,NULL,',' || loc_buy.province_code) || DECODE(loc_buy.postal_code,NULL,NULL,',' || loc_buy.postal_code) 
+  buyer_line2,
+  cc_buy.country_name
+  buyer_line3,
+  NVL(loc_vsl.location_name,'Data Missing in System')
+  vessel,
+  NVL(TO_CHAR((FROM_TZ(TO_TIMESTAMP(TO_CHAR(sh.start_time,'YYYY-MM-DD HH:MI:SS PM'),'YYYY-MM-DD HH:MI:SS PM'),'GMT') AT TIME ZONE loc_sh.time_zone_gid),'MM/DD/YYYY'),'Data Missing in System')
+   -- The time zone of start_time depends upon the source location
+  s_date,
+  NVL(loc_sh.location_name,'Data Missing in System')
+  shipper_line1,
+  loc_sh.city || DECODE(loc_sh.province_code,NULL,NULL,',' || loc_sh.province_code) || DECODE(loc_sh.postal_code,NULL,NULL,',' || loc_sh.postal_code) 
+  shipper_line2,
+  cc_sh.country_name
+  shipper_line3,
+  NVL(sh.total_weight || ' ' || sh.total_weight_uom_code || DECODE(sh.total_ship_unit_count,NULL,NULL,', ITEM COUNT ' || sh.total_ship_unit_count),'Data Missing in System')
+  quantity,
+  NVL(sh.total_weight || ' ' || sh.total_weight_uom_code,'99999999')
+  total_wt
+FROM  
+  shipment sh
+INNER JOIN
+  location loc_sh ON sh.source_location_gid = loc_sh.location_gid
+INNER JOIN
+  location loc_buy ON sh.dest_location_gid = loc_buy.location_gid
+INNER JOIN
+  location loc_vsl ON sh.servprov_gid = loc_vsl.location_gid
+INNER JOIN
+  country_code cc_sh ON loc_sh.country_code3_gid = cc_sh.country_code3_gid
+INNER JOIN
+  country_code cc_buy ON loc_buy.country_code3_gid = cc_buy.country_code3_gid
+WHERE 
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_NUM
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[WITH v_table
+AS 
+(SELECT glogowner.xxscou_nap_packing_list_pkg.xxscou_main_fcn(:P_SHIPMENT_NUM) footer FROM DUAL)
+SELECT 
+  SUBSTR(footer, 1, INSTR(footer,'|',1,1) - 1)
+  container,
+  SUBSTR(footer, INSTR(footer,'|',1,1) + 1,INSTR(footer,'|',1,2) - INSTR(footer,'|',1,1) - 1)
+  item_desc
+FROM 
+  DUAL, 
+  v_table
+WHERE  
+  :P_RUN = 'FINAL'
+UNION
+SELECT 
+  SUBSTR(footer, 1, INSTR(footer,'|',1,1) - 1)
+  container,
+  SUBSTR(footer, INSTR(footer,'|',1,1) + 1,INSTR(footer,'|',1,2) - INSTR(footer,'|',1,1) - 1)
+  item_desc
+FROM 
+  (SELECT glogowner.xxscou_nap_packing_list_pkg.xxscou_main_fcn_draft(:P_SHIPMENT_NUM) footer FROM DUAL)
+WHERE  
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TO_CHAR(TRUNC(SYSDATE),'MM/DD/YYYY')
+  curr_date
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SH_XID" value="SH_XID" />
+      <element name="SYS_DATE" value="SYS_DATE" />
+      <element name="BUYER_LINE1" value="BUYER_LINE1" />
+      <element name="BUYER_LINE2" value="BUYER_LINE2" />
+      <element name="BUYER_LINE3" value="BUYER_LINE3" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="S_DATE" value="S_DATE" />
+      <element name="SHIPPER_LINE1" value="SHIPPER_LINE1" />
+      <element name="SHIPPER_LINE2" value="SHIPPER_LINE2" />
+      <element name="SHIPPER_LINE3" value="SHIPPER_LINE3" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="TOTAL_WT" value="TOTAL_WT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CONTAINER" value="CONTAINER" />
+      <element name="ITEM_DESC" value="ITEM_DESC" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_FDA_HOLD" description="FDA Hold" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_FI_FDA_HOLD_PKG" version="1.0">
+  <parameters>
+    <parameter name="LOC" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  ssu.s_ship_unit_gid,
+  s.end_time, 
+  NVL(NVL(ssur.update_date,ssur.insert_date),SYSDATE),
+  sref2.shipment_refnum_value
+  loc_code,
+  TO_CHAR(s.start_time,'MM/DD/YYYY')
+  pickup_date,
+  TO_CHAR(s.end_time,'MM/DD/YYYY')
+  planned_date,
+  TO_CHAR(NVL(NVL(ssur.update_date,ssur.insert_date),SYSDATE),'MM/DD/YYYY')
+  hold_date,
+  NVL(ssur2.refnum_value,ssur3.refnum_value)
+  container_id,
+  (SELECT oob.order_base_xid
+  FROM s_ship_unit_line ssul
+  INNER JOIN
+  ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid)
+  contract,
+  ROUND(ssu.unit_net_weight_base,0)
+  weight_lbs,
+  sref3.shipment_refnum_value
+  commodity,
+  (CASE WHEN INSTR(s.shipment_xid,'_') > 0 THEN
+    SUBSTR(LTRIM(s.shipment_xid,'0'),1,INSTR(LTRIM(s.shipment_xid,'0'),'_') -1)
+  ELSE
+    LTRIM(s.shipment_xid,'0')
+  END) 
+  shipment_xid,
+  loc1.location_name
+  source_loc,
+  loc2.location_name
+  dest_loc,
+  (CASE WHEN ssur1.refnum_value IS NULL THEN
+    'No'
+  ELSE
+    'Yes'
+  END)
+  in_warehouse,
+  glog_util.remove_domain(s.insert_user)
+  planner
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+INNER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'  
+INNER JOIN
+  s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.CONTAINER FDA HOLD'  
+AND
+  ssur.refnum_value = 'YES'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
+AND
+  ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
+AND
+  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.CONTAINER ID'  
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur3 ON ssu.s_ship_unit_gid = ssur3.s_ship_unit_gid
+AND
+  ssur3.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID'   
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.transport_mode_gid = 'VESSEL-CO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  TRIM(sref2.shipment_refnum_value) IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))
+ORDER BY
+  sref2.shipment_refnum_value, 
+  s.end_time, 
+  NVL(NVL(ssur.update_date,ssur.insert_date),SYSDATE)]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_FI_FDA_HOLD_PKG.before_report" />
+</dataTemplate>

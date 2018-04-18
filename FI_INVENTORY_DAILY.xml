@@ -1,0 +1,3691 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_INVENTORY_DAILY" description="IFI Inventory Daily" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_FI_INVENTORY_DAILY_PKG" version="1.0">
+  <parameters>
+    <parameter name="COMMODITY_GID" dataType="character"></parameter>
+    <parameter name="P_GL_USER" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  glog_util.remove_domain(:P_COMMODITY_GID) || ' - ' || 
+  (SELECT itm.description 
+  FROM packaged_item pi 
+  INNER JOIN item itm ON pi.item_gid = itm.item_gid 
+  WHERE packaged_item_gid = :P_COMMODITY_GID)
+  commodity,
+  TO_CHAR(SYSDATE,'MM/DD/YYYY')
+  day1,
+  TO_CHAR(SYSDATE + 1,'MM/DD/YYYY')
+  day2,
+  TO_CHAR(SYSDATE + 2,'MM/DD/YYYY')
+  day3,  
+  TO_CHAR(SYSDATE + 3,'MM/DD/YYYY')
+  day4,
+  TO_CHAR(SYSDATE + 4,'MM/DD/YYYY')
+  day5,
+  TO_CHAR(SYSDATE + 5,'MM/DD/YYYY')
+  day6,
+  TO_CHAR(SYSDATE + 6,'MM/DD/YYYY')
+  day7,
+  TO_CHAR(SYSDATE + 7,'MM/DD/YYYY')
+  day8,
+  TO_CHAR(SYSDATE + 8,'MM/DD/YYYY')
+  day9,
+  TO_CHAR(SYSDATE + 9,'MM/DD/YYYY')
+  day10,
+  TO_CHAR(SYSDATE + 10,'MM/DD/YYYY')
+  day11,
+  TO_CHAR(SYSDATE + 11,'MM/DD/YYYY')
+  day12,
+  TO_CHAR(SYSDATE + 12,'MM/DD/YYYY')
+  day13,
+  TO_CHAR(SYSDATE + 13,'MM/DD/YYYY')
+  day14,
+  TO_CHAR(SYSDATE + 14,'MM/DD/YYYY')
+  day15,
+  TO_CHAR(SYSDATE + 15,'MM/DD/YYYY')
+  day16,
+  TO_CHAR(SYSDATE + 16,'MM/DD/YYYY')
+  day17,
+  TO_CHAR(SYSDATE + 17,'MM/DD/YYYY')
+  day18,
+  TO_CHAR(SYSDATE + 18,'MM/DD/YYYY')
+  day19,
+  TO_CHAR(SYSDATE + 19,'MM/DD/YYYY')
+  day20,
+  TO_CHAR(SYSDATE + 20,'MM/DD/YYYY')
+  day21,
+  TO_CHAR(SYSDATE + 21,'MM/DD/YYYY')
+  day22,
+  TO_CHAR(SYSDATE + 22,'MM/DD/YYYY')
+  day23,
+  TO_CHAR(SYSDATE + 23,'MM/DD/YYYY')
+  day24,
+  TO_CHAR(SYSDATE + 24,'MM/DD/YYYY')
+  day25,
+  TO_CHAR(SYSDATE + 25,'MM/DD/YYYY')
+  day26,
+  TO_CHAR(SYSDATE + 26,'MM/DD/YYYY')
+  day27,
+  TO_CHAR(SYSDATE + 27,'MM/DD/YYYY')
+  day28,
+  TO_CHAR(SYSDATE + 28,'MM/DD/YYYY')
+  day29,
+  TO_CHAR(SYSDATE + 29,'MM/DD/YYYY')
+  day30,
+  TO_CHAR(SYSDATE + 30,'MM/DD/YYYY')
+  day31
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_HINV"><![CDATA[SELECT 
+  SUM(b.hinv1)
+  hinv1,
+  SUM(b.hinv2)
+  hinv2,
+  SUM(b.hinv3)
+  hinv3,  
+  SUM(b.hinv4)
+  hinv4,
+  SUM(b.hinv5)
+  hinv5,
+  SUM(b.hinv6)
+  hinv6,
+  SUM(b.hinv7)
+  hinv7,
+  SUM(b.hinv8)
+  hinv8,
+  SUM(b.hinv9)
+  hinv9,
+  SUM(b.hinv10)
+  hinv10,
+  SUM(b.hinv11)
+  hinv11,
+  SUM(b.hinv12)
+  hinv12,
+  SUM(b.hinv13)
+  hinv13,
+  SUM(b.hinv14)
+  hinv14,
+  SUM(b.hinv15)
+  hinv15,
+  SUM(b.hinv16)
+  hinv16,
+  SUM(b.hinv17)
+  hinv17,
+  SUM(b.hinv18)
+  hinv18,
+  SUM(b.hinv19)
+  hinv19,
+  SUM(b.hinv20)
+  hinv20,
+  SUM(b.hinv21)
+  hinv21,
+  SUM(b.hinv22)
+  hinv22,
+  SUM(b.hinv23)
+  hinv23,
+  SUM(b.hinv24)
+  hinv24,
+  SUM(b.hinv25)
+  hinv25,
+  SUM(b.hinv26)
+  hinv26,
+  SUM(b.hinv27)
+  hinv27,
+  SUM(b.hinv28)
+  hinv28,
+  SUM(b.hinv29)
+  hinv29,
+  SUM(b.hinv30)
+  hinv30,
+  SUM(b.hinv31)
+  hinv31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  hinv31
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_HINB"><![CDATA[SELECT 
+  SUM(b.hinb1)
+  hinb1,
+  SUM(b.hinb2)
+  hinb2,
+  SUM(b.hinb3)
+  hinb3,  
+  SUM(b.hinb4)
+  hinb4,
+  SUM(b.hinb5)
+  hinb5,
+  SUM(b.hinb6)
+  hinb6,
+  SUM(b.hinb7)
+  hinb7,
+  SUM(b.hinb8)
+  hinb8,
+  SUM(b.hinb9)
+  hinb9,
+  SUM(b.hinb10)
+  hinb10,
+  SUM(b.hinb11)
+  hinb11,
+  SUM(b.hinb12)
+  hinb12,
+  SUM(b.hinb13)
+  hinb13,
+  SUM(b.hinb14)
+  hinb14,
+  SUM(b.hinb15)
+  hinb15,
+  SUM(b.hinb16)
+  hinb16,
+  SUM(b.hinb17)
+  hinb17,
+  SUM(b.hinb18)
+  hinb18,
+  SUM(b.hinb19)
+  hinb19,
+  SUM(b.hinb20)
+  hinb20,
+  SUM(b.hinb21)
+  hinb21,
+  SUM(b.hinb22)
+  hinb22,
+  SUM(b.hinb23)
+  hinb23,
+  SUM(b.hinb24)
+  hinb24,
+  SUM(b.hinb25)
+  hinb25,
+  SUM(b.hinb26)
+  hinb26,
+  SUM(b.hinb27)
+  hinb27,
+  SUM(b.hinb28)
+  hinb28,
+  SUM(b.hinb29)
+  hinb29,
+  SUM(b.hinb30)
+  hinb30,
+  SUM(b.hinb31)
+  hinb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  hinb31
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_HOUTB"><![CDATA[SELECT 
+  SUM(b.houtb1)
+  houtb1,
+  SUM(b.houtb2)
+  houtb2,
+  SUM(b.houtb3)
+  houtb3,  
+  SUM(b.houtb4)
+  houtb4,
+  SUM(b.houtb5)
+  houtb5,
+  SUM(b.houtb6)
+  houtb6,
+  SUM(b.houtb7)
+  houtb7,
+  SUM(b.houtb8)
+  houtb8,
+  SUM(b.houtb9)
+  houtb9,
+  SUM(b.houtb10)
+  houtb10,
+  SUM(b.houtb11)
+  houtb11,
+  SUM(b.houtb12)
+  houtb12,
+  SUM(b.houtb13)
+  houtb13,
+  SUM(b.houtb14)
+  houtb14,
+  SUM(b.houtb15)
+  houtb15,
+  SUM(b.houtb16)
+  houtb16,
+  SUM(b.houtb17)
+  houtb17,
+  SUM(b.houtb18)
+  houtb18,
+  SUM(b.houtb19)
+  houtb19,
+  SUM(b.houtb20)
+  houtb20,
+  SUM(b.houtb21)
+  houtb21,
+  SUM(b.houtb22)
+  houtb22,
+  SUM(b.houtb23)
+  houtb23,
+  SUM(b.houtb24)
+  houtb24,
+  SUM(b.houtb25)
+  houtb25,
+  SUM(b.houtb26)
+  houtb26,
+  SUM(b.houtb27)
+  houtb27,
+  SUM(b.houtb28)
+  houtb28,
+  SUM(b.houtb29)
+  houtb29,
+  SUM(b.houtb30)
+  houtb30,
+  SUM(b.houtb31)
+  houtb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  houtb31
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_HNET"><![CDATA[SELECT 
+  SUM(b.hnet1)
+  hnet1,
+  SUM(b.hnet2)
+  hnet2,
+  SUM(b.hnet3)
+  hnet3,  
+  SUM(b.hnet4)
+  hnet4,
+  SUM(b.hnet5)
+  hnet5,
+  SUM(b.hnet6)
+  hnet6,
+  SUM(b.hnet7)
+  hnet7,
+  SUM(b.hnet8)
+  hnet8,
+  SUM(b.hnet9)
+  hnet9,
+  SUM(b.hnet10)
+  hnet10,
+  SUM(b.hnet11)
+  hnet11,
+  SUM(b.hnet12)
+  hnet12,
+  SUM(b.hnet13)
+  hnet13,
+  SUM(b.hnet14)
+  hnet14,
+  SUM(b.hnet15)
+  hnet15,
+  SUM(b.hnet16)
+  hnet16,
+  SUM(b.hnet17)
+  hnet17,
+  SUM(b.hnet18)
+  hnet18,
+  SUM(b.hnet19)
+  hnet19,
+  SUM(b.hnet20)
+  hnet20,
+  SUM(b.hnet21)
+  hnet21,
+  SUM(b.hnet22)
+  hnet22,
+  SUM(b.hnet23)
+  hnet23,
+  SUM(b.hnet24)
+  hnet24,
+  SUM(b.hnet25)
+  hnet25,
+  SUM(b.hnet26)
+  hnet26,
+  SUM(b.hnet27)
+  hnet27,
+  SUM(b.hnet28)
+  hnet28,
+  SUM(b.hnet29)
+  hnet29,
+  SUM(b.hnet30)
+  hnet30,
+  SUM(b.hnet31)
+  hnet31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  hnet31
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.HALLPIST') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JINV"><![CDATA[SELECT 
+  SUM(b.jinv1)
+  jinv1,
+  SUM(b.jinv2)
+  jinv2,
+  SUM(b.jinv3)
+  jinv3,  
+  SUM(b.jinv4)
+  jinv4,
+  SUM(b.jinv5)
+  jinv5,
+  SUM(b.jinv6)
+  jinv6,
+  SUM(b.jinv7)
+  jinv7,
+  SUM(b.jinv8)
+  jinv8,
+  SUM(b.jinv9)
+  jinv9,
+  SUM(b.jinv10)
+  jinv10,
+  SUM(b.jinv11)
+  jinv11,
+  SUM(b.jinv12)
+  jinv12,
+  SUM(b.jinv13)
+  jinv13,
+  SUM(b.jinv14)
+  jinv14,
+  SUM(b.jinv15)
+  jinv15,
+  SUM(b.jinv16)
+  jinv16,
+  SUM(b.jinv17)
+  jinv17,
+  SUM(b.jinv18)
+  jinv18,
+  SUM(b.jinv19)
+  jinv19,
+  SUM(b.jinv20)
+  jinv20,
+  SUM(b.jinv21)
+  jinv21,
+  SUM(b.jinv22)
+  jinv22,
+  SUM(b.jinv23)
+  jinv23,
+  SUM(b.jinv24)
+  jinv24,
+  SUM(b.jinv25)
+  jinv25,
+  SUM(b.jinv26)
+  jinv26,
+  SUM(b.jinv27)
+  jinv27,
+  SUM(b.jinv28)
+  jinv28,
+  SUM(b.jinv29)
+  jinv29,
+  SUM(b.jinv30)
+  jinv30,
+  SUM(b.jinv31)
+  jinv31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  jinv31
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JINB"><![CDATA[SELECT 
+  SUM(b.jinb1)
+  jinb1,
+  SUM(b.jinb2)
+  jinb2,
+  SUM(b.jinb3)
+  jinb3,  
+  SUM(b.jinb4)
+  jinb4,
+  SUM(b.jinb5)
+  jinb5,
+  SUM(b.jinb6)
+  jinb6,
+  SUM(b.jinb7)
+  jinb7,
+  SUM(b.jinb8)
+  jinb8,
+  SUM(b.jinb9)
+  jinb9,
+  SUM(b.jinb10)
+  jinb10,
+  SUM(b.jinb11)
+  jinb11,
+  SUM(b.jinb12)
+  jinb12,
+  SUM(b.jinb13)
+  jinb13,
+  SUM(b.jinb14)
+  jinb14,
+  SUM(b.jinb15)
+  jinb15,
+  SUM(b.jinb16)
+  jinb16,
+  SUM(b.jinb17)
+  jinb17,
+  SUM(b.jinb18)
+  jinb18,
+  SUM(b.jinb19)
+  jinb19,
+  SUM(b.jinb20)
+  jinb20,
+  SUM(b.jinb21)
+  jinb21,
+  SUM(b.jinb22)
+  jinb22,
+  SUM(b.jinb23)
+  jinb23,
+  SUM(b.jinb24)
+  jinb24,
+  SUM(b.jinb25)
+  jinb25,
+  SUM(b.jinb26)
+  jinb26,
+  SUM(b.jinb27)
+  jinb27,
+  SUM(b.jinb28)
+  jinb28,
+  SUM(b.jinb29)
+  jinb29,
+  SUM(b.jinb30)
+  jinb30,
+  SUM(b.jinb31)
+  jinb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  jinb31
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JOUTB"><![CDATA[SELECT 
+  SUM(b.joutb1)
+  joutb1,
+  SUM(b.joutb2)
+  joutb2,
+  SUM(b.joutb3)
+  joutb3,  
+  SUM(b.joutb4)
+  joutb4,
+  SUM(b.joutb5)
+  joutb5,
+  SUM(b.joutb6)
+  joutb6,
+  SUM(b.joutb7)
+  joutb7,
+  SUM(b.joutb8)
+  joutb8,
+  SUM(b.joutb9)
+  joutb9,
+  SUM(b.joutb10)
+  joutb10,
+  SUM(b.joutb11)
+  joutb11,
+  SUM(b.joutb12)
+  joutb12,
+  SUM(b.joutb13)
+  joutb13,
+  SUM(b.joutb14)
+  joutb14,
+  SUM(b.joutb15)
+  joutb15,
+  SUM(b.joutb16)
+  joutb16,
+  SUM(b.joutb17)
+  joutb17,
+  SUM(b.joutb18)
+  joutb18,
+  SUM(b.joutb19)
+  joutb19,
+  SUM(b.joutb20)
+  joutb20,
+  SUM(b.joutb21)
+  joutb21,
+  SUM(b.joutb22)
+  joutb22,
+  SUM(b.joutb23)
+  joutb23,
+  SUM(b.joutb24)
+  joutb24,
+  SUM(b.joutb25)
+  joutb25,
+  SUM(b.joutb26)
+  joutb26,
+  SUM(b.joutb27)
+  joutb27,
+  SUM(b.joutb28)
+  joutb28,
+  SUM(b.joutb29)
+  joutb29,
+  SUM(b.joutb30)
+  joutb30,
+  SUM(b.joutb31)
+  joutb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  joutb31
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_JNET"><![CDATA[SELECT 
+  SUM(b.jnet1)
+  jnet1,
+  SUM(b.jnet2)
+  jnet2,
+  SUM(b.jnet3)
+  jnet3,  
+  SUM(b.jnet4)
+  jnet4,
+  SUM(b.jnet5)
+  jnet5,
+  SUM(b.jnet6)
+  jnet6,
+  SUM(b.jnet7)
+  jnet7,
+  SUM(b.jnet8)
+  jnet8,
+  SUM(b.jnet9)
+  jnet9,
+  SUM(b.jnet10)
+  jnet10,
+  SUM(b.jnet11)
+  jnet11,
+  SUM(b.jnet12)
+  jnet12,
+  SUM(b.jnet13)
+  jnet13,
+  SUM(b.jnet14)
+  jnet14,
+  SUM(b.jnet15)
+  jnet15,
+  SUM(b.jnet16)
+  jnet16,
+  SUM(b.jnet17)
+  jnet17,
+  SUM(b.jnet18)
+  jnet18,
+  SUM(b.jnet19)
+  jnet19,
+  SUM(b.jnet20)
+  jnet20,
+  SUM(b.jnet21)
+  jnet21,
+  SUM(b.jnet22)
+  jnet22,
+  SUM(b.jnet23)
+  jnet23,
+  SUM(b.jnet24)
+  jnet24,
+  SUM(b.jnet25)
+  jnet25,
+  SUM(b.jnet26)
+  jnet26,
+  SUM(b.jnet27)
+  jnet27,
+  SUM(b.jnet28)
+  jnet28,
+  SUM(b.jnet29)
+  jnet29,
+  SUM(b.jnet30)
+  jnet30,
+  SUM(b.jnet31)
+  jnet31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  jnet31
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.JPENTT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LINV"><![CDATA[SELECT 
+  SUM(b.linv1)
+  linv1,
+  SUM(b.linv2)
+  linv2,
+  SUM(b.linv3)
+  linv3,  
+  SUM(b.linv4)
+  linv4,
+  SUM(b.linv5)
+  linv5,
+  SUM(b.linv6)
+  linv6,
+  SUM(b.linv7)
+  linv7,
+  SUM(b.linv8)
+  linv8,
+  SUM(b.linv9)
+  linv9,
+  SUM(b.linv10)
+  linv10,
+  SUM(b.linv11)
+  linv11,
+  SUM(b.linv12)
+  linv12,
+  SUM(b.linv13)
+  linv13,
+  SUM(b.linv14)
+  linv14,
+  SUM(b.linv15)
+  linv15,
+  SUM(b.linv16)
+  linv16,
+  SUM(b.linv17)
+  linv17,
+  SUM(b.linv18)
+  linv18,
+  SUM(b.linv19)
+  linv19,
+  SUM(b.linv20)
+  linv20,
+  SUM(b.linv21)
+  linv21,
+  SUM(b.linv22)
+  linv22,
+  SUM(b.linv23)
+  linv23,
+  SUM(b.linv24)
+  linv24,
+  SUM(b.linv25)
+  linv25,
+  SUM(b.linv26)
+  linv26,
+  SUM(b.linv27)
+  linv27,
+  SUM(b.linv28)
+  linv28,
+  SUM(b.linv29)
+  linv29,
+  SUM(b.linv30)
+  linv30,
+  SUM(b.linv31)
+  linv31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  linv31
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LINB"><![CDATA[SELECT 
+  SUM(b.linb1)
+  linb1,
+  SUM(b.linb2)
+  linb2,
+  SUM(b.linb3)
+  linb3,  
+  SUM(b.linb4)
+  linb4,
+  SUM(b.linb5)
+  linb5,
+  SUM(b.linb6)
+  linb6,
+  SUM(b.linb7)
+  linb7,
+  SUM(b.linb8)
+  linb8,
+  SUM(b.linb9)
+  linb9,
+  SUM(b.linb10)
+  linb10,
+  SUM(b.linb11)
+  linb11,
+  SUM(b.linb12)
+  linb12,
+  SUM(b.linb13)
+  linb13,
+  SUM(b.linb14)
+  linb14,
+  SUM(b.linb15)
+  linb15,
+  SUM(b.linb16)
+  linb16,
+  SUM(b.linb17)
+  linb17,
+  SUM(b.linb18)
+  linb18,
+  SUM(b.linb19)
+  linb19,
+  SUM(b.linb20)
+  linb20,
+  SUM(b.linb21)
+  linb21,
+  SUM(b.linb22)
+  linb22,
+  SUM(b.linb23)
+  linb23,
+  SUM(b.linb24)
+  linb24,
+  SUM(b.linb25)
+  linb25,
+  SUM(b.linb26)
+  linb26,
+  SUM(b.linb27)
+  linb27,
+  SUM(b.linb28)
+  linb28,
+  SUM(b.linb29)
+  linb29,
+  SUM(b.linb30)
+  linb30,
+  SUM(b.linb31)
+  linb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  linb31
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LOUTB"><![CDATA[SELECT 
+  SUM(b.loutb1)
+  loutb1,
+  SUM(b.loutb2)
+  loutb2,
+  SUM(b.loutb3)
+  loutb3,  
+  SUM(b.loutb4)
+  loutb4,
+  SUM(b.loutb5)
+  loutb5,
+  SUM(b.loutb6)
+  loutb6,
+  SUM(b.loutb7)
+  loutb7,
+  SUM(b.loutb8)
+  loutb8,
+  SUM(b.loutb9)
+  loutb9,
+  SUM(b.loutb10)
+  loutb10,
+  SUM(b.loutb11)
+  loutb11,
+  SUM(b.loutb12)
+  loutb12,
+  SUM(b.loutb13)
+  loutb13,
+  SUM(b.loutb14)
+  loutb14,
+  SUM(b.loutb15)
+  loutb15,
+  SUM(b.loutb16)
+  loutb16,
+  SUM(b.loutb17)
+  loutb17,
+  SUM(b.loutb18)
+  loutb18,
+  SUM(b.loutb19)
+  loutb19,
+  SUM(b.loutb20)
+  loutb20,
+  SUM(b.loutb21)
+  loutb21,
+  SUM(b.loutb22)
+  loutb22,
+  SUM(b.loutb23)
+  loutb23,
+  SUM(b.loutb24)
+  loutb24,
+  SUM(b.loutb25)
+  loutb25,
+  SUM(b.loutb26)
+  loutb26,
+  SUM(b.loutb27)
+  loutb27,
+  SUM(b.loutb28)
+  loutb28,
+  SUM(b.loutb29)
+  loutb29,
+  SUM(b.loutb30)
+  loutb30,
+  SUM(b.loutb31)
+  loutb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  loutb31
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_LNET"><![CDATA[SELECT 
+  SUM(b.lnet1)
+  lnet1,
+  SUM(b.lnet2)
+  lnet2,
+  SUM(b.lnet3)
+  lnet3,  
+  SUM(b.lnet4)
+  lnet4,
+  SUM(b.lnet5)
+  lnet5,
+  SUM(b.lnet6)
+  lnet6,
+  SUM(b.lnet7)
+  lnet7,
+  SUM(b.lnet8)
+  lnet8,
+  SUM(b.lnet9)
+  lnet9,
+  SUM(b.lnet10)
+  lnet10,
+  SUM(b.lnet11)
+  lnet11,
+  SUM(b.lnet12)
+  lnet12,
+  SUM(b.lnet13)
+  lnet13,
+  SUM(b.lnet14)
+  lnet14,
+  SUM(b.lnet15)
+  lnet15,
+  SUM(b.lnet16)
+  lnet16,
+  SUM(b.lnet17)
+  lnet17,
+  SUM(b.lnet18)
+  lnet18,
+  SUM(b.lnet19)
+  lnet19,
+  SUM(b.lnet20)
+  lnet20,
+  SUM(b.lnet21)
+  lnet21,
+  SUM(b.lnet22)
+  lnet22,
+  SUM(b.lnet23)
+  lnet23,
+  SUM(b.lnet24)
+  lnet24,
+  SUM(b.lnet25)
+  lnet25,
+  SUM(b.lnet26)
+  lnet26,
+  SUM(b.lnet27)
+  lnet27,
+  SUM(b.lnet28)
+  lnet28,
+  SUM(b.lnet29)
+  lnet29,
+  SUM(b.lnet30)
+  lnet30,
+  SUM(b.lnet31)
+  lnet31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  lnet31
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.LAGRCHT') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NINV"><![CDATA[SELECT 
+  SUM(b.ninv1)
+  ninv1,
+  SUM(b.ninv2)
+  ninv2,
+  SUM(b.ninv3)
+  ninv3,  
+  SUM(b.ninv4)
+  ninv4,
+  SUM(b.ninv5)
+  ninv5,
+  SUM(b.ninv6)
+  ninv6,
+  SUM(b.ninv7)
+  ninv7,
+  SUM(b.ninv8)
+  ninv8,
+  SUM(b.ninv9)
+  ninv9,
+  SUM(b.ninv10)
+  ninv10,
+  SUM(b.ninv11)
+  ninv11,
+  SUM(b.ninv12)
+  ninv12,
+  SUM(b.ninv13)
+  ninv13,
+  SUM(b.ninv14)
+  ninv14,
+  SUM(b.ninv15)
+  ninv15,
+  SUM(b.ninv16)
+  ninv16,
+  SUM(b.ninv17)
+  ninv17,
+  SUM(b.ninv18)
+  ninv18,
+  SUM(b.ninv19)
+  ninv19,
+  SUM(b.ninv20)
+  ninv20,
+  SUM(b.ninv21)
+  ninv21,
+  SUM(b.ninv22)
+  ninv22,
+  SUM(b.ninv23)
+  ninv23,
+  SUM(b.ninv24)
+  ninv24,
+  SUM(b.ninv25)
+  ninv25,
+  SUM(b.ninv26)
+  ninv26,
+  SUM(b.ninv27)
+  ninv27,
+  SUM(b.ninv28)
+  ninv28,
+  SUM(b.ninv29)
+  ninv29,
+  SUM(b.ninv30)
+  ninv30,
+  SUM(b.ninv31)
+  ninv31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  ninv31
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NINB"><![CDATA[SELECT 
+  SUM(b.ninb1)
+  ninb1,
+  SUM(b.ninb2)
+  ninb2,
+  SUM(b.ninb3)
+  ninb3,  
+  SUM(b.ninb4)
+  ninb4,
+  SUM(b.ninb5)
+  ninb5,
+  SUM(b.ninb6)
+  ninb6,
+  SUM(b.ninb7)
+  ninb7,
+  SUM(b.ninb8)
+  ninb8,
+  SUM(b.ninb9)
+  ninb9,
+  SUM(b.ninb10)
+  ninb10,
+  SUM(b.ninb11)
+  ninb11,
+  SUM(b.ninb12)
+  ninb12,
+  SUM(b.ninb13)
+  ninb13,
+  SUM(b.ninb14)
+  ninb14,
+  SUM(b.ninb15)
+  ninb15,
+  SUM(b.ninb16)
+  ninb16,
+  SUM(b.ninb17)
+  ninb17,
+  SUM(b.ninb18)
+  ninb18,
+  SUM(b.ninb19)
+  ninb19,
+  SUM(b.ninb20)
+  ninb20,
+  SUM(b.ninb21)
+  ninb21,
+  SUM(b.ninb22)
+  ninb22,
+  SUM(b.ninb23)
+  ninb23,
+  SUM(b.ninb24)
+  ninb24,
+  SUM(b.ninb25)
+  ninb25,
+  SUM(b.ninb26)
+  ninb26,
+  SUM(b.ninb27)
+  ninb27,
+  SUM(b.ninb28)
+  ninb28,
+  SUM(b.ninb29)
+  ninb29,
+  SUM(b.ninb30)
+  ninb30,
+  SUM(b.ninb31)
+  ninb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  ninb31
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NOUTB"><![CDATA[SELECT 
+  SUM(b.noutb1)
+  noutb1,
+  SUM(b.noutb2)
+  noutb2,
+  SUM(b.noutb3)
+  noutb3,  
+  SUM(b.noutb4)
+  noutb4,
+  SUM(b.noutb5)
+  noutb5,
+  SUM(b.noutb6)
+  noutb6,
+  SUM(b.noutb7)
+  noutb7,
+  SUM(b.noutb8)
+  noutb8,
+  SUM(b.noutb9)
+  noutb9,
+  SUM(b.noutb10)
+  noutb10,
+  SUM(b.noutb11)
+  noutb11,
+  SUM(b.noutb12)
+  noutb12,
+  SUM(b.noutb13)
+  noutb13,
+  SUM(b.noutb14)
+  noutb14,
+  SUM(b.noutb15)
+  noutb15,
+  SUM(b.noutb16)
+  noutb16,
+  SUM(b.noutb17)
+  noutb17,
+  SUM(b.noutb18)
+  noutb18,
+  SUM(b.noutb19)
+  noutb19,
+  SUM(b.noutb20)
+  noutb20,
+  SUM(b.noutb21)
+  noutb21,
+  SUM(b.noutb22)
+  noutb22,
+  SUM(b.noutb23)
+  noutb23,
+  SUM(b.noutb24)
+  noutb24,
+  SUM(b.noutb25)
+  noutb25,
+  SUM(b.noutb26)
+  noutb26,
+  SUM(b.noutb27)
+  noutb27,
+  SUM(b.noutb28)
+  noutb28,
+  SUM(b.noutb29)
+  noutb29,
+  SUM(b.noutb30)
+  noutb30,
+  SUM(b.noutb31)
+  noutb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  noutb31
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_NNET"><![CDATA[SELECT 
+  SUM(b.nnet1)
+  nnet1,
+  SUM(b.nnet2)
+  nnet2,
+  SUM(b.nnet3)
+  nnet3,  
+  SUM(b.nnet4)
+  nnet4,
+  SUM(b.nnet5)
+  nnet5,
+  SUM(b.nnet6)
+  nnet6,
+  SUM(b.nnet7)
+  nnet7,
+  SUM(b.nnet8)
+  nnet8,
+  SUM(b.nnet9)
+  nnet9,
+  SUM(b.nnet10)
+  nnet10,
+  SUM(b.nnet11)
+  nnet11,
+  SUM(b.nnet12)
+  nnet12,
+  SUM(b.nnet13)
+  nnet13,
+  SUM(b.nnet14)
+  nnet14,
+  SUM(b.nnet15)
+  nnet15,
+  SUM(b.nnet16)
+  nnet16,
+  SUM(b.nnet17)
+  nnet17,
+  SUM(b.nnet18)
+  nnet18,
+  SUM(b.nnet19)
+  nnet19,
+  SUM(b.nnet20)
+  nnet20,
+  SUM(b.nnet21)
+  nnet21,
+  SUM(b.nnet22)
+  nnet22,
+  SUM(b.nnet23)
+  nnet23,
+  SUM(b.nnet24)
+  nnet24,
+  SUM(b.nnet25)
+  nnet25,
+  SUM(b.nnet26)
+  nnet26,
+  SUM(b.nnet27)
+  nnet27,
+  SUM(b.nnet28)
+  nnet28,
+  SUM(b.nnet29)
+  nnet29,
+  SUM(b.nnet30)
+  nnet30,
+  SUM(b.nnet31)
+  nnet31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  nnet31
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.NOBLET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TINV"><![CDATA[SELECT 
+  SUM(b.tinv1)
+  tinv1,
+  SUM(b.tinv2)
+  tinv2,
+  SUM(b.tinv3)
+  tinv3,  
+  SUM(b.tinv4)
+  tinv4,
+  SUM(b.tinv5)
+  tinv5,
+  SUM(b.tinv6)
+  tinv6,
+  SUM(b.tinv7)
+  tinv7,
+  SUM(b.tinv8)
+  tinv8,
+  SUM(b.tinv9)
+  tinv9,
+  SUM(b.tinv10)
+  tinv10,
+  SUM(b.tinv11)
+  tinv11,
+  SUM(b.tinv12)
+  tinv12,
+  SUM(b.tinv13)
+  tinv13,
+  SUM(b.tinv14)
+  tinv14,
+  SUM(b.tinv15)
+  tinv15,
+  SUM(b.tinv16)
+  tinv16,
+  SUM(b.tinv17)
+  tinv17,
+  SUM(b.tinv18)
+  tinv18,
+  SUM(b.tinv19)
+  tinv19,
+  SUM(b.tinv20)
+  tinv20,
+  SUM(b.tinv21)
+  tinv21,
+  SUM(b.tinv22)
+  tinv22,
+  SUM(b.tinv23)
+  tinv23,
+  SUM(b.tinv24)
+  tinv24,
+  SUM(b.tinv25)
+  tinv25,
+  SUM(b.tinv26)
+  tinv26,
+  SUM(b.tinv27)
+  tinv27,
+  SUM(b.tinv28)
+  tinv28,
+  SUM(b.tinv29)
+  tinv29,
+  SUM(b.tinv30)
+  tinv30,
+  SUM(b.tinv31)
+  tinv31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.balance ELSE 0 END)
+  tinv31
+FROM
+(SELECT
+  inventory_date,
+  balance
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TINB"><![CDATA[SELECT 
+  SUM(b.tinb1)
+  tinb1,
+  SUM(b.tinb2)
+  tinb2,
+  SUM(b.tinb3)
+  tinb3,  
+  SUM(b.tinb4)
+  tinb4,
+  SUM(b.tinb5)
+  tinb5,
+  SUM(b.tinb6)
+  tinb6,
+  SUM(b.tinb7)
+  tinb7,
+  SUM(b.tinb8)
+  tinb8,
+  SUM(b.tinb9)
+  tinb9,
+  SUM(b.tinb10)
+  tinb10,
+  SUM(b.tinb11)
+  tinb11,
+  SUM(b.tinb12)
+  tinb12,
+  SUM(b.tinb13)
+  tinb13,
+  SUM(b.tinb14)
+  tinb14,
+  SUM(b.tinb15)
+  tinb15,
+  SUM(b.tinb16)
+  tinb16,
+  SUM(b.tinb17)
+  tinb17,
+  SUM(b.tinb18)
+  tinb18,
+  SUM(b.tinb19)
+  tinb19,
+  SUM(b.tinb20)
+  tinb20,
+  SUM(b.tinb21)
+  tinb21,
+  SUM(b.tinb22)
+  tinb22,
+  SUM(b.tinb23)
+  tinb23,
+  SUM(b.tinb24)
+  tinb24,
+  SUM(b.tinb25)
+  tinb25,
+  SUM(b.tinb26)
+  tinb26,
+  SUM(b.tinb27)
+  tinb27,
+  SUM(b.tinb28)
+  tinb28,
+  SUM(b.tinb29)
+  tinb29,
+  SUM(b.tinb30)
+  tinb30,
+  SUM(b.tinb31)
+  tinb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.inbound_quantity ELSE 0 END)
+  tinb31
+FROM
+(SELECT
+  inventory_date,
+  inbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TOUTB"><![CDATA[SELECT 
+  SUM(b.toutb1)
+  toutb1,
+  SUM(b.toutb2)
+  toutb2,
+  SUM(b.toutb3)
+  toutb3,  
+  SUM(b.toutb4)
+  toutb4,
+  SUM(b.toutb5)
+  toutb5,
+  SUM(b.toutb6)
+  toutb6,
+  SUM(b.toutb7)
+  toutb7,
+  SUM(b.toutb8)
+  toutb8,
+  SUM(b.toutb9)
+  toutb9,
+  SUM(b.toutb10)
+  toutb10,
+  SUM(b.toutb11)
+  toutb11,
+  SUM(b.toutb12)
+  toutb12,
+  SUM(b.toutb13)
+  toutb13,
+  SUM(b.toutb14)
+  toutb14,
+  SUM(b.toutb15)
+  toutb15,
+  SUM(b.toutb16)
+  toutb16,
+  SUM(b.toutb17)
+  toutb17,
+  SUM(b.toutb18)
+  toutb18,
+  SUM(b.toutb19)
+  toutb19,
+  SUM(b.toutb20)
+  toutb20,
+  SUM(b.toutb21)
+  toutb21,
+  SUM(b.toutb22)
+  toutb22,
+  SUM(b.toutb23)
+  toutb23,
+  SUM(b.toutb24)
+  toutb24,
+  SUM(b.toutb25)
+  toutb25,
+  SUM(b.toutb26)
+  toutb26,
+  SUM(b.toutb27)
+  toutb27,
+  SUM(b.toutb28)
+  toutb28,
+  SUM(b.toutb29)
+  toutb29,
+  SUM(b.toutb30)
+  toutb30,
+  SUM(b.toutb31)
+  toutb31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.outbound_quantity ELSE 0 END)
+  toutb31
+FROM
+(SELECT
+  inventory_date,
+  outbound_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_TNET"><![CDATA[SELECT 
+  SUM(b.tnet1)
+  tnet1,
+  SUM(b.tnet2)
+  tnet2,
+  SUM(b.tnet3)
+  tnet3,  
+  SUM(b.tnet4)
+  tnet4,
+  SUM(b.tnet5)
+  tnet5,
+  SUM(b.tnet6)
+  tnet6,
+  SUM(b.tnet7)
+  tnet7,
+  SUM(b.tnet8)
+  tnet8,
+  SUM(b.tnet9)
+  tnet9,
+  SUM(b.tnet10)
+  tnet10,
+  SUM(b.tnet11)
+  tnet11,
+  SUM(b.tnet12)
+  tnet12,
+  SUM(b.tnet13)
+  tnet13,
+  SUM(b.tnet14)
+  tnet14,
+  SUM(b.tnet15)
+  tnet15,
+  SUM(b.tnet16)
+  tnet16,
+  SUM(b.tnet17)
+  tnet17,
+  SUM(b.tnet18)
+  tnet18,
+  SUM(b.tnet19)
+  tnet19,
+  SUM(b.tnet20)
+  tnet20,
+  SUM(b.tnet21)
+  tnet21,
+  SUM(b.tnet22)
+  tnet22,
+  SUM(b.tnet23)
+  tnet23,
+  SUM(b.tnet24)
+  tnet24,
+  SUM(b.tnet25)
+  tnet25,
+  SUM(b.tnet26)
+  tnet26,
+  SUM(b.tnet27)
+  tnet27,
+  SUM(b.tnet28)
+  tnet28,
+  SUM(b.tnet29)
+  tnet29,
+  SUM(b.tnet30)
+  tnet30,
+  SUM(b.tnet31)
+  tnet31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  tnet31
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID
+AND
+  warehouse = 'SCOULAR.TCTRADET') a) b]]></sqlStatement>
+    <sqlStatement name="Q_ONET"><![CDATA[SELECT 
+  SUM(b.onet1)
+  onet1,
+  SUM(b.onet2)
+  onet2,
+  SUM(b.onet3)
+  onet3,  
+  SUM(b.onet4)
+  onet4,
+  SUM(b.onet5)
+  onet5,
+  SUM(b.onet6)
+  onet6,
+  SUM(b.onet7)
+  onet7,
+  SUM(b.onet8)
+  onet8,
+  SUM(b.onet9)
+  onet9,
+  SUM(b.onet10)
+  onet10,
+  SUM(b.onet11)
+  onet11,
+  SUM(b.onet12)
+  onet12,
+  SUM(b.onet13)
+  onet13,
+  SUM(b.onet14)
+  onet14,
+  SUM(b.onet15)
+  onet15,
+  SUM(b.onet16)
+  onet16,
+  SUM(b.onet17)
+  onet17,
+  SUM(b.onet18)
+  onet18,
+  SUM(b.onet19)
+  onet19,
+  SUM(b.onet20)
+  onet20,
+  SUM(b.onet21)
+  onet21,
+  SUM(b.onet22)
+  onet22,
+  SUM(b.onet23)
+  onet23,
+  SUM(b.onet24)
+  onet24,
+  SUM(b.onet25)
+  onet25,
+  SUM(b.onet26)
+  onet26,
+  SUM(b.onet27)
+  onet27,
+  SUM(b.onet28)
+  onet28,
+  SUM(b.onet29)
+  onet29,
+  SUM(b.onet30)
+  onet30,
+  SUM(b.onet31)
+  onet31  
+FROM
+(SELECT
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet1,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 1,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet2,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 2,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet3,  
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 3,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet4,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 4,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet5,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 5,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet6,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 6,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet7,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 7,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet8,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 8,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet9,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 9,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet10,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 10,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet11,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 11,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet12,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 12,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet13,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 13,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet14,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 14,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet15,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 15,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet16,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 16,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet17,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 17,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet18,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 18,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet19,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 19,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet20,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 20,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet21,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 21,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet22,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 22,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet23,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 23,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet24,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 24,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet25,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 25,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet26,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 26,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet27,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 27,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet28,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 28,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet29,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 29,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet30,
+  (CASE WHEN a.inventory_date = TO_DATE(SYSDATE + 30,'DD-MM-RR')
+  THEN a.net_quantity ELSE 0 END)
+  onet31
+FROM
+(SELECT
+  inventory_date,
+  net_quantity
+FROM 
+  glogowner.xxscou_fi_inventory_daily
+WHERE
+  insert_date = TO_DATE(SYSDATE, 'DD-MM-RR')
+AND
+  insert_user = :P_GL_USER
+AND
+  commodity = :P_COMMODITY_GID) a) b]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_FI_INVENTORY_DAILY_PKG.before_report" />
+</dataTemplate>
