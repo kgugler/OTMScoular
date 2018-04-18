@@ -7,10 +7,37 @@
   <dataQuery>
     <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
-  a.cat_no, sref1.shipment_refnum_value loc, sref2.shipment_refnum_value booking_no, a.shipment_xid shipment_no, a.tag_3 container_no, oob.order_base_xid contract_no,
-  loc1.location_name customer_name, loc2.location_xid origin, loc3.location_xid destination, cvr.charter_voyage_refnum_value cut_date, TO_CHAR(a.sail_date,'MM/DD/YYYY') sail_date,
-  obrem.remark_text last_ship_date, TO_CHAR(TO_DATE(a.sail_date,'dd-mm-rr') - TO_DATE(obrem.remark_text,'YYYY-MM-DD')) days_late, a.adjust_desc adjust_description,
-  a.adjust_cat adjust_category, a.adjust_amt adjust_amount
+  a.cat_no, sref1.shipment_refnum_value loc, sref2.shipment_refnum_value booking_no, a.shipment_xid shipment_no, a.tag_3 container_no, 
+  (SELECT DISTINCT oob.order_base_xid
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = a.shipment_gid
+  AND ROWNUM = 1) contract_no,
+  loc1.location_name customer_name, loc2.location_xid origin, loc3.location_xid destination, cvr.charter_voyage_refnum_value cut_date, 
+  TO_CHAR(a.sail_date,'MM/DD/YYYY') 
+  sail_date,
+  (SELECT DISTINCT obrem.remark_text
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_remark obrem ON ssul.order_base_gid = obrem.order_base_gid
+  AND obrem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LAST SHIP DATE'
+  WHERE ssej.shipment_gid = a.shipment_gid
+  AND ROWNUM = 1)
+  last_ship_date, 
+  TO_CHAR(TO_DATE(a.sail_date,'dd-mm-rr') - 
+  TO_DATE((SELECT DISTINCT obrem.remark_text
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_remark obrem ON ssul.order_base_gid = obrem.order_base_gid
+  AND obrem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LAST SHIP DATE'
+  WHERE ssej.shipment_gid = a.shipment_gid
+  AND ROWNUM = 1),'YYYY-MM-DD')) 
+  days_late, 
+  a.adjust_desc adjust_description, a.adjust_cat adjust_category, a.adjust_amt adjust_amount
 FROM
 (SELECT
   1 cat_no, s.shipment_gid, s.shipment_xid, s.source_location_gid, s.dest_location_gid, s.sail_date, ssu.s_ship_unit_gid, ssu.tag_3, ssuref1.refnum_value adjust_cat,
@@ -181,14 +208,6 @@ AND
   (TO_DATE(s.sail_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
 AND
   TO_DATE(s.sail_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))) a
-LEFT OUTER JOIN
-  view_shipment_order_base vsob ON a.shipment_gid = vsob.shipment_gid
-LEFT OUTER JOIN
-  ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
-LEFT OUTER JOIN
-  ob_remark obrem ON vsob.order_base_gid = obrem.order_base_gid
-AND
-  obrem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LAST SHIP DATE'
 LEFT OUTER JOIN
   shipment_refnum sref1 ON a.shipment_gid = sref1.shipment_gid
 AND

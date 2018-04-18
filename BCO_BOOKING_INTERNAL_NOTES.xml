@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKING_INTERNAL_NOTES" description="BCO Booking Internal Notes" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="BOOKING_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  glog_util.remove_domain(:BOOKING_ID) book_number
+FROM
+  DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	sgr.remark_text,
+	gu.gl_user_xid insert_user,
+	TO_CHAR(from_tz(CAST(sgr.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI PM') note_time
+FROM
+	ship_group_refnum sgref
+INNER JOIN
+	ship_group_remark sgr ON sgref.ship_group_gid = sgr.ship_group_gid
+AND
+	sgr.remark_qual_gid = 'SCOULAR.INTERNAL NOTES'
+INNER JOIN
+	gl_user gu ON sgr.insert_user = gu.gl_user_gid
+WHERE
+  sgref.ship_group_refnum_qual_gid = 'CHARTER VOYAGE'
+AND
+	sgref.ship_group_refnum_value = :BOOKING_ID
+ORDER BY sgr.insert_date ASC]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

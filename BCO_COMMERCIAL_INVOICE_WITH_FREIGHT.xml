@@ -1,13 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<dataTemplate name="BCO_COMMERCIAL_INVOICE_CAK_CUST_WITH_FREIGHT" description="BCO Commercial Invoice (Cak customer w/ Freight Amount)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+<dataTemplate name="BCO_COMMERCIAL_INVOICE_WITH_FREIGHT" description="BCO Commercial Invoice (Cak customer w/ Freight Amount)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
 	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') invoice_date,
 	(SELECT sref.shipment_refnum_value
 	FROM shipment_refnum sref
@@ -40,49 +38,8 @@ LEFT OUTER JOIN
 LEFT OUTER JOIN
 	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid    
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') invoice_date,
-	NVL((SELECT sref.shipment_refnum_value
-	FROM shipment_refnum sref
-	WHERE sref.shipment_gid = s.shipment_gid
-	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'), 'Data Missing in System') invoice_number,
-	NVL((SELECT sr.shipment_refnum_value
-	FROM shipment_refnum sr
-	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
-	AND sr.shipment_gid = s.shipment_gid AND rownum = 1), 'Data Missing in System') bl_num,  
-	(CASE WHEN (SELECT COUNT(sstopdd.s_ship_unit_gid)	FROM shipment_stop_d sstopdd
-	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
-	AND NOT sunit.tag_3 IS NULL
-	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1) = 0 THEN 'Data Missing in System'
-	ELSE TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
-	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
-	AND NOT sunit.tag_3 IS NULL
-	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' || 
-  NVL(TRIM(TO_CHAR(
-  (SELECT ssu.received_ship_unit_count
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
-  ,'999,999')), 'Data Missing in System') || ' FT CONTAINERS' END) 
-  container_count
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
-AND
-	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
-LEFT OUTER JOIN
-	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
-WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
-    <sqlStatement name="Q_ORDER"><![CDATA[SELECT
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
 	oob.order_base_xid contract_number,
 	obrn1.ob_refnum_value party,
 	(CASE WHEN NVL(obrn2.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
@@ -235,13 +192,13 @@ AND
   total_amount
 FROM
 	shipment s
-LEFT OUTER JOIN
+INNER JOIN
 	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
+INNER JOIN
 	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
+INNER JOIN
 	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
+INNER JOIN
 	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 LEFT OUTER JOIN
 	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
@@ -298,265 +255,18 @@ AND
 LEFT OUTER JOIN
 	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid    
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-AND NOT
-  oob.order_base_gid IS NULL
-UNION
-SELECT
-	NVL(oob.order_base_xid, 'Data Missing in System') contract_number,
-	NVL(obrn1.ob_refnum_value, 'Data Missing in System') party,
-	(CASE WHEN NVL(obrn2.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
-	((CASE WHEN NVL(obrn2.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
-	(CASE WHEN NVL(obrn3.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn3.ob_refnum_value END) ||
-	(CASE WHEN NVL(obrn4.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn4.ob_refnum_value END))
-	 END) address,
-	(CASE WHEN NVL(obrn5.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
-	((CASE WHEN NVL(obrn5.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn5.ob_refnum_value END) ||
-	(CASE WHEN NVL(obrn6.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn6.ob_refnum_value END) ||
-	(CASE WHEN NVL(obrn7.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn7.ob_refnum_value END) ||
-	(CASE WHEN NVL(obrn8.ob_refnum_value,'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || 
-  (SELECT country_name 
-  FROM country_code 
-  WHERE country_code3_gid =  obrn8.ob_refnum_value)  
-  END))
-  END) 
-  city_state_zip,
-	NVL(obr1.remark_text, 'Data Missing in System') credit_number,
-	NVL(obr2.remark_text, 'Data Missing in System') description,
-	NVL(st.net_weight, 'Data Missing in System') total_weight,
-  (CASE WHEN NVL(obr3.remark_text,'XXYYZZYYXX') = 'XXYYZZYYXX' THEN 'Data Missing in System' 
-  ELSE
-	'$' || NVL(REGEXP_REPLACE(TRIM(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')), '999,999,990.00')), '\s*', ''), 'Data Missing in System') || '/MT' 
-  END)
-  unit_price,
-	(CASE WHEN obrn10.ob_refnum_value = 'MT' THEN '$' || NVL(REGEXP_REPLACE(TO_CHAR(ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	WHEN obrn10.ob_refnum_value = 'KG' THEN '$' || NVL(REGEXP_REPLACE(TO_CHAR(ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1000) * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	WHEN obrn10.ob_refnum_value = 'ST' THEN '$' || NVL(REGEXP_REPLACE(TO_CHAR(ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) / 0.907184) * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	WHEN obrn10.ob_refnum_value = 'BU' THEN (CASE WHEN 
-  (SELECT itr.remark_text
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid   
-  AND itr.remark_qual_gid = 'SCOULAR.STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) = 'BU'
-  THEN NVL(REGEXP_REPLACE(TO_CHAR(ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) /
- 	(SELECT TO_NUMBER(itr.remark_text)
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid 
-  AND itr.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) * 2204.5855379 * 1.2),2)
-  , '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	ELSE 'ERROR - FREIGHT ADJ IN BU' END)
- 	ELSE '$' || NVL(REGEXP_REPLACE(TO_CHAR(ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 2204.5855379  * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT' END)
- 	freight_charge,
-  (CASE WHEN NVL(obr3.remark_text,'XXYYZZYYXX') = 'XXYYZZYYXX' OR NVL(obrn9.ob_refnum_value,'XXYYZZYYXX') = 'XXYYZZYYXX' THEN '$Data Missing in System/MT' 
-  ELSE
- 	(CASE WHEN obrn10.ob_refnum_value = 'MT' THEN '$' || NVL(REGEXP_REPLACE(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')) - ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	WHEN obrn10.ob_refnum_value = 'KG' THEN '$' || NVL(REGEXP_REPLACE(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')) - ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1000) * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	WHEN obrn10.ob_refnum_value = 'ST' THEN '$' || NVL(REGEXP_REPLACE(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')) - ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) / 0.907184) * 1.2,2), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	WHEN obrn10.ob_refnum_value = 'BU' THEN (CASE WHEN 
-  (SELECT itr.remark_text
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid   
-  AND itr.remark_qual_gid = 'SCOULAR.STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) = 'BU'
- 	THEN NVL(REGEXP_REPLACE(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')) - ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) /
- 	(SELECT TO_NUMBER(itr.remark_text)
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid 
-  AND itr.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) * 2204.5855379 * 1.2),2)
-  , '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT'
- 	ELSE 'ERROR - FREIGHT ADJ IN BU' END)
- 	ELSE '$' || NVL(REGEXP_REPLACE(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')) - ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 2204.5855379),2) * 1.2, '999,999,990.00'), '\s*', ''), 'Data Missing in System') || '/MT' END)
-  END)
- 	fob_value,
-  (CASE WHEN NVL(obr3.remark_text,'XXYYZZYYXX') = 'XXYYZZYYXX' OR (NVL(obrn9.ob_refnum_value,'XXYYZZYYXX') = 'XXYYZZYYXX' OR NOT regexp_like(obrn9.ob_refnum_value, '^-?[[:digit:],.]*$')) THEN 'Data Missing in System USD' 
-  ELSE
-	(NVL(REGEXP_REPLACE(TO_CHAR(st.mt_weight_numonly * TO_NUMBER(REGEXP_REPLACE(obr3.remark_text, '[^0-9,.]+', '')) -
-	st.mt_weight_numonly * (CASE WHEN obrn10.ob_refnum_value = 'MT' THEN ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1.2,2)
- 	WHEN obrn10.ob_refnum_value = 'KG' THEN ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1000) * 1.2,2)
- 	WHEN obrn10.ob_refnum_value = 'ST' THEN ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 0.907184) * 1.2,2)
- 	WHEN obrn10.ob_refnum_value = 'BU' THEN (CASE WHEN 
-  (SELECT itr.remark_text
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid   
-  AND itr.remark_qual_gid = 'SCOULAR.STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) = 'BU'
- 	THEN ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) /
- 	(SELECT TO_NUMBER(itr.remark_text)
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid 
-  AND itr.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) * 2204.5855379 * 1.2),2)
- 	ELSE 0 END)
- 	ELSE ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 2204.5855379  * 1.2,2) END), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || ' USD') 
-  END)
-  fob_total,
-  (CASE WHEN NVL(obrn9.ob_refnum_value,'XXYYZZYYXX') = 'XXYYZZYYXX' OR NOT regexp_like(obrn9.ob_refnum_value, '^-?[[:digit:],.]*$') THEN 'Data Missing in System USD' 
-  ELSE
-	(NVL(REGEXP_REPLACE(TO_CHAR(st.mt_weight_numonly * (CASE WHEN obrn10.ob_refnum_value = 'MT' THEN ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1.2,2)
- 	WHEN obrn10.ob_refnum_value = 'KG' THEN ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 1000) * 1.2,2)
- 	WHEN obrn10.ob_refnum_value = 'ST' THEN ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) / 0.907184) * 1.2,2)
- 	WHEN obrn10.ob_refnum_value = 'BU' THEN (CASE WHEN 
-  (SELECT itr.remark_text
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid   
-  AND itr.remark_qual_gid = 'SCOULAR.STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) = 'BU'
- 	THEN ROUND((TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) /
- 	(SELECT TO_NUMBER(itr.remark_text)
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid  
-  INNER JOIN item_remark itr ON it.item_gid = itr.item_gid 
-  AND itr.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE'
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) * 2204.5855379 * 1.2),2)
- 	ELSE 0 END)
- 	ELSE ROUND(TO_NUMBER(REGEXP_REPLACE(obrn9.ob_refnum_value, '[^0-9,.]+', '')) * 2204.5855379  * 1.2,2) END), '999,999,990.00'), '\s*', ''), 'Data Missing in System') || ' USD') 
-  END)
-  freight_total,
-	(NVL(st.total_unadjusted_formatted, 'Data Missing in System') || ' USD')
-  sub_total_amount,
-	(NVL(st.total_cost_formatted, 'Data Missing in System') || ' USD')
-  total_amount
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
-	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
-	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
-	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
-LEFT OUTER JOIN
-	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
-AND
-	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
-LEFT OUTER JOIN
-	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
-AND
-	obrn2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 1'
-LEFT OUTER JOIN
-	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
-AND
-	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 2'
-LEFT OUTER JOIN
-	ob_refnum obrn4 ON oob.order_base_gid = obrn4.order_base_gid
-AND
-	obrn4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 3'
-LEFT OUTER JOIN
-	ob_refnum obrn5 ON oob.order_base_gid = obrn5.order_base_gid
-AND
-	obrn5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP CITY'
-LEFT OUTER JOIN
-	ob_refnum obrn6 ON oob.order_base_gid = obrn6.order_base_gid
-AND
-	obrn6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP PROVINCE'
-LEFT OUTER JOIN
-	ob_refnum obrn7 ON oob.order_base_gid = obrn7.order_base_gid
-AND
-	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ZIP CODE'
-LEFT OUTER JOIN
-	ob_refnum obrn8 ON oob.order_base_gid = obrn8.order_base_gid
-AND
-	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP COUNTRY CODE'
-LEFT OUTER JOIN
-	ob_refnum obrn9 ON oob.order_base_gid = obrn9.order_base_gid
-AND
-	obrn9.ob_refnum_qual_gid = 'SCOULAR/BCO.FREIGHT ADJ PRICE'
-LEFT OUTER JOIN
-	ob_refnum obrn10 ON oob.order_base_gid = obrn10.order_base_gid
-AND
-	obrn10.ob_refnum_qual_gid = 'SCOULAR/BCO.FREIGHT ADJ UOM'
-LEFT OUTER JOIN
-	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
-AND
-	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
-LEFT OUTER JOIN
-	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
-AND
-	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESC GOODS SERVICES'
-LEFT OUTER JOIN
-	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
-AND
-	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
-LEFT OUTER JOIN
-	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid    
-WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT'
-AND NOT
-  oob.order_base_gid IS NULL]]></sqlStatement>
-    <sqlStatement name="Q_ROWS"><![CDATA[
-SELECT
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
 	adjustment_num,
 	adjustment_description,
-	adjustment_amount_formatted adjustment_amount
+	'$' || adjustment_amount_formatted  || ' USD'
+  adjustment_amount
 FROM
 	VIEW_SHIP_UNIT_ADJUST_DETAIL
 WHERE
-	shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(adjustment_num, 'Data Missing in System') adjustment_num,
-	NVL(adjustment_description, 'Data Missing in System') adjustment_description,
-	NVL(adjustment_amount_formatted, 'Data Missing in System') adjustment_amount
-FROM
-	VIEW_SHIP_UNIT_ADJUST_DETAIL
-WHERE
-	shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT'
-	]]></sqlStatement>
+	shipment_gid = :SHIPMENT_ID]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="INVOICE_DATE" value="INVOICE_DATE" />
       <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />

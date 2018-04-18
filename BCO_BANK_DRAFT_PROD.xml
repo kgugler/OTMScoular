@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BANK_DRAFT" description="BCO Bank Draft" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	BL_NUMBER BL_NUM,
+	BOOKING_DATE,
+	(CASE WHEN (SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = :SHIPMENT_ID
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER') IS NULL THEN
+    vss.shipment_xid
+  ELSE
+  (SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = :SHIPMENT_ID
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER')
+  END) SHIPMENT_NUMBER,
+	DRAFTS_AT,
+	TOTAL_NUMONLY,
+	TOTAL_TEXT,
+	CREDIT_NUMBER,
+	CREDIT_DATE,
+	OPENING_BANK,
+	OPENING_BANK_ADDRESS,
+	DRAWEE,
+	DRAWEE_ADDRESS
+FROM
+	VIEW_SHIPMENT_SUMMARY vss
+WHERE
+	VSS.SHIPMENT_GID = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+	NVL(BL_NUMBER, 'Data Missing in System') BL_NUM,
+	NVL(BOOKING_DATE, 'Data Missing in System') BOOKING_DATE,
+	NVL((CASE WHEN (SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = :SHIPMENT_ID
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER') IS NULL THEN
+    vss.shipment_xid
+  ELSE
+  (SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = :SHIPMENT_ID
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER')
+  END), 'Data Missing in System') SHIPMENT_NUMBER,
+	NVL(DRAFTS_AT, 'Data Missing in System') DRAFTS_AT,
+	NVL(TOTAL_NUMONLY, 'Data Missing in System') TOTAL_NUMONLY,
+	NVL(TOTAL_TEXT, 'Data Missing in System') TOTAL_TEXT,
+	NVL(CREDIT_NUMBER, 'Data Missing in System') CREDIT_NUMBER,
+	NVL(CREDIT_DATE, 'Data Missing in System') CREDIT_DATE,
+	NVL(OPENING_BANK, 'Data Missing in System') OPENING_BANK,
+	NVL(OPENING_BANK_ADDRESS, 'Data Missing in System') OPENING_BANK_ADDRESS,
+	NVL(DRAWEE, 'Data Missing in System') DRAWEE,
+	NVL(DRAWEE_ADDRESS, 'Data Missing in System') DRAWEE_ADDRESS
+FROM
+	VIEW_SHIPMENT_SUMMARY vss
+WHERE
+	VSS.SHIPMENT_GID = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />
+      <element name="DRAFTS_AT" value="DRAFTS_AT" />
+      <element name="TOTAL_NUMONLY" value="TOTAL_NUMONLY" />
+      <element name="TOTAL_TEXT" value="TOTAL_TEXT" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="CREDIT_DATE" value="CREDIT_DATE" />
+      <element name="OPENING_BANK" value="OPENING_BANK" />
+      <element name="OPENING_BANK_ADDRESS" value="OPENING_BANK_ADDRESS" />
+      <element name="DRAWEE" value="DRAWEE" />
+      <element name="DRAWEE_ADDRESS" value="DRAWEE_ADDRESS" />
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

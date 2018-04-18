@@ -2,31 +2,11 @@
 <dataTemplate name="BCO_CERTIFICATE_OF_FREE_SALE" description="BCO Certificate of Free Sale" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
 	TO_CHAR(s.sail_date, 'fmMONTH DD, YYYY') invoice_date,
-	obrns1.ob_refnum_value party,
-	(CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns2.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns3.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrns4.ob_refnum_value END) address,
-	(CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns5.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns6.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns7.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns8.ob_refnum_value END) city_state_zip,
-	COALESCE(obr1.remark_text, 
-  (SELECT it.description
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-  INNER JOIN item it ON pi.item_gid = it.item_gid
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)
-  ) commodity,
 	TRIM(TO_CHAR(s.sail_date, 'fmddth')) day_name,
 	TRIM(TO_CHAR(s.sail_date, 'MONTH')) month_name,
 	TRIM(TO_CHAR(s.sail_date, 'YYYY')) year_name,
@@ -34,15 +14,45 @@
 FROM
 	shipment s
 LEFT OUTER JOIN
-	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
-LEFT OUTER JOIN
-	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
-LEFT OUTER JOIN
-	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
 AND
-	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
 LEFT OUTER JOIN
-	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+	contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  obrns1.ob_refnum_value
+  party,
+  (CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns2.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrns3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns3.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrns4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrns4.ob_refnum_value END) 
+  address,
+  (CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns5.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrns6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns6.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrns7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns7.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrns8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns8.ob_refnum_value END)
+  city_state_zip,
+  COALESCE(obr1.remark_text,
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1))
+  commodity
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 LEFT OUTER JOIN
 	ob_refnum obrns1 ON oob.order_base_gid = obrns1.order_base_gid
 AND
@@ -74,38 +84,21 @@ AND
 LEFT OUTER JOIN
 	ob_refnum obrns8 ON oob.order_base_gid = obrns8.order_base_gid
 AND
-	obrns8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER COUNTRY CODE'
+	obrns8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER COUNTRY CODE'  
 LEFT OUTER JOIN
 	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
 AND
 	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
-LEFT OUTER JOIN
-	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
-AND
-	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
-LEFT OUTER JOIN
-	contact con ON sip.involved_party_contact_gid = con.contact_gid
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
+	s.shipment_gid = :SHIPMENT_ID 
+UNION ALL
 SELECT
-	NVL(TO_CHAR(s.sail_date, 'fmMONTH DD, YYYY'), 'Data Missing in System') invoice_date,
-	NVL(obrns1.ob_refnum_value, 'Data Missing in System') party,
-	(CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
-	((CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns2.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns3.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrns4.ob_refnum_value END))
-	 END) address,
-	(CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN 'Data Missing in System' ELSE
-	((CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns5.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns6.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns7.ob_refnum_value END) ||
-	(CASE WHEN NVL(TRIM(obrns8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns8.ob_refnum_value END))
-	 END) city_state_zip,
-	NVL(
-  COALESCE(obr1.remark_text, 
+  ''
+  party,
+  ''
+  address,
+  ''
+  city_state_zip,  
   (SELECT it.description
   FROM shipment_stop_d sstopd
   INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
@@ -113,99 +106,38 @@ SELECT
   INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
   INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
   INNER JOIN item it ON pi.item_gid = it.item_gid
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)), 'Data Missing in System')
-  commodity,
-	NVL(TRIM(TO_CHAR(s.sail_date, 'fmddth')), 'Data Missing in System') day_name,
-	NVL(TRIM(TO_CHAR(s.sail_date, 'MONTH')), 'Data Missing in System') month_name,
-	NVL(TRIM(TO_CHAR(s.sail_date, 'YYYY')), 'Data Missing in System') year_name,
-	NVL(TRIM(con.first_name || ' ' || con.last_name), 'Data Missing in System') involved_party
+  WHERE sstopd.shipment_gid = :SHIPMENT_ID AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  commodity
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
 FROM
 	shipment s
-JOIN
-	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
-AND
-	sstopd.stop_num = 1
-JOIN
-	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-AND
-	NOT ssu.tag_3 IS NULL
-LEFT OUTER JOIN
-	s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
-	packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
-LEFT OUTER JOIN
-	item it ON pi.item_gid = it.item_gid
-LEFT OUTER JOIN
-	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
-LEFT OUTER JOIN
-	ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
-LEFT OUTER JOIN
-	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
-AND
-	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
-LEFT OUTER JOIN
-	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
-LEFT OUTER JOIN
-	ob_refnum obrns1 ON oob.order_base_gid = obrns1.order_base_gid
-AND
-	obrns1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER NAME'
-LEFT OUTER JOIN
-	ob_refnum obrns2 ON oob.order_base_gid = obrns2.order_base_gid
-AND
-	obrns2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 1'
-LEFT OUTER JOIN
-	ob_refnum obrns3 ON oob.order_base_gid = obrns3.order_base_gid
-AND
-	obrns3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 2'
-LEFT OUTER JOIN
-	ob_refnum obrns4 ON oob.order_base_gid = obrns4.order_base_gid
-AND
-	obrns4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 3'
-LEFT OUTER JOIN
-	ob_refnum obrns5 ON oob.order_base_gid = obrns5.order_base_gid
-AND
-	obrns5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER CITY'
-LEFT OUTER JOIN
-	ob_refnum obrns6 ON oob.order_base_gid = obrns6.order_base_gid
-AND
-	obrns6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER PROVINCE'
-LEFT OUTER JOIN
-	ob_refnum obrns7 ON oob.order_base_gid = obrns7.order_base_gid
-AND
-	obrns7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ZIP CODE'
-LEFT OUTER JOIN
-	ob_refnum obrns8 ON oob.order_base_gid = obrns8.order_base_gid
-AND
-	obrns8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER COUNTRY CODE'
-LEFT OUTER JOIN
-	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
-AND
-	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
-LEFT OUTER JOIN
-	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
-AND
-	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
-LEFT OUTER JOIN
-	contact con ON sip.involved_party_contact_gid = con.contact_gid
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="INVOICE_DATE" value="INVOICE_DATE" />
-      <element name="PARTY" value="PARTY" />
-      <element name="ADDRESS" value="ADDRESS" />
-      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
-      <element name="COMMODITY" value="COMMODITY" />
       <element name="DAY_NAME" value="DAY_NAME" />
       <element name="MONTH_NAME" value="MONTH_NAME"></element>
       <element name="YEAR_NAME" value="YEAR_NAME" />
       <element name="INVOLVED_PARTY" value="INVOLVED_PARTY" />
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="PARTY" value="PARTY" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
+      <element name="COMMODITY" value="COMMODITY" />
     </group>
   </dataStructure>
 </dataTemplate>

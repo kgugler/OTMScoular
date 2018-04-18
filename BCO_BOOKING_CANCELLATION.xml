@@ -5,7 +5,7 @@
     <parameter name="END_DATE" dataType="character" />
   </parameters>
   <dataQuery>
-    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
   cvr2.charter_voyage_refnum_value 
   loc_code,
@@ -97,7 +97,7 @@ ORDER BY
   END) DESC]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAM" source="Q_PARAM">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="FROM_DT" value="FROM_DT" />
       <element name="TO_DT" value="TO_DT" />
     </group>

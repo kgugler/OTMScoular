@@ -1,0 +1,181 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_AVERAGE_DAYS_TO_PAY" description="BCO Average Days To Pay" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="CUSTOMER_ID" dataType="character" />
+    <parameter name="CUSTOMER_COUNTRY" dataType="character" />
+    <parameter name="SHOW_PAID" dataType="character" />
+    <parameter name="SHOW_CODES" dataType="character" />
+    <parameter name="SHOW_DRAWEE" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt, :SHOW_DRAWEE sh_drawee FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  s.attribute_date7, 
+  s.attribute_date6, 
+  s.attribute_date4,
+  sref1.shipment_refnum_value loc,
+  con.contact_xid cust_id,
+  loc.location_name cust_name,
+  sref2.shipment_refnum_value cust_country,
+  srn.shipment_refnum_value booking_no,
+  s.shipment_xid shipment_id,  
+  (CASE WHEN cv.actual_departure_date IS NULL THEN
+    TO_CHAR(cv.departure_date,'MM/DD/YY')
+  ELSE
+    TO_CHAR(cv.actual_departure_date,'MM/DD/YY')
+  END)
+  etd,
+  (CASE WHEN cv.actual_arrival_date IS NULL THEN
+    TO_CHAR(cv.arrival_date,'MM/DD/YY')
+  ELSE
+    TO_CHAR(cv.actual_arrival_date,'MM/DD/YY')
+  END)
+  eta,  
+  TRIM(TO_CHAR(s.total_ship_unit_count,'999,999,990')) containers,
+  TO_CHAR(s.attribute_date7,'MM/DD/YY') presented_date,
+  TO_CHAR(s.attribute_date6,'MM/DD/YY') banked_date,
+  TO_CHAR(s.attribute_date4,'MM/DD/YY') payment_date,
+  TRIM(TO_CHAR(ROUND(NVL(s.total_net_weight_base, s.total_weight_base) / 2204.5855379,3),'999,999,990.000')) weight_mt,
+  TRIM(TO_CHAR(TO_NUMBER((CASE WHEN obrem1.remark_text IS NULL THEN
+    (CASE WHEN obrn1.ob_refnum_value IS NULL THEN
+      obrn2.ob_refnum_value
+    ELSE
+      obrn1.ob_refnum_value
+    END)
+  ELSE
+    obrem1.remark_text
+  END)),'999,999,990.00'))
+  contract_price,
+  TRIM(TO_CHAR(ROUND(ROUND(NVL(s.total_net_weight_base, s.total_weight_base) / 2204.5855379,3) * 
+  TO_NUMBER(  
+  (CASE WHEN obrem1.remark_text IS NULL THEN
+    (CASE WHEN obrn1.ob_refnum_value IS NULL THEN
+      obrn2.ob_refnum_value
+    ELSE
+      obrn1.ob_refnum_value
+    END)
+  ELSE
+    obrem1.remark_text
+  END)),2),'999,999,990.00')) total_cost,
+  sref4.shipment_refnum_value contract_no,
+  NVL((SELECT mcmd.source
+  FROM message_code_map_d mcmd
+  WHERE mcmd.message_code_map_gid = 'SCOULAR/BCO.PAYMENT_TERMS'
+  AND mcmd.value = obrn3.ob_refnum_value),obrn3.ob_refnum_value)
+  payment_term,
+  sref5.shipment_refnum_value commodity,
+  (CASE WHEN :SHOW_DRAWEE = 'YES' THEN
+    obrem2.remark_text
+  ELSE
+    ''
+  END)
+  drawee
+FROM
+	shipment s
+INNER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+INNER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value  
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+  location loc ON con.location_gid = loc.location_gid
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER_COUNTRY'  
+LEFT OUTER JOIN
+	shipment_refnum sref4 ON sref4.shipment_gid = s.shipment_gid
+AND
+	sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO'        
+LEFT OUTER JOIN
+	shipment_refnum sref5 ON sref5.shipment_gid = s.shipment_gid
+AND
+	sref5.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'   
+LEFT OUTER JOIN
+	ob_remark obrem1 ON oob.order_base_gid = obrem1.order_base_gid
+AND
+	obrem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'  
+  LEFT OUTER JOIN
+	ob_remark obrem2 ON oob.order_base_gid = obrem2.order_base_gid
+AND
+	obrem2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_OPENING BANK'
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.PROVISIONAL PRICE'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'  
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS' 
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.transport_mode_gid = 'VESSEL-CO'
+AND
+  s.perspective = 'B'
+AND
+  s.is_primary = 'Y'
+AND
+  s.start_time >= TO_DATE('2016-01-11','YYYY-MM-DD')  
+AND
+  s.consol_gid IS NULL
+AND
+  (TO_DATE(s.attribute_date4,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.attribute_date4,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:CUSTOMER_ID IS NULL OR (NOT :CUSTOMER_ID IS NULL AND
+  sip.involved_party_contact_gid
+          IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+          FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))    
+AND
+  (:CUSTOMER_COUNTRY IS NULL OR (NOT :CUSTOMER_COUNTRY IS NULL AND
+  sref2.shipment_refnum_value
+          IN (SELECT REGEXP_SUBSTR(:CUSTOMER_COUNTRY,'[^,]+', 1, LEVEL) items
+          FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_COUNTRY, '[^,]+', 1, LEVEL) IS NOT NULL)))   
+AND
+  (:SHOW_PAID = 'NO'
+OR 
+  (:SHOW_PAID = 'YES'
+AND 
+  NOT s.attribute_date4 IS NULL))
+AND
+  (:SHOW_CODES = 'YES'
+OR
+  (:SHOW_CODES = 'NO'
+AND
+  (SELECT mcmd.source
+  FROM message_code_map_d mcmd
+  WHERE mcmd.message_code_map_gid = 'SCOULAR/BCO.PAYMENT_TERMS'
+  AND mcmd.value = obrn3.ob_refnum_value) IN ('C','F'))) 
+ORDER BY
+  con.contact_xid, s.attribute_date7, s.attribute_date6, s.attribute_date4]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

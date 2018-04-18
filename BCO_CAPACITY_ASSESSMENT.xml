@@ -1,0 +1,990 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_CAPACITY_ASSESSMENT" description="BCO Capacity Assessment" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOC_CODE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  :LOC_CODE loc_cd,
+  TO_CHAR(SYSDATE, 'Month') month1,
+  TO_CHAR(ADD_MONTHS(SYSDATE, 1), 'Month') month2,
+  TO_CHAR(ADD_MONTHS(SYSDATE, 2), 'Month') month3,
+  TO_CHAR(ADD_MONTHS(SYSDATE, 3), 'Month') month4,
+  TO_CHAR(ADD_MONTHS(SYSDATE, 4), 'Month') month5,
+  TO_CHAR(ADD_MONTHS(SYSDATE, 5), 'Month') month6
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_CON1"><![CDATA[SELECT
+  a.destination destination_c1,
+  a.commodity commodity_c1,
+  NVL(ROUND(SUM(a.open_tons),0),0)
+  open_tons_c1,
+  NVL(ROUND(SUM(a.planned_tons),0),0)
+  planned_tons_c1,
+  NVL(ROUND(SUM(a.open_tons),0) - 
+  ROUND(SUM(a.shipped_tons),0),0)
+  remaining_tons_c1,
+  NVL(ROUND(a.booked_tons,0),0)
+  booked_tons_c1
+FROM
+(SELECT DISTINCT
+  oob.order_base_gid,
+  loc.location_xid destination,
+  obref2.ob_refnum_value commodity,
+  obl.weight_base / 2204.5855379
+  open_tons,
+  (SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    ssu1.unit_net_weight_base
+  ELSE 
+    0
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt)
+  planned_tons,
+  NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0)
+  shipped_tons,  
+  (SELECT
+    (SUM(NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)) * 21) + 
+    (SUM(NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)) * 26)
+  FROM charter_voyage cv
+  INNER JOIN charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+  AND cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+  LEFT OUTER JOIN consol cnsl ON cvr.charter_voyage_gid = cnsl.charter_voyage_gid
+  WHERE cv.domain_name = 'SCOULAR/BCO'
+  AND NOT cv.is_cancelled = 'Y'
+  AND((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+  OR (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+  AND cvr.charter_voyage_refnum_value = :LOC_CODE
+  AND cv.dest_location_gid = obl.dest_location_gid
+  AND (TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') >= TRUNC(SYSDATE,'MM')
+  AND TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') <= LAST_DAY(SYSDATE)))
+  booked_tons
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  ob_line obl ON obref1.order_base_gid = obl.order_base_gid
+INNER JOIN
+  location loc ON obl.dest_location_gid = loc.location_gid 
+LEFT OUTER JOIN
+  ob_refnum obref2 ON obl.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  SUBSTR(oob.order_base_xid, 1, 1) = 'S'
+AND
+  obref1.ob_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(obl.early_pickup_date,'dd-mm-rr') >= TRUNC(SYSDATE,'MM')
+AND
+  TO_DATE(obl.early_pickup_date,'dd-mm-rr') <= LAST_DAY(SYSDATE))
+AND NOT EXISTS
+  (SELECT obr.order_base_gid
+  FROM ob_refnum obr
+  WHERE obr.order_base_gid = oob.order_base_gid
+  AND obr.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND obr.ob_refnum_value = 'CLOSE')) a
+GROUP BY
+  a.destination,
+  a.commodity,
+  NVL(ROUND(a.booked_tons,0),0)
+ORDER BY
+  a.destination,
+  a.commodity]]></sqlStatement>
+    <sqlStatement name="Q_BOOK1"><![CDATA[SELECT
+  a.destination destination_b1,
+  a.servprov servprov_b1,
+  NVL(SUM(a.teu_count),0)
+  teus_b1,
+  NVL(SUM(a.feu_count),0)
+  feus_b1
+FROM
+(SELECT
+  cv.charter_voyage_gid,
+  loc1.location_xid
+  destination,
+  loc2.location_xid
+  servprov,
+  NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)
+  teu_count,
+  NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)
+  feu_count  
+FROM
+  charter_voyage cv
+INNER JOIN
+  location loc1 ON cv.dest_location_gid = loc1.location_gid
+INNER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+INNER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  consol cnsl ON cv.charter_voyage_gid = cnsl.charter_voyage_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'
+AND
+  ((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+OR
+  (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+AND
+  cvr.charter_voyage_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)
+  ,'dd-mm-rr') >= TRUNC(SYSDATE,'MM')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)
+  ,'dd-mm-rr') <= LAST_DAY(SYSDATE))) a
+GROUP BY
+  a.destination, a.servprov
+ORDER BY
+  a.destination, a.servprov]]></sqlStatement>
+    <sqlStatement name="Q_CON2"><![CDATA[SELECT
+  a.destination destination_c2,
+  a.commodity commodity_c2,
+  NVL(ROUND(SUM(a.open_tons),0),0)
+  open_tons_c2,
+  NVL(ROUND(SUM(a.planned_tons),0),0)
+  planned_tons_c2,
+  NVL(ROUND(SUM(a.open_tons),0) - 
+  ROUND(SUM(a.shipped_tons),0),0)
+  remaining_tons_c2,
+  NVL(ROUND(a.booked_tons,0),0)
+  booked_tons_c2
+FROM
+(SELECT DISTINCT
+  oob.order_base_gid,
+  loc.location_xid destination,
+  obref2.ob_refnum_value commodity,
+  obl.weight_base / 2204.5855379
+  open_tons,
+  (SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    ssu1.unit_net_weight_base
+  ELSE 
+    0
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt)
+  planned_tons,
+  NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0)
+  shipped_tons,  
+  (SELECT
+    (SUM(NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)) * 21) + 
+    (SUM(NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)) * 26)
+  FROM charter_voyage cv
+  INNER JOIN charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+  AND cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+  LEFT OUTER JOIN consol cnsl ON cvr.charter_voyage_gid = cnsl.charter_voyage_gid
+  WHERE cv.domain_name = 'SCOULAR/BCO'
+  AND NOT cv.is_cancelled = 'Y'
+  AND((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+  OR (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+  AND cvr.charter_voyage_refnum_value = :LOC_CODE
+  AND cv.dest_location_gid = obl.dest_location_gid
+  AND (TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,1),'MM')
+  AND TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,1))))
+  booked_tons
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  ob_line obl ON obref1.order_base_gid = obl.order_base_gid
+INNER JOIN
+  location loc ON obl.dest_location_gid = loc.location_gid 
+LEFT OUTER JOIN
+  ob_refnum obref2 ON obl.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  SUBSTR(oob.order_base_xid, 1, 1) = 'S'
+AND
+  obref1.ob_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(obl.early_pickup_date,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,1),'MM')
+AND
+  TO_DATE(obl.early_pickup_date,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,1)))
+AND NOT EXISTS
+  (SELECT obr.order_base_gid
+  FROM ob_refnum obr
+  WHERE obr.order_base_gid = oob.order_base_gid
+  AND obr.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND obr.ob_refnum_value = 'CLOSE')) a
+GROUP BY
+  a.destination,
+  a.commodity,
+  NVL(ROUND(a.booked_tons,0),0)
+ORDER BY
+  a.destination,
+  a.commodity]]></sqlStatement>
+    <sqlStatement name="Q_BOOK2"><![CDATA[SELECT
+  a.destination destination_b2,
+  a.servprov servprov_b2,
+  NVL(SUM(a.teu_count),0)
+  teus_b2,
+  NVL(SUM(a.feu_count),0)
+  feus_b2
+FROM
+(SELECT
+  cv.charter_voyage_gid,
+  loc1.location_xid
+  destination,
+  loc2.location_xid
+  servprov,
+  NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)
+  teu_count,
+  NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)
+  feu_count  
+FROM
+  charter_voyage cv
+INNER JOIN
+  location loc1 ON cv.dest_location_gid = loc1.location_gid
+INNER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+INNER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  consol cnsl ON cv.charter_voyage_gid = cnsl.charter_voyage_gid 
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'  
+AND
+  ((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+OR
+  (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+AND
+  cvr.charter_voyage_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,1),'MM')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,1)))) a
+GROUP BY
+  a.destination, a.servprov
+ORDER BY
+  a.destination, a.servprov]]></sqlStatement>
+    <sqlStatement name="Q_CON3"><![CDATA[SELECT
+  a.destination destination_c3,
+  a.commodity commodity_c3,
+  NVL(ROUND(SUM(a.open_tons),0),0)
+  open_tons_c3,
+  NVL(ROUND(SUM(a.planned_tons),0),0)
+  planned_tons_c3,
+  NVL(ROUND(SUM(a.open_tons),0) - 
+  ROUND(SUM(a.shipped_tons),0),0)
+  remaining_tons_c3,
+  NVL(ROUND(a.booked_tons,0),0)
+  booked_tons_c3
+FROM
+(SELECT DISTINCT
+  oob.order_base_gid,
+  loc.location_xid destination,
+  obref2.ob_refnum_value commodity,
+  obl.weight_base / 2204.5855379
+  open_tons,
+  (SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    ssu1.unit_net_weight_base
+  ELSE 
+    0
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt)
+  planned_tons,
+  NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0)
+  shipped_tons,
+  (SELECT
+    (SUM(NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)) * 21) + 
+    (SUM(NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)) * 26)
+  FROM charter_voyage cv
+  INNER JOIN charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+  AND cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+  LEFT OUTER JOIN consol cnsl ON cvr.charter_voyage_gid = cnsl.charter_voyage_gid
+  WHERE cv.domain_name = 'SCOULAR/BCO'
+  AND NOT cv.is_cancelled = 'Y'
+  AND((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+  OR (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+  AND cvr.charter_voyage_refnum_value = :LOC_CODE
+  AND cv.dest_location_gid = obl.dest_location_gid
+  AND (TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,2),'MM')
+  AND TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,2))))
+  booked_tons
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  ob_line obl ON obref1.order_base_gid = obl.order_base_gid
+INNER JOIN
+  location loc ON obl.dest_location_gid = loc.location_gid 
+LEFT OUTER JOIN
+  ob_refnum obref2 ON obl.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  SUBSTR(oob.order_base_xid, 1, 1) = 'S'
+AND
+  obref1.ob_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(obl.early_pickup_date,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,2),'MM')
+AND
+  TO_DATE(obl.early_pickup_date,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,2)))
+AND NOT EXISTS
+  (SELECT obr.order_base_gid
+  FROM ob_refnum obr
+  WHERE obr.order_base_gid = oob.order_base_gid
+  AND obr.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND obr.ob_refnum_value = 'CLOSE')) a
+GROUP BY
+  a.destination,
+  a.commodity,
+  NVL(ROUND(a.booked_tons,0),0)
+ORDER BY
+  a.destination,
+  a.commodity]]></sqlStatement>
+    <sqlStatement name="Q_BOOK3"><![CDATA[SELECT
+  a.destination destination_b3,
+  a.servprov servprov_b3,
+  NVL(SUM(a.teu_count),0)
+  teus_b3,
+  NVL(SUM(a.feu_count),0)
+  feus_b3
+FROM
+(SELECT
+  cv.charter_voyage_gid,
+  loc1.location_xid
+  destination,
+  loc2.location_xid
+  servprov,
+  NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)
+  teu_count,
+  NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)
+  feu_count  
+FROM
+  charter_voyage cv
+INNER JOIN
+  location loc1 ON cv.dest_location_gid = loc1.location_gid
+INNER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+INNER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  consol cnsl ON cv.charter_voyage_gid = cnsl.charter_voyage_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'
+AND
+  ((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+OR
+  (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+AND
+  cvr.charter_voyage_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,2),'MM')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,2)))) a
+GROUP BY
+  a.destination, a.servprov
+ORDER BY
+  a.destination, a.servprov]]></sqlStatement>
+    <sqlStatement name="Q_CON4"><![CDATA[SELECT
+  a.destination destination_c4,
+  a.commodity commodity_c4,
+  NVL(ROUND(SUM(a.open_tons),0),0)
+  open_tons_c4,
+  NVL(ROUND(SUM(a.planned_tons),0),0)
+  planned_tons_c4,
+  NVL(ROUND(SUM(a.open_tons),0) - 
+  ROUND(SUM(a.shipped_tons),0),0)
+  remaining_tons_c4,
+  NVL(ROUND(a.booked_tons,0),0)
+  booked_tons_c4
+FROM
+(SELECT DISTINCT
+  oob.order_base_gid,
+  loc.location_xid destination,
+  obref2.ob_refnum_value commodity,
+  obl.weight_base / 2204.5855379
+  open_tons,
+  (SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    ssu1.unit_net_weight_base
+  ELSE 
+    0
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt)
+  planned_tons,
+  NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0)
+  shipped_tons,
+  (SELECT
+    (SUM(NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)) * 21) + 
+    (SUM(NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)) * 26)
+  FROM charter_voyage cv
+  INNER JOIN charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+  AND cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+  LEFT OUTER JOIN consol cnsl ON cvr.charter_voyage_gid = cnsl.charter_voyage_gid
+  WHERE cv.domain_name = 'SCOULAR/BCO'
+  AND NOT cv.is_cancelled = 'Y'
+  AND((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+  OR (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+  AND cvr.charter_voyage_refnum_value = :LOC_CODE
+  AND cv.dest_location_gid = obl.dest_location_gid
+  AND (TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,3),'MM')
+  AND TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,3))))
+  booked_tons
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  ob_line obl ON obref1.order_base_gid = obl.order_base_gid
+INNER JOIN
+  location loc ON obl.dest_location_gid = loc.location_gid 
+LEFT OUTER JOIN
+  ob_refnum obref2 ON obl.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  SUBSTR(oob.order_base_xid, 1, 1) = 'S'
+AND
+  obref1.ob_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(obl.early_pickup_date,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,3),'MM')
+AND
+  TO_DATE(obl.early_pickup_date,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,3)))
+AND NOT EXISTS
+  (SELECT obr.order_base_gid
+  FROM ob_refnum obr
+  WHERE obr.order_base_gid = oob.order_base_gid
+  AND obr.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND obr.ob_refnum_value = 'CLOSE')) a
+GROUP BY
+  a.destination,
+  a.commodity,
+  NVL(ROUND(a.booked_tons,0),0)
+ORDER BY
+  a.destination,
+  a.commodity]]></sqlStatement>
+    <sqlStatement name="Q_BOOK4"><![CDATA[SELECT
+  a.destination destination_b4,
+  a.servprov servprov_b4,
+  NVL(SUM(a.teu_count),0)
+  teus_b4,
+  NVL(SUM(a.feu_count),0)
+  feus_b4
+FROM
+(SELECT
+  cv.charter_voyage_gid,
+  loc1.location_xid
+  destination,
+  loc2.location_xid
+  servprov,
+  NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)
+  teu_count,
+  NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)
+  feu_count  
+FROM
+  charter_voyage cv
+INNER JOIN
+  location loc1 ON cv.dest_location_gid = loc1.location_gid
+INNER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+INNER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  consol cnsl ON cv.charter_voyage_gid = cnsl.charter_voyage_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'
+AND
+  ((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+OR
+  (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+AND
+  cvr.charter_voyage_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,3),'MM')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,3)))) a
+GROUP BY
+  a.destination, a.servprov
+ORDER BY
+  a.destination, a.servprov]]></sqlStatement>
+    <sqlStatement name="Q_CON5"><![CDATA[SELECT
+  a.destination destination_c5,
+  a.commodity commodity_c5,
+  NVL(ROUND(SUM(a.open_tons),0),0)
+  open_tons_c5,
+  NVL(ROUND(SUM(a.planned_tons),0),0)
+  planned_tons_c5,
+  NVL(ROUND(SUM(a.open_tons),0) - 
+  ROUND(SUM(a.shipped_tons),0),0)
+  remaining_tons_c5,
+  NVL(ROUND(a.booked_tons,0),0)
+  booked_tons_c5
+FROM
+(SELECT DISTINCT
+  oob.order_base_gid,
+  loc.location_xid destination,
+  obref2.ob_refnum_value commodity,
+  obl.weight_base / 2204.5855379
+  open_tons,
+  (SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    ssu1.unit_net_weight_base
+  ELSE 
+    0
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt)
+  planned_tons,
+  NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0)
+  shipped_tons,
+  (SELECT
+    (SUM(NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)) * 21) + 
+    (SUM(NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)) * 26)
+  FROM charter_voyage cv
+  INNER JOIN charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+  AND cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+  LEFT OUTER JOIN consol cnsl ON cvr.charter_voyage_gid = cnsl.charter_voyage_gid
+  WHERE cv.domain_name = 'SCOULAR/BCO'
+  AND NOT cv.is_cancelled = 'Y'
+  AND((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+  OR (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+  AND cvr.charter_voyage_refnum_value = :LOC_CODE
+  AND cv.dest_location_gid = obl.dest_location_gid
+  AND (TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,4),'MM')
+  AND TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,4))))
+  booked_tons
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  ob_line obl ON obref1.order_base_gid = obl.order_base_gid
+INNER JOIN
+  location loc ON obl.dest_location_gid = loc.location_gid 
+LEFT OUTER JOIN
+  ob_refnum obref2 ON obl.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  SUBSTR(oob.order_base_xid, 1, 1) = 'S'
+AND
+  obref1.ob_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(obl.early_pickup_date,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,4),'MM')
+AND
+  TO_DATE(obl.early_pickup_date,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,4)))
+AND NOT EXISTS
+  (SELECT obr.order_base_gid
+  FROM ob_refnum obr
+  WHERE obr.order_base_gid = oob.order_base_gid
+  AND obr.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND obr.ob_refnum_value = 'CLOSE')) a
+GROUP BY
+  a.destination,
+  a.commodity,
+  NVL(ROUND(a.booked_tons,0),0)
+ORDER BY
+  a.destination,
+  a.commodity]]></sqlStatement>
+    <sqlStatement name="Q_BOOK5"><![CDATA[SELECT
+  a.destination destination_b5,
+  a.servprov servprov_b5,
+  NVL(SUM(a.teu_count),0)
+  teus_b5,
+  NVL(SUM(a.feu_count),0)
+  feus_b5
+FROM
+(SELECT
+  cv.charter_voyage_gid,
+  loc1.location_xid
+  destination,
+  loc2.location_xid
+  servprov,
+  NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)
+  teu_count,
+  NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)
+  feu_count  
+FROM
+  charter_voyage cv
+INNER JOIN
+  location loc1 ON cv.dest_location_gid = loc1.location_gid
+INNER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+INNER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  consol cnsl ON cv.charter_voyage_gid = cnsl.charter_voyage_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'
+AND
+  ((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+OR
+  (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+AND
+  cvr.charter_voyage_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,4),'MM')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,4)))) a
+GROUP BY
+  a.destination, a.servprov
+ORDER BY
+  a.destination, a.servprov]]></sqlStatement>
+    <sqlStatement name="Q_CON6"><![CDATA[SELECT
+  a.destination destination_c6,
+  a.commodity commodity_c6,
+  NVL(ROUND(SUM(a.open_tons),0),0)
+  open_tons_c6,
+  NVL(ROUND(SUM(a.planned_tons),0),0)
+  planned_tons_c6,
+  NVL(ROUND(SUM(a.open_tons),0) - 
+  ROUND(SUM(a.shipped_tons),0),0)
+  remaining_tons_c6,
+  NVL(ROUND(a.booked_tons,0),0)
+  booked_tons_c6
+FROM
+(SELECT DISTINCT
+  oob.order_base_gid,
+  loc.location_xid destination,
+  obref2.ob_refnum_value commodity,
+  obl.weight_base / 2204.5855379
+  open_tons,
+  (SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    ssu1.unit_net_weight_base
+  ELSE 
+    0
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt)
+  planned_tons,
+  NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0)
+  shipped_tons,
+  (SELECT
+    (SUM(NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)) * 21) + 
+    (SUM(NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)) * 26)
+  FROM charter_voyage cv
+  INNER JOIN charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+  AND cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+  LEFT OUTER JOIN consol cnsl ON cvr.charter_voyage_gid = cnsl.charter_voyage_gid
+  WHERE cv.domain_name = 'SCOULAR/BCO'
+  AND NOT cv.is_cancelled = 'Y'
+  AND((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+  OR (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+  AND cvr.charter_voyage_refnum_value = :LOC_CODE
+  AND cv.dest_location_gid = obl.dest_location_gid
+  AND (TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,5),'MM')
+  AND TO_DATE((CASE WHEN cv.source_location_gid IS NULL THEN cv.departure_date
+  ELSE glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid) END)
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,5))))
+  booked_tons
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  ob_line obl ON obref1.order_base_gid = obl.order_base_gid
+INNER JOIN
+  location loc ON obl.dest_location_gid = loc.location_gid 
+LEFT OUTER JOIN
+  ob_refnum obref2 ON obl.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'    
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  SUBSTR(oob.order_base_xid, 1, 1) = 'S'
+AND
+  obref1.ob_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(obl.early_pickup_date,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,5),'MM')
+AND
+  TO_DATE(obl.early_pickup_date,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,5)))
+AND NOT EXISTS
+  (SELECT obr.order_base_gid
+  FROM ob_refnum obr
+  WHERE obr.order_base_gid = oob.order_base_gid
+  AND obr.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND obr.ob_refnum_value = 'CLOSE')) a
+GROUP BY
+  a.destination,
+  a.commodity,
+  NVL(ROUND(a.booked_tons,0),0)
+ORDER BY
+  a.destination,
+  a.commodity]]></sqlStatement>
+    <sqlStatement name="Q_BOOK6"><![CDATA[SELECT
+  a.destination destination_b6,
+  a.servprov servprov_b6,
+  NVL(SUM(a.teu_count),0)
+  teus_b6,
+  NVL(SUM(a.feu_count),0)
+  feus_b6
+FROM
+(SELECT
+  cv.charter_voyage_gid,
+  loc1.location_xid
+  destination,
+  loc2.location_xid
+  servprov,
+  NVL(cnsl.max_num_teu,0) - NVL(cnsl.allocated_num_teu,0)
+  teu_count,
+  NVL(cnsl.max_num_feu,0) - NVL(cnsl.allocated_num_feu,0)
+  feu_count  
+FROM
+  charter_voyage cv
+INNER JOIN
+  location loc1 ON cv.dest_location_gid = loc1.location_gid
+INNER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'
+INNER JOIN
+  location loc2 ON cv.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  consol cnsl ON cv.charter_voyage_gid = cnsl.charter_voyage_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'
+AND
+  ((NOT NVL(cnsl.max_num_teu,0) = NVL(cnsl.allocated_num_teu,0))
+OR
+  (NOT NVL(cnsl.max_num_feu,0) = NVL(cnsl.allocated_num_feu,0)))
+AND
+  cvr.charter_voyage_refnum_value = :LOC_CODE
+AND
+  (TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') >= TRUNC(ADD_MONTHS(SYSDATE,5),'MM')
+AND
+  TO_DATE(
+  (CASE WHEN cv.source_location_gid IS NULL THEN
+    cv.departure_date
+  ELSE
+    glogowner.utc.get_local_date(cv.departure_date, cv.source_location_gid)
+  END)  
+  ,'dd-mm-rr') <= LAST_DAY(ADD_MONTHS(SYSDATE,5)))) a
+GROUP BY
+  a.destination, a.servprov
+ORDER BY
+  a.destination, a.servprov]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

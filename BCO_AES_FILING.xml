@@ -2,12 +2,10 @@
 <dataTemplate name="BCO_AES_FILING" description="BCO AES Filing Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="GTM_TRANSACTION_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
   TO_CHAR(SYSDATE,'MM/DD/YYYY hh:mi am') 
   system_date,
   (SELECT DISTINCT ier.element_ref_value
@@ -103,119 +101,17 @@ LEFT OUTER JOIN
 LEFT OUTER JOIN
   item it ON gtl.item_gid = it.item_gid
 WHERE
-	gtm.gtm_transaction_gid = :GTM_TRANSACTION_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-  TO_CHAR(SYSDATE,'MM/DD/YYYY hh:mi am') 
-  system_date,
-  NVL((SELECT DISTINCT ier.element_ref_value
-  FROM ie_document_response ier 
-  INNER JOIN ie_shipmentstatus iess ON ier.i_transaction_no = iess.i_transaction_no 
-  INNER JOIN document doc ON iess.tracking_number = doc.document_tracking_num
-  WHERE ier.element_ref_qualifier = 'ES1:INTERNAL TRACKING NUMBER(ITN)' 
-  AND doc.owner_object_gid = gtm.gtm_transaction_gid
-  AND NOT ier.element_ref_value IS NULL
-  AND ier.insert_date = (
-  SELECT MAX(iera.insert_date)
-  FROM ie_document_response iera 
-  INNER JOIN ie_shipmentstatus iessa ON iera.i_transaction_no = iessa.i_transaction_no 
-  INNER JOIN document doca ON iessa.tracking_number = doca.document_tracking_num
-  WHERE iera.element_ref_qualifier = 'ES1:INTERNAL TRACKING NUMBER(ITN)' 
-  AND doca.owner_object_gid = doc.owner_object_gid)
-  AND ROWNUM = 1), 'Data Missing in System')
-  itn_number,
-  NVL(gtr1.refnum_value, 'Data Missing in System')
-  ship_ref_number,
-  NVL(gtr2.refnum_value, 'Data Missing in System')
-  trans_ref_number,
-  NVL(TO_CHAR(gtd.transaction_date,'MM/DD/YYYY'), 'Data Missing in System')
-  export_date,
-  NVL(gtm.transport_mode_gid, 'Data Missing in System')
-  transport_method,
-  NVL(loc1.city, 'Data Missing in System') || ', ' || NVL(loc1.province_code, 'Data Missing in System')
-  export_port,
-  NVL(loc2.city, 'Data Missing in System') || ', ' || NVL(cc2.country_name, 'Data Missing in System')
-  unlading_port,
-  NVL(gtm.conveyance_name, 'Data Missing in System')
-  vessel_name,
-  NVL(it.item_name, 'Data Missing in System')
-  commodity,
-  NVL(gpcc.classification_code, 'Data Missing in System')
-  hs_code,
-  NVL(TRIM(gtlq.quantity_value || ' ' || gtlq.uom_code), 'Data Missing in System')
-  quantity,
-  NVL(TRIM(gtlrq.quantity_value || ' ' || gtlrq.uom_code), 'Data Missing in System')
-  ship_weight,  
-  NVL(TRIM(gtlc.currency_value || ' ' || gtlc.currency_value_currency_gid), 'Data Missing in System')
-  total_value
-FROM
-	gtm_transaction gtm
-LEFT OUTER JOIN
-  gtm_transaction_line gtl ON gtm.gtm_transaction_gid = gtl.gtm_transaction_gid 
-AND
-  gtl.line_object_no = 1  
-LEFT OUTER JOIN
-  gtm_tr_prod_classification gtpc ON gtl.gtm_transaction_line_gid = gtpc.gtm_transaction_line_gid
-LEFT OUTER JOIN
-  gtm_prod_class_code gpcc ON gtpc.gtm_prod_class_code_gid = gpcc.gtm_prod_class_code_gid
-LEFT OUTER JOIN
-  gtm_transaction_date gtd ON gtm.gtm_transaction_gid = gtd.gtm_transaction_gid 
-LEFT OUTER JOIN
-  gtm_trans_line_quantity gtlq ON gtl.gtm_transaction_line_gid = gtlq.gtm_transaction_line_gid
-AND
-  gtlq.gtm_quantity_type_gid = 'TOTAL GROSS WEIGHT'
-LEFT OUTER JOIN
-  gtm_trans_line_report_quantity gtlrq ON gtl.gtm_transaction_line_gid = gtlrq.gtm_transaction_line_gid
-AND
-  gtlrq.gtm_quantity_type_gid = 'NET_WEIGHT' 
-LEFT OUTER JOIN
-  gtm_trans_line_currency gtlc ON gtl.gtm_transaction_line_gid = gtlc.gtm_transaction_line_gid
-AND
-  gtlc.gtm_value_qualifier_gid = 'TOTAL VALUE'   
-LEFT OUTER JOIN
-  gtm_transaction_date gtd ON gtm.gtm_transaction_gid = gtd.gtm_transaction_gid
-AND
-  gtd.date_qualifier_gid = 'EXPORT DATE'
-LEFT OUTER JOIN
-  gtm_trans_refnum gtr1 ON gtm.gtm_transaction_gid = gtr1.gtm_transaction_gid
-AND
-  gtr1.gtm_trans_refnum_qual_gid = 'SHIPMENT REFERENCE NUMBER'
-LEFT OUTER JOIN
-  gtm_trans_refnum gtr2 ON gtm.gtm_transaction_gid = gtr2.gtm_transaction_gid
-AND
-  gtr2.gtm_trans_refnum_qual_gid = 'TRANSPORTATION REFERENCE NUMBER'  
-LEFT OUTER JOIN
-  gtm_transaction_port gtp1 ON gtm.gtm_transaction_gid = gtp1.gtm_transaction_gid
-AND
-  gtp1.gtm_port_qualifier_gid = 'PORT OF EXPORT' 
-LEFT OUTER JOIN
-  location loc1 ON gtp1.location_gid = loc1.location_gid
-LEFT OUTER JOIN
-  gtm_transaction_port gtp2 ON gtm.gtm_transaction_gid = gtp2.gtm_transaction_gid
-AND
-  gtp2.gtm_port_qualifier_gid = 'PORT OF UNLADING' 
-LEFT OUTER JOIN
-  location loc2 ON gtp2.location_gid = loc2.location_gid
-LEFT OUTER JOIN
-  country_code cc2 ON loc2.country_code3_gid = cc2.country_code3_gid
-LEFT OUTER JOIN
-  item it ON gtl.item_gid = it.item_gid
-WHERE
-	gtm.gtm_transaction_gid = :GTM_TRANSACTION_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
-    <sqlStatement name="Q_ENTITY"><![CDATA[SELECT
+	gtm.gtm_transaction_gid = :GTM_TRANSACTION_ID]]></sqlStatement>
+    <sqlStatement name="Q_ENTITY"><![CDATA[SELECT DISTINCT
   con1.contact_xid
   filer_name,
   loc1.location_name
   usppi_name,
   (SELECT listagg (la1.address_line, CHR(13)) 
 	WITHIN GROUP (ORDER BY la1.line_sequence) FROM location_address la1 
-	WHERE la1.location_gid = loc1.location_gid) 
+	WHERE la1.location_gid = loc3.location_gid) 
   usppi_address,
-  TRIM(loc1.city || ' ' || loc1.province_code || ' ' || loc1.country_code3_gid) 
+  TRIM(loc3.city || ' ' || loc3.province_code || ' ' || loc3.country_code3_gid) 
   usppi_city_state_zip,
   gtpr.refnum_value
   usppi_ein,
@@ -231,7 +127,7 @@ AND
   consignee_type,
   loc3.province_code
   origin_state,
-  NVL(cc4.country_name, 'Data Missing in System') 
+  cc4.country_name
   dest_country,  
   loc5.location_name
   carrier
@@ -284,96 +180,9 @@ LEFT OUTER JOIN
 LEFT OUTER JOIN
   location loc5 ON con5.location_gid = loc5.location_gid  
 WHERE
-	gtm.gtm_transaction_gid = :GTM_TRANSACTION_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(con1.contact_xid, 'Data Missing in System')
-  filer_name,
-  NVL(loc1.location_name, 'Data Missing in System')
-  usppi_name,
-  NVL((SELECT listagg (la1.address_line, CHR(13)) 
-	WITHIN GROUP (ORDER BY la1.line_sequence) FROM location_address la1 
-	WHERE la1.location_gid = loc1.location_gid), 'Data Missing in System')
-  usppi_address,
-  NVL(TRIM(loc1.city || ' ' || loc1.province_code || ' ' || loc1.country_code3_gid), 'Data Missing in System') 
-  usppi_city_state_zip,
-  NVL(gtpr.refnum_value, 'Data Missing in System')
-  usppi_ein,
-  NVL(loc2.location_name, 'Data Missing in System')
-  consignee_name,
-  NVL((SELECT listagg (la2.address_line, CHR(13)) 
-	WITHIN GROUP (ORDER BY la2.line_sequence) FROM location_address la2 
-	WHERE la2.location_gid = loc2.location_gid), 'Data Missing in System') 
-  consignee_address,
-  NVL(TRIM(REPLACE((loc2.city || ' ' || loc2.province_code || ' ' || cc2.country_name),'  ', ' ')), 'Data Missing in System') 
-  consignee_city_state_zip,
-  NVL(gpc.gtm_code, 'Data Missing in System') 
-  consignee_type,
-  NVL(loc3.province_code, 'Data Missing in System') 
-  origin_state,
-  NVL(cc4.country_name, 'Data Missing in System') 
-  dest_country,
-  NVL(loc5.location_name, 'Data Missing in System') 
-  carrier 
-FROM
-	gtm_transaction gtm
-LEFT OUTER JOIN
-  gtm_transaction_involved_party gtip1 ON gtm.gtm_transaction_gid = gtip1.gtm_transaction_gid 
-AND 
-  gtip1.involved_party_qual_gid = 'USPPI'  
-LEFT OUTER JOIN
-  contact con1 ON gtip1.involved_party_contact_gid = con1.contact_gid
-LEFT OUTER JOIN
-  location loc1 ON con1.location_gid = loc1.location_gid
-LEFT OUTER JOIN
-  gtm_party_refnum gtpr ON gtip1.involved_party_contact_gid = gtpr.contact_gid
-AND
-  gtpr.gtm_party_refnum_qual_gid = 'EIN'
-LEFT OUTER JOIN
-  gtm_transaction_involved_party gtip2 ON gtm.gtm_transaction_gid = gtip2.gtm_transaction_gid 
-AND 
-  gtip2.involved_party_qual_gid = 'ULTIMATE CONSIGNEE'
-LEFT OUTER JOIN
-  location loc2 ON gtip2.involved_party_contact_gid = loc2.location_gid  
-LEFT OUTER JOIN
-  country_code cc2 ON loc2.country_code3_gid = cc2.country_code3_gid  
-LEFT OUTER JOIN
-  gtm_party_code gpc ON gtip2.involved_party_contact_gid = gpc.contact_gid
-AND
-  gpc.gtm_type_gid = 'ULTIMATE CONSIGNEE TYPE'
-LEFT OUTER JOIN
-  gtm_transaction_involved_party gtip3 ON gtm.gtm_transaction_gid = gtip3.gtm_transaction_gid 
-AND 
-  gtip3.involved_party_qual_gid = 'SHIP_FROM' 
-LEFT OUTER JOIN
-  location loc3 ON gtip3.involved_party_contact_gid = loc3.location_gid 
-LEFT OUTER JOIN
-  gtm_transaction_involved_party gtip4 ON gtm.gtm_transaction_gid = gtip4.gtm_transaction_gid 
-AND 
-  gtip4.involved_party_qual_gid = 'DESTINATION LOCATION' 
-LEFT OUTER JOIN
-  location loc4 ON gtip4.involved_party_contact_gid = loc4.location_gid
-LEFT OUTER JOIN
-  country_code cc4 ON loc4.country_code3_gid = cc4.country_code3_gid    
-LEFT OUTER JOIN
-  gtm_transaction_involved_party gtip5 ON gtm.gtm_transaction_gid = gtip5.gtm_transaction_gid 
-AND 
-  gtip5.involved_party_qual_gid = 'CARRIER'  
-LEFT OUTER JOIN
-  contact con5 ON gtip5.involved_party_contact_gid = con5.contact_gid    
-LEFT OUTER JOIN
-  location loc5 ON con5.location_gid = loc5.location_gid
-WHERE
-	gtm.gtm_transaction_gid = :GTM_TRANSACTION_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
+	gtm.gtm_transaction_gid = :GTM_TRANSACTION_ID]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="SYSTEM_DATE" value="SYSTEM_DATE" />
       <element name="ITN_NUMBER" value="ITN_NUMBER"></element>

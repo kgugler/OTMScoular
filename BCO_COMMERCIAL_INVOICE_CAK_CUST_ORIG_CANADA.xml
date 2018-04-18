@@ -1,0 +1,146 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_COMMERCIAL_INVOICE_CAK_CUST_ORIG_CANADA" description="BCO Canada Commercial Invoice (Cak customer)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') invoice_date,
+	(SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = s.shipment_gid
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER') invoice_number,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND rownum = 1) bl_num,
+	st.filled_containers || ' X ' || TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'999,999')) || ' FT CONTAINERS' container_count,
+	st.net_weight total_weight,
+	st.total_unadjusted_formatted || ' USD' sub_total_amount,  
+	st.total_cost_formatted || ' USD' total_amount
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+	oob.order_base_xid 
+  contract_number,
+  loc.location_name
+  party,
+  (SELECT listagg (la.address_line, CHR(13)) 
+  WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+  WHERE la.location_gid = loc.location_gid) 
+  address,
+  TRIM(loc.city || ' ' || loc.province_code || ' ' || loc.postal_code || ' ' || cc.country_name)
+  city_state_zip,  
+  obr1.remark_text
+  credit_number,  
+  obr2.remark_text 
+  description
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  ob_involved_party oip ON oob.order_base_gid = oip.order_base_gid
+AND
+  oip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  location loc ON oip.involved_party_contact_gid = loc.location_gid
+LEFT OUTER JOIN
+  country_code cc ON loc.country_code3_gid = cc.country_code3_gid    
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESC GOODS SERVICES'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  contract_number,
+  ''
+  party,
+  ''
+  address,
+  ''
+  city_state_zip,
+  ''
+  credit_number,
+  ''
+  description  
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	adjustment_num,
+	adjustment_description,
+	'$' || adjustment_amount_formatted  || ' USD'
+  adjustment_amount
+FROM
+	VIEW_SHIP_UNIT_ADJUST_DETAIL
+WHERE
+	shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="INVOICE_DATE" value="INVOICE_DATE" />
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT" />
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT"></element>
+      <element name="SUB_TOTAL_AMOUNT" value="SUB_TOTAL_AMOUNT" />
+      <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT" />
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER" />
+      <element name="PARTY" value="PARTY" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="ADJUSTMENT_DESCRIPTION" value="ADJUSTMENT_DESCRIPTION" />
+      <element name="ADJUSTMENT_AMOUNT" value="ADJUSTMENT_AMOUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

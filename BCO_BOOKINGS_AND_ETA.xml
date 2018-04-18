@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BOOKINGS_AND_ETA" description="BCO Bookings and ETA" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  cv.charter_voyage_xid
+  booking_num,
+  loc1.location_xid
+  carrier,
+  TO_CHAR(cv.departure_date,'YYYY-MM-DD')
+  sail_date,
+  TO_CHAR(cv.arrival_date,'YYYY-MM-DD')
+  eta,
+  glog_util.remove_domain(cv.insert_user)
+  insert_user,
+  TO_CHAR(cv.insert_date,'YYYY-MM-DD')
+  insert_date,  
+  glog_util.remove_domain(cv.update_user)
+  update_user,
+  TO_CHAR(cv.update_date,'YYYY-MM-DD')
+  update_date
+FROM
+  charter_voyage cv
+LEFT OUTER JOIN
+  location loc1 ON cv.servprov_gid = loc1.location_gid
+WHERE
+  cv.domain_name = 'SCOULAR/BCO'
+AND NOT
+  cv.is_cancelled = 'Y'
+AND
+  cv.departure_date >= TO_DATE('2016-09-01','YYYY-MM-DD')
+AND
+  MONTHS_BETWEEN(cv.arrival_date, cv.departure_date) > 5]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

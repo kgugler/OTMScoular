@@ -8,16 +8,16 @@
   <dataQuery>
     <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt, NVL(:LOCS,'ALL') loc_codes FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
-  s.sail_date,
+  s.sail_date s_date,
   sref1.shipment_refnum_value loc,
   sref2.shipment_refnum_value commodity,
   s.shipment_xid shipment_no,
-  orem1.remark_text payment_terms,
+  oref1.ob_refnum_value payment_terms,
   sref3.shipment_refnum_value booking_no,
   sref4.shipment_refnum_value contract_no,
   loc.country_code3_gid dest_country,
   TO_CHAR(s.sail_date,'MM/DD/YYYY') sail_date,
-  orem2.remark_text advising_bank,
+  orem1.remark_text advising_bank,
   TO_CHAR(ROUND(s.total_net_weight_base * 0.0004536,3)) total_mts,
   srem1.remark_text total_sum,
   srem2.remark_text bank_charge_type1,
@@ -77,13 +77,13 @@ LEFT OUTER JOIN
 AND
   sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO'    
 LEFT OUTER JOIN
+  ob_refnum oref1 ON ssul.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'
+LEFT OUTER JOIN
   ob_remark orem1 ON ssul.order_base_gid = orem1.order_base_gid
 AND
-  orem1.remark_qual_gid = 'SCOULAR/BCO.PAYMENT TEXT'
-LEFT OUTER JOIN
-  ob_remark orem2 ON ssul.order_base_gid = orem2.order_base_gid
-AND
-  orem2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK'  
+  orem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK'  
 LEFT OUTER JOIN
   location loc ON s.dest_location_gid = loc.location_gid
 LEFT OUTER JOIN
@@ -223,7 +223,7 @@ AND
   sref1.shipment_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
 	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOCS,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))  
 ORDER BY 
-  s.sail_date DESC]]></sqlStatement>
+  s_date DESC]]></sqlStatement>
   </dataQuery>
   <dataStructure>
     <group name="G_PARAM" source="Q_PARAM">

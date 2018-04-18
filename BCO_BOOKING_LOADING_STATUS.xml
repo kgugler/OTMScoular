@@ -8,7 +8,7 @@
     <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
   TO_CHAR(SYSDATE - 7, 'MM/DD/YYYY') rc_start,
   TO_CHAR(SYSDATE + 14, 'MM/DD/YYYY') rc_end,
-  :LOC locs
+  NVL(:LOC,'ALL') locs
 FROM
   DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
@@ -31,16 +31,21 @@ FROM
   comm_id,
   cv.charter_voyage_xid booking_number,
   (SELECT DISTINCT oob.order_base_xid
-  FROM ob_order_base oob
-  INNER JOIN view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-  WHERE vsob.shipment_gid = s.shipment_gid)
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1)
   contract_number,
   (SELECT LISTAGG(c.contact_xid,', ')
   WITHIN GROUP (ORDER BY a.order_base_xid)
   FROM
-  (SELECT DISTINCT oob.order_base_xid, oob.order_base_gid, vsob.shipment_gid
-  FROM ob_order_base oob
-  INNER JOIN view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid) a
+  (SELECT DISTINCT oob.order_base_xid, oob.order_base_gid, ssej.shipment_gid
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid) a
   INNER JOIN ob_involved_party obp ON a.order_base_gid = obp.order_base_gid
   AND obp.involved_party_qual_gid = 'CUSTOMER'
   INNER JOIN contact c ON obp.involved_party_contact_gid = c.contact_gid
@@ -92,7 +97,15 @@ FROM
   INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
   WHERE sstopd.shipment_gid = s.shipment_gid
   AND	sstopd.stop_num = 1)
-  units_total
+  units_total,
+  NVL(cvr6.charter_voyage_refnum_value,'0')
+  cargo_20,
+  NVL(cvr7.charter_voyage_refnum_value,'0')
+  cargo_40,  
+  NVL(cvr8.charter_voyage_refnum_value,'0')
+  user_20,
+  NVL(cvr9.charter_voyage_refnum_value,'0')
+  user_40  
 FROM 
   charter_voyage cv
 INNER JOIN 
@@ -123,6 +136,22 @@ LEFT OUTER JOIN
   charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
 AND
   cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+  cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_SYSTEM'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr7 ON cv.charter_voyage_gid = cvr7.charter_voyage_gid
+AND
+  cvr7.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_SYSTEM'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr8 ON cv.charter_voyage_gid = cvr8.charter_voyage_gid
+AND
+  cvr8.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_USER'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr9 ON cv.charter_voyage_gid = cvr9.charter_voyage_gid
+AND
+  cvr9.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_USER'  
 LEFT OUTER JOIN
   location loc1 ON cv.source_location_gid = loc1.location_gid
 LEFT OUTER JOIN
@@ -182,6 +211,10 @@ ORDER BY
       <element name="FEU" value="FEU" />
       <element name="UNITS_POPULATED" value="UNITS_POPULATED" />
       <element name="UNITS_TOTAL" value="UNITS_TOTAL"></element>
+      <element name="CARGO_20" value="CARGO_20"></element>
+      <element name="CARGO_40" value="CARGO_40"></element>
+      <element name="USER_20" value="USER_20"></element>
+      <element name="USER_40" value="USER_40"></element>
     </group>
   </dataStructure>
 </dataTemplate>

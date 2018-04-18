@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BANK_COVER_LETTER_MEXICO" description="BCO Mexico Bank Cover Letter" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  TO_CHAR(SYSDATE, 'fmMonth DD, YYYY') 
+  date_printed,
+  srem1.remark_text
+  lc_number,
+  sref1.shipment_refnum_value
+  invoice_number
+FROM
+	shipment s 
+LEFT OUTER JOIN
+  shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'  
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  (CASE WHEN srem1.remark_text IS NULL THEN
+    obrem1.remark_text
+  ELSE
+    srem1.remark_text
+  END)
+  advising_bank
+FROM
+	shipment s 
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obrem1 ON oob.order_base_gid = obrem1.order_base_gid
+AND
+	obrem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK'  
+LEFT OUTER JOIN
+  shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID  
+UNION ALL
+SELECT
+  (SELECT remark_text
+  FROM shipment_remark 
+  WHERE shipment_gid = :SHIPMENT_ID
+  AND remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_ADVISING BANK')
+  advising_bank
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

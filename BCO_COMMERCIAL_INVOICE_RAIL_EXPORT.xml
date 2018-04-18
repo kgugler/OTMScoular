@@ -1,0 +1,272 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_COMMERCIAL_INVOICE_RAIL_EXPORT" description="BCO Rail Export Commercial Invoice Mexico" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  sref1.shipment_refnum_value
+  invoice_number,
+	TO_CHAR(s.start_time, 'DD-MON-YY') 
+  sail_date, 
+  (CASE WHEN con.contact_xid IN ('XM5022','XM5025','XM5334') THEN
+    NVL((SELECT oob.order_base_xid
+    FROM
+    shipment sh
+    INNER JOIN shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+    INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+    WHERE sh.shipment_gid = s.shipment_gid
+    AND ROWNUM = 1),'') || CHR(13) ||
+    con.contact_xid
+  ELSE
+    (CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+      (CASE WHEN NOT loc.location_name IS NULL THEN
+        loc.location_name || CHR(13)
+      ELSE
+        ''
+      END) ||
+      (CASE WHEN (SELECT COUNT(la1.address_line)
+      FROM location_address la1 
+      WHERE la1.location_gid = loc.location_gid) > 0 THEN
+        (SELECT LISTAGG(la1.address_line, CHR(13)) 
+        WITHIN GROUP (ORDER BY la1.line_sequence) 
+        FROM location_address la1 
+        WHERE la1.location_gid = loc.location_gid) || CHR(13)
+      ELSE
+        ''
+      END)
+      ||  
+      (CASE WHEN NOT loc.city IS NULL THEN
+        loc.city
+      ELSE
+        ''      
+      END) ||    
+      (CASE WHEN NOT loc.country_code3_gid IS NULL THEN
+        (CASE WHEN NOT loc.city IS NULL THEN
+          ', ' || cc.country_name
+        ELSE
+          cc.country_name
+        END)
+      ELSE
+        ''      
+      END)
+    ELSE
+      (CASE WHEN NOT sref2.shipment_refnum_value IS NULL THEN
+        sref2.shipment_refnum_value || CHR(13)
+      ELSE
+        ''       
+      END) ||
+      (CASE WHEN NOT sref3.shipment_refnum_value IS NULL THEN
+        sref3.shipment_refnum_value || CHR(13)
+      ELSE
+        ''       
+      END) ||
+      (CASE WHEN NOT sref4.shipment_refnum_value IS NULL THEN
+        sref4.shipment_refnum_value || CHR(13)
+      ELSE
+        ''       
+      END) ||  
+      (CASE WHEN NOT sref5.shipment_refnum_value IS NULL THEN
+        sref5.shipment_refnum_value
+      ELSE
+        ''      
+      END) ||    
+      (CASE WHEN NOT sref6.shipment_refnum_value IS NULL THEN
+        (CASE WHEN NOT sref5.shipment_refnum_value IS NULL THEN
+          ', ' || sref6.shipment_refnum_value
+        ELSE
+          sref6.shipment_refnum_value
+        END)
+      ELSE
+        ''      
+      END)
+    END)
+  END)
+  customer_address,
+  (CASE WHEN con.contact_xid IN ('XM5022','XM5025','XM5334') THEN
+    'SELLER / IMPORTER / VENDEDOR / IMPORTADOR :' 
+  ELSE
+    'SELLER / VENDEDOR :'
+  END)
+  seller_label,
+  srem1.remark_text
+  comments,
+  (SELECT ssu.tag_3
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1)
+  container_id,
+  TRIM(TO_CHAR(ROUND(s.total_net_weight,3),'999,999,990.000'))
+  quantity
+FROM
+	shipment s
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'  
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_BILL TO NAME'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_BILL TO ADDRESS LINE 1'
+LEFT OUTER JOIN
+  shipment_refnum sref4 ON s.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_BILL TO ADDRESS LINE 2'
+LEFT OUTER JOIN
+  shipment_refnum sref5 ON s.shipment_gid = sref5.shipment_gid
+AND
+  sref5.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_BILL TO CITY'
+LEFT OUTER JOIN
+  shipment_refnum sref6 ON s.shipment_gid = sref6.shipment_gid
+AND
+  sref6.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_BILL TO COUNTRY CODE'
+LEFT OUTER JOIN
+  shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND 
+  srem1.remark_qual_gid = 'SCOULAR.MISC NOTES_FI COMMERCIAL INVOICE'
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+  location loc ON sip.involved_party_contact_gid = loc.location_gid
+LEFT OUTER JOIN
+  country_code cc ON loc.country_code3_gid = cc.country_code3_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  (CASE WHEN obrem.remark_text IS NULL THEN
+    obref1.ob_refnum_value
+  ELSE
+    'MT'
+  END)
+  uom,
+  (CASE WHEN srem.remark_text IS NULL THEN
+    itm.description
+  ELSE
+    srem.remark_text
+  END)
+  description,
+  oob.inco_term_gid
+  inco_term,
+  (CASE WHEN obrem.remark_text IS NULL THEN
+    TRIM(TO_CHAR(TO_NUMBER(obref2.ob_refnum_value),'999,999,990.00'))
+  ELSE
+    TRIM(TO_CHAR(TO_NUMBER(obrem.remark_text),'999,999,990.00'))
+  END)
+  price,
+  (CASE WHEN obrem.remark_text IS NULL THEN
+    TRIM(TO_CHAR(ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2),'999,999,990.00'))
+  ELSE
+    TRIM(TO_CHAR(ROUND(TO_NUMBER(obrem.remark_text) * s.total_net_weight,2),'999,999,990.00'))
+  END)
+  amount,
+  (CASE WHEN obrem.remark_text IS NULL THEN
+    (UPPER(
+    (CASE WHEN
+      --NOTE - TO GET NUMBER TO WORDS, MUST BE FORMATTED AS A DATE - AND THE MAX JULIAN DATE IS 5373484. THIS SHOULD NOT BE AN ISSUE - MAX SHIPMENT IS IN THE $1 MILLION RANGE.
+      FLOOR(ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2)) > 0 AND FLOOR(ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2)) <= 5373484 THEN TO_CHAR(TO_DATE(FLOOR(ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2)),	'j'),	'jsp')
+    ELSE
+      (CASE WHEN 
+        FLOOR(ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2)) > 5373484 
+      THEN 
+        'ERROR - UNABLE TO CALCULATE' 
+      ELSE 
+        'ZERO' 
+      END)
+    END)
+		) || ' DOLLARS ' ||	COALESCE(TRIM(TO_CHAR((ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2) * 100) - (FLOOR(ROUND(TO_NUMBER(obref2.ob_refnum_value) * s.total_net_weight,2)) * 100),'00')),'00') || '/100') || ' USD'
+  ELSE
+    (UPPER(
+    (CASE WHEN
+      --NOTE - TO GET NUMBER TO WORDS, MUST BE FORMATTED AS A DATE - AND THE MAX JULIAN DATE IS 5373484. THIS SHOULD NOT BE AN ISSUE - MAX SHIPMENT IS IN THE $1 MILLION RANGE.
+      FLOOR(ROUND(TO_NUMBER(obrem.remark_text) * s.total_net_weight,2)) > 0 AND FLOOR(ROUND(TO_NUMBER(obrem.remark_text) * s.total_net_weight,2)) <= 5373484 THEN TO_CHAR(TO_DATE(FLOOR(ROUND(TO_NUMBER(obrem.remark_text) * s.total_net_weight,2)),	'j'),	'jsp')
+    ELSE
+      (CASE WHEN 
+        FLOOR(TO_NUMBER(obrem.remark_text) * s.total_net_weight) > 5373484 
+      THEN 
+        'ERROR - UNABLE TO CALCULATE' 
+      ELSE 
+        'ZERO' 
+      END)
+    END)
+		) || ' DOLLARS ' ||	COALESCE(TRIM(TO_CHAR((ROUND(TO_NUMBER(obrem.remark_text) * s.total_net_weight,2) * 100) - (FLOOR(ROUND(TO_NUMBER(obrem.remark_text) * s.total_net_weight,2)) * 100),'00')),'00') || '/100') || ' USD'
+  END)
+  amount_in_words
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+LEFT OUTER JOIN
+  item itm ON oline.packaged_item_gid = itm.item_gid
+LEFT OUTER JOIN
+	ob_remark obrem ON oob.order_base_gid = obrem.order_base_gid
+AND
+	obrem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
+LEFT OUTER JOIN
+  ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+  obref1.ob_refnum_qual_gid = 'SCOULAR.PRICE_UOM'
+LEFT OUTER JOIN
+  ob_refnum obref2 ON oob.order_base_gid = obref2.order_base_gid
+AND
+  obref2.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+LEFT OUTER JOIN
+	shipment_remark srem ON s.shipment_gid = srem.shipment_gid
+AND
+	srem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL' 
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  uom,
+  ''
+  description,
+  ''
+  inco_term,
+  ''
+  price,
+  ''
+  amount,
+  ''
+  amount_in_words
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND NOT
+  sessuj.s_equipment_gid IS NULL)]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

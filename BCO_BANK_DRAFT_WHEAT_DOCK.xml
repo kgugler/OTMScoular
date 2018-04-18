@@ -3,11 +3,9 @@
   <lexicals></lexicals>
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
 	sref1.shipment_refnum_value
   bl_number,
   TO_CHAR(TO_DATE(s.sail_date,'dd-mm-rr'),'fmMonth DD, YYYY') 
@@ -29,87 +27,37 @@ LEFT OUTER JOIN
 AND
   sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'  
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(sref1.shipment_refnum_value,'Data Missing in System')
-  bl_number,
-  NVL(TO_CHAR(TO_DATE(s.sail_date,'dd-mm-rr'),'fmMonth DD, YYYY'),'Data Missing in System')
-  booking_date,
-	(CASE WHEN sref2.shipment_refnum_value IS NULL THEN
-    s.shipment_xid
-  ELSE
-    sref2.shipment_refnum_value
-  END) 
-  shipment_number
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
-AND
-  sref1.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
-LEFT OUTER JOIN
-	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
-AND
-  sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'  
-WHERE
-	s.shipment_gid = :SHIPMENT_ID  
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
     <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem1.remark_text
-  ELSE
-    NVL(obrem1.remark_text, 'Data Missing in System')
-  END)
+  obrem1.remark_text
   drafts_at,
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem2.remark_text
-  ELSE
-    NVL(obrem2.remark_text, 'Data Missing in System')
-  END)
+  obrem2.remark_text
   credit_number,
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem3.remark_text
-  ELSE
-    NVL(obrem3.remark_text, 'Data Missing in System')
-  END)
+  obrem3.remark_text
   credit_date,
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem4.remark_text
-  ELSE
-    NVL(obrem4.remark_text, 'Data Missing in System')
-  END)
+  obrem4.remark_text
   opening_bank,
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem5.remark_text
-  ELSE
-    NVL(obrem5.remark_text, 'Data Missing in System')
-  END)
+  obrem5.remark_text
   opening_bank_address,
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem6.remark_text
-  ELSE
-    NVL(obrem6.remark_text, 'Data Missing in System')
-  END)
+  obrem6.remark_text
   drawee,
-  (CASE WHEN :P_RUN = 'FINAL' THEN
-    obrem7.remark_text
-  ELSE
-    NVL(obrem7.remark_text, 'Data Missing in System')
-  END)
+  TRIM(obref1.ob_refnum_value
+  || (CASE WHEN obref2.ob_refnum_value IS NULL THEN ''
+  ELSE CHR(13) || obref2.ob_refnum_value END)
+  || (CASE WHEN obref3.ob_refnum_value IS NULL THEN ''
+  ELSE CHR(13) || obref3.ob_refnum_value END) 
+  || (CASE WHEN obref4.ob_refnum_value IS NULL THEN ''
+  ELSE CHR(13) || obref4.ob_refnum_value END))
   drawee_address  
 FROM
 	shipment s
-LEFT OUTER JOIN
+INNER JOIN
 	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
+INNER JOIN
 	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
+INNER JOIN
 	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
+INNER JOIN
 	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 LEFT OUTER JOIN
 	ob_remark obrem1 ON oob.order_base_gid = obrem1.order_base_gid
@@ -136,66 +84,57 @@ LEFT OUTER JOIN
 AND
 	obrem6.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DRAWEE'  
 LEFT OUTER JOIN
-	ob_remark obrem7 ON oob.order_base_gid = obrem7.order_base_gid
+	ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
 AND
-	obrem7.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DRAWEE ADD'      
+	obref1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE ADDRESS LINE 1'
+LEFT OUTER JOIN
+  ob_refnum obref2 ON oob.order_base_gid = obref2.order_base_gid
+AND
+	obref2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE ADDRESS LINE 2'
+LEFT OUTER JOIN
+  ob_refnum obref3 ON oob.order_base_gid = obref3.order_base_gid
+AND
+	obref3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE ADDRESS LINE 3' 
+LEFT OUTER JOIN
+  ob_refnum obref4 ON oob.order_base_gid = obref4.order_base_gid
+AND
+	obref4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE CITY'     
 WHERE
-	s.shipment_gid = :SHIPMENT_ID  
-AND NOT
-  sessuj.s_equipment_gid IS NULL
-UNION ALL
-SELECT
-  'Data Missing in System'
-  drafts_at,
-  'Data Missing in System'
-  credit_number,
-  'Data Missing in System'
-  credit_date,
-    'Data Missing in System'
-  opening_bank,
-  'Data Missing in System'
-  opening_bank_address,
-  'Data Missing in System'
-  drawee,
-  'Data Missing in System'
-  drawee_address  
-FROM DUAL
-WHERE NOT EXISTS
-(SELECT
-  s.shipment_gid
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
-	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
-	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
-	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
-WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND NOT
-  sessuj.s_equipment_gid IS NULL)]]></sqlStatement>
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
     <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
-  TRIM(TO_CHAR(b.total_cost,'999,999,990.00')) total_numonly,
+  TRIM(TO_CHAR(c.total_cost,'999,999,990.00')) total_numonly,
   UPPER(CASE WHEN
 				--NOTE - TO GET NUMBER TO WORDS, MUST BE FORMATTED AS A DATE - AND THE MAX JULIAN DATE IS 5373484. THIS SHOULD NOT BE AN ISSUE - MAX SHIPMENT IS IN THE $1 MILLION RANGE.
-				FLOOR(b.total_cost) > 0 AND FLOOR(b.total_cost) <= 5373484 THEN TO_CHAR(TO_DATE(FLOOR(b.total_cost),	'j'),	'jsp')
+				FLOOR(c.total_cost) > 0 AND FLOOR(c.total_cost) <= 5373484 THEN TO_CHAR(TO_DATE(FLOOR(c.total_cost),	'j'),	'jsp')
 			ELSE
-				CASE WHEN FLOOR(b.total_cost) > 5373484 THEN 'ERROR - UNABLE TO CALCULATE' ELSE 'ZERO' END
+				CASE WHEN FLOOR(c.total_cost) > 5373484 THEN 'ERROR - UNABLE TO CALCULATE' ELSE 'ZERO' END
 			END
 		) ||
 		' AND ' ||
-		COALESCE(TRIM(TO_CHAR((b.total_cost * 100) - (FLOOR(b.total_cost) * 100),'00')),'00') || '/100' 
+		COALESCE(TRIM(TO_CHAR((c.total_cost * 100) - (FLOOR(c.total_cost) * 100),'00')),'00') || '/100' 
   total_text
 FROM
 (SELECT
-  ROUND(SUM(net_wt_mt) * (CASE WHEN obr.remark_text IS NULL THEN 0 ELSE TO_NUMBER(obr.remark_text) END)
-   - (CASE WHEN suat.total_adjustment_amount IS NULL THEN 0 ELSE
-  suat.total_adjustment_amount END),2) total_cost 
+  ROUND(SUM(b.net_wt_mt) * b.price
+   - (CASE WHEN b.total_adjustment_amount IS NULL THEN 0 ELSE
+  b.total_adjustment_amount END),2) total_cost 
 FROM
-(SELECT 
+(SELECT
+  a.net_wt_mt,
+  suat.total_adjustment_amount,
+  TO_NUMBER(NVL((SELECT obr.remark_text
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  AND NOT oob.order_base_gid IS NULL
+  INNER JOIN ob_remark obr ON oob.order_base_gid = obr.order_base_gid
+  AND	obr.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
+  WHERE ssej.shipment_gid = a.shipment_gid
+  AND ROWNUM = 1),'0'))
+  price
+FROM
+(SELECT DISTINCT
   sstopd.shipment_gid,
   SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)) gross_wt_mt,
   (SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)) * (CASE WHEN ssur.refnum_value IS NULL THEN 0 
@@ -218,29 +157,12 @@ AND
   sstopd.stop_num = 1
 GROUP BY
   sstopd.shipment_gid, ssur.refnum_value) a
-INNER JOIN
-  shipment_s_equipment_join ssej ON a.shipment_gid = ssej.shipment_gid
-INNER JOIN
-  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-INNER JOIN
-  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
 LEFT OUTER JOIN
-	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
-AND NOT
-  oob.order_base_gid IS NULL
-LEFT OUTER JOIN
-	ob_remark obr ON oob.order_base_gid = obr.order_base_gid
-AND
-	obr.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
-LEFT OUTER JOIN
-	VIEW_SHIP_UNIT_ADJUST_TOTAL suat ON ssej.shipment_gid = suat.shipment_gid    
+	VIEW_SHIP_UNIT_ADJUST_TOTAL suat ON a.shipment_gid = suat.shipment_gid) b
 GROUP BY
-  obr.remark_text, suat.total_adjustment_amount) b]]></sqlStatement>
+  b.price, b.total_adjustment_amount) c]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="BOOKING_DATE" value="BOOKING_DATE" />
       <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />

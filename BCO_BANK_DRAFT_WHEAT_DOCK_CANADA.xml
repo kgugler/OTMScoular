@@ -1,0 +1,184 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_BANK_DRAFT_WHEAT_DOCK_CANADA" description="BCO Canada Bank Draft - Wheat Dockage" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	sref1.shipment_refnum_value
+  bl_number,
+  TO_CHAR(TO_DATE(s.sail_date,'dd-mm-rr'),'fmMonth DD, YYYY') 
+  booking_date,
+	(CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+    s.shipment_xid
+  ELSE
+    sref2.shipment_refnum_value
+  END) 
+  shipment_number
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  obrem1.remark_text
+  drafts_at,
+  obrem2.remark_text
+  credit_number,
+  obrem3.remark_text
+  credit_date,
+  obrem4.remark_text
+  opening_bank,
+  obrem5.remark_text
+  opening_bank_address,
+  obrem6.remark_text
+  drawee,
+  TRIM(obref1.ob_refnum_value
+  || (CASE WHEN obref2.ob_refnum_value IS NULL THEN ''
+  ELSE CHR(13) || obref2.ob_refnum_value END)
+  || (CASE WHEN obref3.ob_refnum_value IS NULL THEN ''
+  ELSE CHR(13) || obref3.ob_refnum_value END) 
+  || (CASE WHEN obref4.ob_refnum_value IS NULL THEN ''
+  ELSE CHR(13) || obref4.ob_refnum_value END))
+  drawee_address  
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obrem1 ON oob.order_base_gid = obrem1.order_base_gid
+AND
+	obrem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DRAFTS AT'
+LEFT OUTER JOIN
+	ob_remark obrem2 ON oob.order_base_gid = obrem2.order_base_gid
+AND
+	obrem2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'  
+LEFT OUTER JOIN
+	ob_remark obrem3 ON oob.order_base_gid = obrem3.order_base_gid
+AND
+	obrem3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT DATE'   
+LEFT OUTER JOIN
+	ob_remark obrem4 ON oob.order_base_gid = obrem4.order_base_gid
+AND
+	obrem4.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_OPENING BANK'  
+LEFT OUTER JOIN
+	ob_remark obrem5 ON oob.order_base_gid = obrem5.order_base_gid
+AND
+	obrem5.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_OPENING BANK ADD'  
+LEFT OUTER JOIN
+	ob_remark obrem6 ON oob.order_base_gid = obrem6.order_base_gid
+AND
+	obrem6.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DRAWEE'  
+LEFT OUTER JOIN
+	ob_refnum obref1 ON oob.order_base_gid = obref1.order_base_gid
+AND
+	obref1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE ADDRESS LINE 1'
+LEFT OUTER JOIN
+  ob_refnum obref2 ON oob.order_base_gid = obref2.order_base_gid
+AND
+	obref2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE ADDRESS LINE 2'
+LEFT OUTER JOIN
+  ob_refnum obref3 ON oob.order_base_gid = obref3.order_base_gid
+AND
+	obref3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE ADDRESS LINE 3' 
+LEFT OUTER JOIN
+  ob_refnum obref4 ON oob.order_base_gid = obref4.order_base_gid
+AND
+	obref4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_DRAWEE CITY'     
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+  TRIM(TO_CHAR(c.total_cost,'999,999,990.00')) total_numonly,
+  UPPER(CASE WHEN
+				--NOTE - TO GET NUMBER TO WORDS, MUST BE FORMATTED AS A DATE - AND THE MAX JULIAN DATE IS 5373484. THIS SHOULD NOT BE AN ISSUE - MAX SHIPMENT IS IN THE $1 MILLION RANGE.
+				FLOOR(c.total_cost) > 0 AND FLOOR(c.total_cost) <= 5373484 THEN TO_CHAR(TO_DATE(FLOOR(c.total_cost),	'j'),	'jsp')
+			ELSE
+				CASE WHEN FLOOR(c.total_cost) > 5373484 THEN 'ERROR - UNABLE TO CALCULATE' ELSE 'ZERO' END
+			END
+		) ||
+		' AND ' ||
+		COALESCE(TRIM(TO_CHAR((c.total_cost * 100) - (FLOOR(c.total_cost) * 100),'00')),'00') || '/100' 
+  total_text
+FROM
+(SELECT
+  ROUND(SUM(b.net_wt_mt) * b.price
+   - (CASE WHEN b.total_adjustment_amount IS NULL THEN 0 ELSE
+  b.total_adjustment_amount END),2) total_cost 
+FROM
+(SELECT
+  a.net_wt_mt,
+  suat.total_adjustment_amount,
+  TO_NUMBER(NVL((SELECT obr.remark_text
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  AND NOT oob.order_base_gid IS NULL
+  INNER JOIN ob_remark obr ON oob.order_base_gid = obr.order_base_gid
+  AND	obr.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
+  WHERE ssej.shipment_gid = a.shipment_gid
+  AND ROWNUM = 1),'0'))
+  price
+FROM
+(SELECT DISTINCT
+  sstopd.shipment_gid,
+  SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)) gross_wt_mt,
+  (SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)) * (CASE WHEN ssur.refnum_value IS NULL THEN 0 
+  ELSE TO_NUMBER(ssur.refnum_value) / 100 END)) dockage_mt,
+  ROUND(SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)) - (SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)) * (CASE WHEN ssur.refnum_value IS NULL THEN 0 
+  ELSE TO_NUMBER(ssur.refnum_value) / 100 END)),3) net_wt_mt
+FROM 
+  shipment_stop_d sstopd
+INNER JOIN 
+  s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+  NOT ssu.tag_3 IS NULL
+INNER JOIN 
+  s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND 
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_DOCKAGE_MAX'  
+WHERE 
+  sstopd.shipment_gid = :SHIPMENT_ID
+AND	
+  sstopd.stop_num = 1
+GROUP BY
+  sstopd.shipment_gid, ssur.refnum_value) a
+LEFT OUTER JOIN
+	VIEW_SHIP_UNIT_ADJUST_TOTAL suat ON a.shipment_gid = suat.shipment_gid) b
+GROUP BY
+  b.price, b.total_adjustment_amount) c]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+      <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="DRAFTS_AT" value="DRAFTS_AT" />
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="CREDIT_DATE" value="CREDIT_DATE" />
+      <element name="OPENING_BANK" value="OPENING_BANK" />
+      <element name="OPENING_BANK_ADDRESS" value="OPENING_BANK_ADDRESS" />
+      <element name="DRAWEE" value="DRAWEE" />
+      <element name="DRAWEE_ADDRESS" value="DRAWEE_ADDRESS" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL_NUMONLY" value="TOTAL_NUMONLY" />
+      <element name="TOTAL_TEXT" value="TOTAL_TEXT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

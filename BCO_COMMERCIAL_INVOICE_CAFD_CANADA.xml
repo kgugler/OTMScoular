@@ -1,0 +1,217 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_COMMERCIAL_INVOICE_CAFD_CANADA" description="BCO Canada Commercial Invoice (CAFD)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	(SELECT sref.shipment_refnum_value
+	FROM shipment_refnum sref
+	WHERE sref.shipment_gid = :SHIPMENT_ID
+	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER') invoice_number,
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') invoice_date,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) vessel,
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') shipped_date,
+  (CASE WHEN l1.country_code3_gid IN ('USA','CAN') THEN  
+    TRIM(l1.city || ', ' || l1.province_code || ' ' || cc1.country_name)
+  ELSE
+    TRIM(l1.city || ' ' || cc1.country_name)
+  END)
+  load_port,
+  (CASE WHEN l2.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(l2.city || ', ' || l2.province_code || ' ' || cc2.country_name)
+  ELSE
+    TRIM(l2.city || ' ' || cc2.country_name)
+  END)
+  discharge_port,
+	st.net_weight net_weight,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = :SHIPMENT_ID AND rownum = 1) bl_num,
+  st.total_unadjusted_formatted || 'USD' sub_total_amount,
+	st.total_cost_formatted || 'USD' total_amount
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'    
+LEFT OUTER JOIN
+	location l1 ON s.port_of_load_location_gid = l1.location_gid
+LEFT OUTER JOIN
+  country_code cc1 ON l1.country_code3_gid = cc1.country_code3_gid     
+LEFT OUTER JOIN
+	location l2 ON s.port_of_dis_location_gid = l2.location_gid
+LEFT OUTER JOIN
+  country_code cc2 ON l2.country_code3_gid = cc2.country_code3_gid     
+LEFT OUTER JOIN
+	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+	oob.order_base_xid 
+  contract_number,
+  obrn1.ob_refnum_value
+  party,
+  (CASE WHEN NVL(TRIM(obrn2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrn3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn3.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrn4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrn4.ob_refnum_value END) 
+  address,
+  (CASE WHEN NVL(TRIM(obrn5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn5.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrn6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn6.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrn7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn7.ob_refnum_value END) ||
+  (CASE WHEN NVL(TRIM(obrn8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || 
+  (SELECT country_name 
+  FROM country_code 
+  WHERE country_code3_gid =  obrn8.ob_refnum_value)
+  END)
+  city_state_zip,  
+  obr2.remark_text 
+  description,
+  obr3.remark_text
+  lc_num,
+  '$' || TRIM(TO_CHAR(TO_NUMBER(REGEXP_REPLACE(obr1.remark_text, '[^0-9,.]+', '')), '999,999,990.00')) || 'MT'
+  price,
+  (CASE WHEN obrn9.ob_refnum_value IN ('CASH AGAINST FAXED DOCUMENTS','STRAIGHT (OPEN) BILL OF LADING') THEN 'Y' ELSE 'N' END)
+  pt_y_n
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrn4 ON oob.order_base_gid = obrn4.order_base_gid
+AND
+	obrn4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrn5 ON oob.order_base_gid = obrn5.order_base_gid
+AND
+	obrn5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP CITY'
+LEFT OUTER JOIN
+	ob_refnum obrn6 ON oob.order_base_gid = obrn6.order_base_gid
+AND
+	obrn6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrn7 ON oob.order_base_gid = obrn7.order_base_gid
+AND
+	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn8 ON oob.order_base_gid = obrn8.order_base_gid
+AND
+	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn9 ON oob.order_base_gid = obrn9.order_base_gid
+AND
+	obrn9.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CUST PAYTERMS'  
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESC GOODS SERVICES'
+LEFT OUTER JOIN
+	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  contract_number,
+  ''
+  party,
+  ''
+  address,
+  ''
+  city_state_zip,
+  ''
+  description,
+  ''
+  lc_num,
+  ''
+  price,
+  'N'
+  pt_y_n
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	adjustment_num,
+	adjustment_description,
+	'$' || adjustment_amount_formatted  || ' USD'
+  adjustment_amount
+FROM
+	VIEW_SHIP_UNIT_ADJUST_DETAIL
+WHERE
+	shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
+      <element name="INVOICE_DATE" value="INVOICE_DATE" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="SHIPPED_DATE" value="SHIPPED_DATE" />
+      <element name="LOAD_PORT" value="LOAD_PORT" />
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT" />
+      <element name="NET_WEIGHT" value="NET_WEIGHT" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="SUB_TOTAL_AMOUNT" value="SUB_TOTAL_AMOUNT" />
+      <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT"></element>
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER" />
+      <element name="PARTY" value="PARTY" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="LC_NUM" value="LC_NUM" />
+      <element name="PRICE" value="PRICE" />
+      <element name="PT_Y_N" value="PT_Y_N" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="ADJUSTMENT_DESCRIPTION" value="ADJUSTMENT_DESCRIPTION" />
+      <element name="ADJUSTMENT_AMOUNT" value="ADJUSTMENT_AMOUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

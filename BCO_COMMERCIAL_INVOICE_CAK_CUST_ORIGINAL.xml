@@ -2,12 +2,10 @@
 <dataTemplate name="BCO_COMMERCIAL_INVOICE_CAK_CUST_ORIGINAL" description="BCO Commercial Invoice (Cak customer)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
 	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') invoice_date,
 	(SELECT sref.shipment_refnum_value
 	FROM shipment_refnum sref
@@ -38,113 +36,31 @@ LEFT OUTER JOIN
 LEFT OUTER JOIN
 	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') invoice_date,
-	NVL((SELECT sref.shipment_refnum_value
-	FROM shipment_refnum sref
-	WHERE sref.shipment_gid = s.shipment_gid
-	AND sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'), 'Data Missing in System') invoice_number,
-	NVL((SELECT sr.shipment_refnum_value
-	FROM shipment_refnum sr
-	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
-	AND sr.shipment_gid = s.shipment_gid AND rownum = 1), 'Data Missing in System') bl_num,
-	(CASE WHEN st.filled_containers = 0 THEN 'Data Missing in System' ELSE
-	st.filled_containers || ' X ' || NVL(TRIM(TO_CHAR(
-  (SELECT ssu.received_ship_unit_count
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
-  ,'999,999')), 'Data Missing in System') || ' FT CONTAINERS' END) container_count,
-	NVL(st.net_weight, 'Data Missing in System') total_weight,
-  (NVL(st.total_unadjusted_formatted, 'Data Missing in System') || ' USD') sub_total_amount,
-	(NVL(st.total_cost_formatted, 'Data Missing in System') || ' USD') total_amount
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
-AND
-	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
-LEFT OUTER JOIN
-	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
-LEFT OUTER JOIN
-	VIEW_SHIPMENT_TOTALS st ON st.shipment_gid = s.shipment_gid
-WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
-    <sqlStatement name="Q_ORDER"><![CDATA[SELECT
-	oob.order_base_xid contract_number,
-  loc.location_name party,
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+	oob.order_base_xid 
+  contract_number,
+  loc.location_name
+  party,
   (SELECT listagg (la.address_line, CHR(13)) 
-	WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
-	WHERE la.location_gid = loc.location_gid) 
+  WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
+  WHERE la.location_gid = loc.location_gid) 
   address,
-  TRIM(loc.city || ' ' || loc.province_code || ' ' || loc.postal_code || ' ' || cc.country_name) 
-  city_state_zip,
-	obr1.remark_text credit_number,
-	obr2.remark_text description
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
-	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
-	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
-	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
-LEFT OUTER JOIN
-  ob_involved_party oip ON oob.order_base_gid = oip.order_base_gid
-AND
-  oip.involved_party_qual_gid = 'CUSTOMER'
-LEFT OUTER JOIN
-  location loc ON oip.involved_party_contact_gid = loc.location_gid
-LEFT OUTER JOIN
-  country_code cc ON loc.country_code3_gid = cc.country_code3_gid  
-LEFT OUTER JOIN
-	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
-AND
-	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
-LEFT OUTER JOIN
-	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
-AND
-	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESC GOODS SERVICES'
-LEFT OUTER JOIN
-	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
-AND
-	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
-WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-AND NOT
-  oob.order_base_gid IS NULL  
-UNION
-SELECT
-	NVL(oob.order_base_xid, 'Data Missing in System') contract_number,
-  NVL(loc.location_name, 'Data Missing in System') party,
-  NVL((SELECT listagg (la.address_line, CHR(13)) 
-	WITHIN GROUP (ORDER BY la.line_sequence) FROM location_address la 
-	WHERE la.location_gid = loc.location_gid), 'Data Missing in System') 
-  address,
-  NVL(TRIM(loc.city || ' ' || loc.province_code || ' ' || loc.postal_code || ' ' || cc.country_name), 'Data Missing in System')  
+  TRIM(loc.city || ' ' || loc.province_code || ' ' || loc.postal_code || ' ' || cc.country_name)
   city_state_zip,  
-	NVL(obr1.remark_text, 'Data Missing in System') credit_number,
-	NVL(obr2.remark_text, 'Data Missing in System') description
+  obr1.remark_text
+  credit_number,  
+  obr2.remark_text 
+  description
 FROM
 	shipment s
-LEFT OUTER JOIN
+INNER JOIN
 	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
+INNER JOIN
 	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
+INNER JOIN
 	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
+INNER JOIN
 	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 LEFT OUTER JOIN
   ob_involved_party oip ON oob.order_base_gid = oip.order_base_gid
@@ -162,42 +78,49 @@ LEFT OUTER JOIN
 	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
 AND
 	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESC GOODS SERVICES'
-LEFT OUTER JOIN
-	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
-AND
-	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_PRICE'
 WHERE
 	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT'
-AND NOT
-  oob.order_base_gid IS NULL]]></sqlStatement>
+UNION ALL
+SELECT
+  ''
+  contract_number,
+  ''
+  party,
+  ''
+  address,
+  ''
+  city_state_zip,
+  ''
+  credit_number,
+  ''
+  description  
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
 	adjustment_num,
 	adjustment_description,
-	adjustment_amount_formatted adjustment_amount
+	'$' || adjustment_amount_formatted  || ' USD'
+  adjustment_amount
 FROM
 	VIEW_SHIP_UNIT_ADJUST_DETAIL
 WHERE
-	shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(adjustment_num, 'Data Missing in System') adjustment_num,
-	NVL(adjustment_description, 'Data Missing in System') adjustment_description,
-	NVL(adjustment_amount_formatted, 'Data Missing in System') adjustment_amount
-FROM
-	VIEW_SHIP_UNIT_ADJUST_DETAIL
-WHERE
-	shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
+	shipment_gid = :SHIPMENT_ID]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="INVOICE_DATE" value="INVOICE_DATE" />
       <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
