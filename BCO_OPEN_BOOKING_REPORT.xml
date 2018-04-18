@@ -5,9 +5,11 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAM"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
   TO_CHAR(SYSDATE + 5,'fmMM/DD/YYYY') criteria_date,
-  :LOC locs
+  :LOC locs,
+  TO_CHAR(SYSDATE,'MM/DD/YYYY HH:MM AM')
+  run_date
 FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
   cv.charter_voyage_xid booking_number,
@@ -16,7 +18,15 @@ FROM DUAL]]></sqlStatement>
   loc3.location_name carrier,
   TO_CHAR(TO_DATE(TRIM(cvr1.charter_voyage_refnum_value),'MM/DD/YY'),'fmMM/DD/YYYY') cut_date,
   NVL(con.max_num_teu,0) || 'TEU / ' || NVL(con.max_num_feu,0) || 'FEU' capacity,
-  cvr2.charter_voyage_refnum_value fo_loc
+  cvr2.charter_voyage_refnum_value fo_loc,
+  NVL(cvr3.charter_voyage_refnum_value,'0')
+  cargo_20,
+  NVL(cvr4.charter_voyage_refnum_value,'0')
+  cargo_40,  
+  NVL(cvr5.charter_voyage_refnum_value,'0')
+  user_20,
+  NVL(cvr6.charter_voyage_refnum_value,'0')
+  user_40  
 FROM
   charter_voyage cv
 INNER JOIN
@@ -29,6 +39,22 @@ LEFT OUTER JOIN
   charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
 AND
   cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_LOC_CODE'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_SYSTEM'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr4 ON cv.charter_voyage_gid = cvr4.charter_voyage_gid
+AND
+  cvr4.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_SYSTEM'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
+AND
+  cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.TEU_COST_USER'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+  cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.FEU_COST_USER'    
 LEFT OUTER JOIN
   location loc1 ON cv.source_location_gid = loc1.location_gid
 LEFT OUTER JOIN
@@ -49,15 +75,16 @@ AND
   TO_DATE(TRIM(cvr1.charter_voyage_refnum_value),'MM/DD/YY') <= SYSDATE + 5)
 AND
   (:LOC IS NULL OR (NOT :LOC IS NULL AND
-  cvr2.charter_voyage_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+  REGEXP_REPLACE(REGEXP_REPLACE(cvr2.charter_voyage_refnum_value,'[^[:digit:]]+', ','),'^,+|,+$') IN (SELECT TO_NUMBER(xt.column_value)
 	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))    
 ORDER BY
   TO_DATE(TRIM(cvr1.charter_voyage_refnum_value),'MM/DD/YY') DESC]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAM" source="Q_PARAM">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="CRITERIA_DATE" value="CRITERIA_DATE" />
       <element name="LOCS" value="LOCS" />
+      <element name="RUN_DATE" value="RUN_DATE" />
     </group>
     <group name="G_ROWS" source="Q_ROWS">
       <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
@@ -67,6 +94,10 @@ ORDER BY
       <element name="CUT_DATE" value="CUT_DATE" />
       <element name="CAPACITY" value="CAPACITY" />
       <element name="FO_LOC" value="FO_LOC"></element>
+      <element name="CARGO_20" value="CARGO_20"></element>
+      <element name="CARGO_40" value="CARGO_40"></element>
+      <element name="USER_20" value="USER_20"></element>
+      <element name="USER_40" value="USER_40"></element>
     </group>
   </dataStructure>
 </dataTemplate>

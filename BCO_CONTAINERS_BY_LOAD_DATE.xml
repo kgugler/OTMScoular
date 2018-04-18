@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<dataTemplate name="BCO_CONTAINER_BY_LOAD_DATE" description="BCO Containers By Load Date Range" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+<dataTemplate name="BCO_CONTAINERS_BY_LOAD_DATE" description="BCO Containers By Load Date Range" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="START_DATE" dataType="character" />
     <parameter name="END_DATE" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:START_DATE from_dt, 
+:END_DATE to_dt 
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  TO_DATE(ssu.tag_2,'MM/DD/YYYY') sorter,
   ssur1.refnum_value transloader,
   sref2.shipment_refnum_value loc,
   EXTRACT(MONTH FROM TO_DATE(ssu.tag_2,'MM/DD/YYYY')) load_month,
@@ -25,7 +25,13 @@
   ssu.tag_3 container_id,
   sref.shipment_refnum_value book_no,
   sref1.shipment_refnum_value commodity,
-  TO_CHAR(oline.late_delivery_date,'MM/DD/YYYY')
+  (SELECT TO_CHAR(oline.late_delivery_date,'MM/DD/YYYY')
+  FROM ob_line oline
+  INNER JOIN s_ship_unit_line ssul ON oline.order_base_gid = ssul.order_base_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  WHERE ssej.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1)
   contract_end_dt,
   (CASE WHEN ssu.unit_net_weight_uom_code = 'MTON' OR ssu.unit_net_weight_uom_code = 'MT' THEN
     ROUND(ssu.unit_net_weight,3) 
@@ -35,7 +41,14 @@
     ROUND(ssu.unit_net_weight,3) 
   END)
   metric_tons,
-  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr') - TO_DATE(oline.late_delivery_date,'dd-mm-rr'))
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr') - 
+  (SELECT TO_DATE(oline.late_delivery_date,'dd-mm-rr')
+  FROM ob_line oline
+  INNER JOIN s_ship_unit_line ssul ON oline.order_base_gid = ssul.order_base_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  WHERE ssej.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1))
   days_late,
   (CASE WHEN cvr2.charter_voyage_refnum_value = 'YES' THEN 'Y' ELSE 'N' END)
   split_booking
@@ -79,10 +92,6 @@ LEFT OUTER JOIN
   location loc2 ON sh.dest_location_gid = loc2.location_gid
 LEFT OUTER JOIN
   location loc3 ON sh.servprov_gid = loc3.location_gid   
-LEFT OUTER JOIN
-  view_shipment_order_base vsob ON sh.shipment_gid = vsob.shipment_gid
-LEFT OUTER JOIN
-  ob_line oline ON vsob.order_base_gid = oline.order_base_gid
 WHERE 
   sh.shipment_type_gid = 'TRANSPORT'
 AND
@@ -92,10 +101,10 @@ AND
 AND
   TO_DATE(ssu.tag_2,'MM/DD/YYYY') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
 ORDER BY
-  TO_DATE(ssu.tag_2,'MM/DD/YYYY') DESC]]></sqlStatement>
+  sorter DESC]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAM" source="Q_PARAM">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="FROM_DT" value="FROM_DT" />
       <element name="TO_DT" value="TO_DT" />
     </group>

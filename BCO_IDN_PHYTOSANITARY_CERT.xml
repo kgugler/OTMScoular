@@ -1,18 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <dataTemplate name="BCO_IDN_PHYTOSANITARY_CERT" description="BCO Indonesia Shipments Missing Phytosanitary Certificate" dataSourceRef="ORCL" defaultPackage="" version="1.0">
-  <parameters>
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
-  </parameters>
+  <parameters></parameters>
   <lexicals></lexicals>
   <dataQuery>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
   ship.sail_date,
   ship.shipment_xid shipment_number,
   con.contact_xid doc_manager,   
-  sref.shipment_refnum_value booking_number,
+  sref1.shipment_refnum_value booking_number,
   TRIM(TO_CHAR((SELECT COUNT(ssd.s_ship_unit_gid)
   FROM shipment_stop_d ssd
   WHERE ssd.shipment_gid = ship.shipment_gid 
@@ -31,17 +26,31 @@
   TO_CHAR(ship.sail_date,'MM/DD/YYYY') sailed_date,
   TRIM(TO_CHAR(ROUND(ship.sail_date - SYSDATE,0),'999,999,990')) days_phyto_due
 FROM 
-  shipment ship 
+  shipment ship  
 INNER JOIN
-  location loc ON ship.dest_location_gid = loc.location_gid  
+	shipment_s_equipment_join ssej ON ship.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND 
+  oob.order_base_gid like 'SCOULAR/BCO.S%' 
+INNER JOIN
+  location loc ON ship.dest_location_gid = loc.location_gid 
 INNER JOIN 
-  view_shipment_order_base vsob ON ship.shipment_gid = vsob.shipment_gid 
+  shipment_refnum sref1 ON ship.shipment_gid = sref1.shipment_gid 
 AND 
-  vsob.order_base_gid like 'SCOULAR/BCO.S%' 
-LEFT OUTER JOIN 
-  shipment_refnum sref ON ship.shipment_gid = sref.shipment_gid 
+  sref1.shipment_refnum_qual_gid = 'CHARTER VOYAGE'   
+INNER JOIN 
+  shipment_refnum sref2 ON ship.shipment_gid = sref2.shipment_gid
 AND 
-  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN 
+  shipment_refnum sref3 ON ship.shipment_gid = sref3.shipment_gid
+AND 
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'  
 LEFT OUTER JOIN
 	shipment_involved_party sip ON ship.shipment_gid = sip.shipment_gid
 AND
@@ -51,9 +60,19 @@ LEFT OUTER JOIN
 WHERE 
   ship.shipment_type_gid = 'TRANSPORT' 
 AND
-  loc.country_code3_gid = 'IDN'
+  loc.country_code3_gid IN ('IDN','ARE')
 AND 
   ship.domain_name = 'SCOULAR/BCO'
+AND
+  TRIM(sref2.shipment_refnum_value) != '5332'
+AND
+  TRIM(sref2.shipment_refnum_value) != '5333'
+AND 
+  TRIM(sref2.shipment_refnum_value) != '5334'
+AND 
+  TRIM(sref2.shipment_refnum_value) != '5335'
+AND 
+  TRIM(sref3.shipment_refnum_value) != 'BAKE'
 AND 
 ((SELECT 
   COUNT(ssu.s_ship_unit_gid)

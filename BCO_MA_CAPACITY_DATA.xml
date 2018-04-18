@@ -1,0 +1,249 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_MA_CAPACITY_DATA" description="BCO MA Capacity Data" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  s.insert_date sortone,
+  s.shipment_gid || 'A' sorter,
+  s.shipment_xid 
+  shipment_id,
+  s.shipment_type_gid
+  shipment_type,
+  glog_util.remove_domain(s.original_shipment_gid)
+  primary_shipment,
+  sref1.shipment_refnum_value
+  charge_type,
+  ROUND(s.total_net_weight_base * 0.0004536,3)
+  actual_weight,
+  TO_CHAR(ROUND(s.total_actual_cost,2),'999,999,990.00')
+  actual_cost,
+  sref2.shipment_refnum_value
+  commodity,
+  TO_CHAR(s.end_time,'MM/DD/YYYY')
+  delivery_date,
+  loc1.city
+  dest_city,
+  (CASE WHEN 
+    (SELECT ssd.s_ship_unit_gid 
+    FROM shipment_stop_d ssd
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = s.shipment_gid
+    AND ROWNUM = 1) LIKE 'SCOULAR/BCO.S%'
+  THEN
+    con.contact_xid
+  END)
+  so_customer,
+  loc1.province_code
+  dest_state,
+  (CASE WHEN 
+    (SELECT ssd.s_ship_unit_gid 
+    FROM shipment_stop_d ssd
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = s.shipment_gid
+    AND ROWNUM = 1) LIKE 'SCOULAR/BCO.S%'
+  THEN
+    (SELECT TO_CHAR(ssu.received_ship_unit_count)
+    FROM shipment_stop_d ssd
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = s.shipment_gid
+    AND ROWNUM = 1)
+  ELSE
+    glog_util.remove_domain(s.first_equipment_group_gid)
+  END)
+  first_equip_group,
+  TO_CHAR(ROUND(s.total_actual_cost_base,3),'999,999,990.000')
+  freight,
+  TO_CHAR(s.insert_date, 'MM/DD/YYYY')
+  insert_dt,
+  sref3.shipment_refnum_value
+  loc_code,
+  s.transport_mode_gid
+  trans_mode,
+  loc2.city
+  origin_city,
+  (CASE WHEN 
+    (SELECT ssd.s_ship_unit_gid 
+    FROM shipment_stop_d ssd
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = s.shipment_gid
+    AND ROWNUM = 1) LIKE 'SCOULAR/BCO.S%'
+  THEN
+    ''
+  ELSE
+    con.contact_xid
+  END)
+  po_customer,
+  glog_util.remove_domain(s.servprov_gid)
+  serv_prov,
+  TO_CHAR(s.start_time,'MM/DD/YYYY')
+  ship_date,
+  TO_CHAR(s.insert_date,'fmMM')
+  month_num,
+  TO_CHAR(s.insert_date,'YYYY')
+  year_num
+FROM 
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1  
+LEFT OUTER JOIN 
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.CHARGE TYPE'
+LEFT OUTER JOIN 
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN 
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'   
+LEFT OUTER JOIN
+  location loc1 ON s.dest_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.source_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'   
+AND
+  (TO_DATE(s.insert_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD') 
+AND 
+  TO_DATE(s.insert_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+UNION
+SELECT
+  s.insert_date sortone,
+  sh.original_shipment_gid || 'B' sorter,
+  sh.shipment_xid 
+  shipment_id,
+  sh.shipment_type_gid
+  shipment_type,
+  glog_util.remove_domain(sh.original_shipment_gid)
+  primary_shipment,
+  sref1.shipment_refnum_value
+  charge_type,
+  ROUND(sh.total_net_weight_base * 0.0004536,3)
+  actual_weight,
+  TO_CHAR(ROUND(sh.total_actual_cost,2),'999,999,990.00')
+  actual_cost,
+  sref2.shipment_refnum_value
+  commodity,
+  TO_CHAR(sh.end_time,'MM/DD/YYYY')
+  delivery_date,
+  loc1.city
+  dest_city,
+  (CASE WHEN 
+    (SELECT ssd.s_ship_unit_gid 
+    FROM shipment_stop_d ssd
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = sh.shipment_gid
+    AND ROWNUM = 1) LIKE 'SCOULAR/BCO.S%'
+  THEN
+    con.contact_xid
+  END)
+  so_customer,
+  loc1.province_code
+  dest_state,
+  (CASE WHEN 
+    (SELECT ssd.s_ship_unit_gid 
+    FROM shipment_stop_d ssd
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = sh.shipment_gid
+    AND ROWNUM = 1) LIKE 'SCOULAR/BCO.S%'
+  THEN
+    (SELECT TO_CHAR(ssu.received_ship_unit_count)
+    FROM shipment_stop_d ssd
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = sh.shipment_gid
+    AND ROWNUM = 1)
+  ELSE
+    glog_util.remove_domain(sh.first_equipment_group_gid)
+  END)
+  first_equip_group,
+  '0.000'
+  freight,
+  TO_CHAR(sh.insert_date, 'MM/DD/YYYY')
+  insert_dt,
+  sref3.shipment_refnum_value
+  loc_code,
+  sh.transport_mode_gid
+  trans_mode,
+  loc2.city
+  origin_city,
+  (CASE WHEN 
+    (SELECT ssd.s_ship_unit_gid 
+    FROM shipment_stop_d ssd
+    WHERE ssd.stop_num = 1
+    AND ssd.shipment_gid = sh.shipment_gid
+    AND ROWNUM = 1) LIKE 'SCOULAR/BCO.S%'
+  THEN
+    ''
+  ELSE
+    con.contact_xid
+  END)
+  po_customer,
+  glog_util.remove_domain(sh.servprov_gid)
+  serv_prov,
+  TO_CHAR(sh.start_time,'MM/DD/YYYY')
+  ship_date,
+  TO_CHAR(sh.insert_date,'fmMM')
+  month_num,
+  TO_CHAR(sh.insert_date,'YYYY')
+  year_num
+FROM 
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  shipment sh ON s.shipment_gid = sh.original_shipment_gid
+AND
+  sh.shipment_type_gid = 'SECONDARY CHARGE'  
+LEFT OUTER JOIN 
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.CHARGE TYPE'
+LEFT OUTER JOIN 
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN 
+  shipment_refnum sref3 ON sh.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'   
+LEFT OUTER JOIN
+  location loc1 ON sh.dest_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.source_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  shipment_involved_party sip ON sh.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'   
+AND
+  (TO_DATE(s.insert_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD') 
+AND 
+  TO_DATE(s.insert_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  sortone DESC, sorter]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

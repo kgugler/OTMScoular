@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_MATERIAL_SAFETY_DATA_SHEET" description="BCO Mexico Material Safety Data Sheet (SSL)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') 
+  sail_dt,
+  srem.remark_text
+  license_no,
+  ROUND(s.total_net_weight_base * 0.0004536,3)
+  tot_wt,
+  (CASE WHEN  sref1.shipment_refnum_value IS NULL OR sref1.shipment_refnum_value LIKE '%ORDER OF%' OR sref1.shipment_refnum_value LIKE '%TO ORDER%' THEN
+    (CASE WHEN NOT loc1.location_name IS NULL THEN
+      loc1.location_name || CHR(13)
+    ELSE
+      ''
+    END) ||
+    (CASE WHEN (SELECT COUNT(la1.address_line)
+    FROM location_address la1 
+    WHERE la1.location_gid = loc1.location_gid) > 0 THEN
+      (SELECT LISTAGG(la1.address_line, CHR(13)) 
+      WITHIN GROUP (ORDER BY la1.line_sequence) 
+      FROM location_address la1 
+      WHERE la1.location_gid = loc1.location_gid) || CHR(13)
+    ELSE
+      ''
+    END)
+    ||  
+    (CASE WHEN NOT loc1.city IS NULL THEN
+      loc1.city
+    ELSE
+      ''      
+    END) ||    
+    (CASE WHEN NOT loc1.country_code3_gid IS NULL THEN
+      (CASE WHEN NOT loc1.city IS NULL THEN
+        ', ' || cc.country_name
+      ELSE
+        cc.country_name
+      END)
+    ELSE
+      ''      
+    END)
+  ELSE
+    sref1.shipment_refnum_value || CHR(13) ||
+    (CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+      ''
+    ELSE
+      sref2.shipment_refnum_value || CHR(13)
+    END) ||
+    (CASE WHEN sref3.shipment_refnum_value IS NULL THEN
+      ''
+    ELSE
+      sref3.shipment_refnum_value || CHR(13)
+    END) || 
+    (CASE WHEN sref4.shipment_refnum_value IS NULL THEN
+      ''
+    ELSE
+      sref4.shipment_refnum_value || CHR(13)
+    END) ||  
+    (CASE WHEN sref5.shipment_refnum_value IS NULL THEN
+      ''
+    ELSE
+      sref5.shipment_refnum_value || ', '
+    END) ||  
+    (CASE WHEN sref6.shipment_refnum_value IS NULL THEN
+      ''
+    ELSE
+      sref6.shipment_refnum_value || ', '
+    END) || 
+    (CASE WHEN sref7.shipment_refnum_value IS NULL THEN
+      ''
+    ELSE
+      sref7.shipment_refnum_value
+    END)
+  END)
+  consignee,
+  (CASE WHEN loc2.location_name IS NULL THEN
+    loc3.location_name
+  ELSE
+    loc2.location_name
+  END)
+  load_port,
+  (CASE WHEN loc4.location_name IS NULL THEN
+    loc5.location_name
+  ELSE
+    loc4.location_name
+  END)
+  disch_port,
+	TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value) 
+  vessel_voyage,  
+  sref8.shipment_refnum_value
+  bl_no
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+  cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER' 
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+  cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR/BCO.VIA_LOCATION_ID'  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+  cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE'   
+LEFT OUTER JOIN
+  shipment_remark srem ON s.shipment_gid = srem.shipment_gid
+AND
+  srem.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONSIGNEE NAME'
+LEFT OUTER JOIN
+	shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+	sref2.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONS ADDRESS LINE 1'  
+LEFT OUTER JOIN
+	shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+	sref3.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONS ADDRESS LINE 2'  
+LEFT OUTER JOIN
+	shipment_refnum sref4 ON s.shipment_gid = sref4.shipment_gid
+AND
+	sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONS ADDRESS LINE 3'    
+LEFT OUTER JOIN
+	shipment_refnum sref5 ON s.shipment_gid = sref5.shipment_gid
+AND
+	sref5.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONS CITY' 
+LEFT OUTER JOIN
+	shipment_refnum sref6 ON s.shipment_gid = sref6.shipment_gid
+AND
+	sref6.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONS PROVINCE'   
+LEFT OUTER JOIN
+	shipment_refnum sref7 ON s.shipment_gid = sref7.shipment_gid
+AND
+	sref7.shipment_refnum_qual_gid = 'SCOULAR/BCO.BCO_SHPMNT PAYTERM_CONS COUNTRY CODE'  
+LEFT OUTER JOIN
+	shipment_refnum sref8 ON s.shipment_gid = sref8.shipment_gid
+AND
+	sref8.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'       
+LEFT OUTER JOIN
+  shipment_involved_party sipc ON s.shipment_gid = sipc.shipment_gid
+AND
+  sipc.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  location loc1 ON sipc.involved_party_contact_gid = loc1.location_gid 
+LEFT OUTER JOIN
+  country_code cc ON loc1.country_code3_gid = cc.country_code3_gid
+LEFT OUTER JOIN
+  location loc2 ON cvr2.charter_voyage_refnum_value = loc2.location_gid 
+LEFT OUTER JOIN
+  location loc3 ON cv.source_location_gid = loc3.location_gid   
+LEFT OUTER JOIN
+  location loc4 ON cvr3.charter_voyage_refnum_value = loc4.location_gid 
+LEFT OUTER JOIN
+  location loc5 ON cv.dest_location_gid = loc5.location_gid    
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  oob.order_base_xid
+  order_id,
+	COALESCE(obr1.remark_text,
+  itm.description)
+  description,  
+	INITCAP(COALESCE(obr1.remark_text,
+  itm.description))
+  description_camel
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+LEFT OUTER JOIN
+  item itm ON oline.packaged_item_gid = itm.item_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  order_id,
+  ''
+  description,
+  ''
+  description_camel
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

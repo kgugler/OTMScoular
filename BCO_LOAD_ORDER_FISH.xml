@@ -1,0 +1,664 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_LOAD_ORDER_FISH" description="BCO LOAD ORDER FISH" dataSourceRef="ORCL" defaultPackage="REPORTOWNER.LOAD_ORDER_REPORT_FISH" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="BOOKING_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_TRANSLOADER_ROWS"><![CDATA[SELECT
+  sg.ship_group_gid,
+  CONCAT('SCOULAR/BCO.', srefcv.shipment_refnum_value)
+  booking,
+  srefloc.shipment_refnum_value
+  loc_code,
+  loo.loc_address
+  orig_contact,
+  GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_NOTES(
+    (SELECT ship_group_gid
+    FROM ship_group_refnum
+    WHERE ship_group_refnum_qual_gid='CHARTER VOYAGE'
+    AND ship_group_refnum_value =
+    (SELECT charter_voyage_xid
+    FROM charter_voyage
+    WHERE charter_voyage_gid = :BOOKING_ID)))
+  additional_notes
+FROM
+  ship_group sg
+INNER JOIN
+  ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+INNER JOIN
+  shipment s ON (s.shipment_gid = sgd.shipment_gid 
+AND
+  s.consol_gid IS NULL)
+INNER JOIN
+  shipment_stop_d sstopd ON (s.shipment_gid = sstopd.shipment_gid 
+AND
+  sstopd.stop_num = 1)
+INNER JOIN
+  shipment_refnum srefloc ON srefloc.shipment_gid = s.shipment_gid 
+AND
+  srefloc.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+INNER JOIN
+  shipment_refnum srefcv ON srefcv.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+AND
+  srefcv.shipment_gid = s.shipment_gid
+LEFT OUTER JOIN
+  load_order_originals loo ON loo.loc_code = srefloc.shipment_refnum_value
+WHERE
+  sg.domain_name = 'SCOULAR/BCO' 
+AND
+  CONCAT('SCOULAR/BCO.', srefcv.shipment_refnum_value) = :BOOKING_ID
+GROUP BY
+  sg.ship_group_gid,
+  srefcv.shipment_refnum_value,
+  srefloc.shipment_refnum_value,
+  loo.loc_address]]></sqlStatement>
+    <sqlStatement name="Q_SHIPMENT_ROWS"><![CDATA[SELECT
+  sg.ship_group_gid,
+  sg.ship_group_xid,
+  cv.charter_voyage_gid,
+  cv.charter_voyage_xid,
+  s.shipment_gid,
+  s.shipment_xid,
+  CASE WHEN COALESCE(vloc.max_num_teu, 0) + COALESCE(vloc.max_num_feu, 0) = 0 THEN
+    'ERROR - NUMBER OF CONTAINERS'
+  ELSE
+    CASE WHEN COALESCE(vloc.max_num_teu, 0) > 0 THEN vloc.max_num_teu || ' X ' || '20'' ' ELSE '' END ||
+    CASE WHEN COALESCE(vloc.max_num_feu, 0) > 0 THEN vloc.max_num_feu || ' X ' || '40'' ' ELSE '' END ||
+    ' Container'
+  END
+  AS container_desc,
+  commitem.description AS commodity_desc,
+  COALESCE(cvr_loadport.location_name, cv_loadport.location_name) AS load_port,
+  cv_destport.location_name AS discharge_port,
+  TO_CHAR(TO_DATE(CHECK_DATE(NVL(cvr_cutoff_ramp.charter_voyage_refnum_value, cvr_cutoff_port.charter_voyage_refnum_value)),'dd-mm-yy'), 'fmMonth dd, yyyy') cutoff_date,
+  TO_CHAR(TO_DATE(cv.departure_date), 'fmMonth dd, yyyy') sail_date,
+  cv.charter_voyage_xid AS booking_number,
+  cv.voyage_name vessel,
+  NVL(REPLACE(cvr_pickup.charter_voyage_refnum_value, '\n', chr(13) || chr(10)), REPLACE(cvr_dropoff.charter_voyage_refnum_value, '\n', chr(13) || chr(10))) AS pickup_location,
+  REPLACE(cvr_dropoff.charter_voyage_refnum_value, '\n', chr(13) || chr(10)) AS dropoff_location,
+  TO_CHAR(TO_DATE(CHECK_DATE(cvr_earliestpickup.charter_voyage_refnum_value),'dd-mm-yy'), 'fmMonth dd, yyyy') AS earliest_pickup_date,
+  TO_CHAR(TO_DATE(CHECK_DATE(cvr_earliestdropoff.charter_voyage_refnum_value),'dd-mm-yy'), 'fmMonth dd, yyyy') AS earliest_dropoff_date,
+  cvr_shipline.charter_voyage_refnum_value AS carrier_note,
+  carrier.location_name AS freight_provider,
+  CASE WHEN
+    (dest_location.city = 'OAKLAND' and dest_location.province_code = 'CA') OR
+    (dest_location.city LIKE 'ST%LOUIS%' AND dest_location.province_code = 'MO') OR
+    (dest_location.city = 'WASHINGTON PARK%' AND dest_location.province_code = 'IL') OR
+    dest_location.location_name = 'GATEWAY CO-PACKING'
+  THEN
+    'Max weight 20mt gross cargo weight'
+  ELSE
+    CASE WHEN
+      (dest_location.city = 'CHARLESTON' AND dest_location.province_code = 'SC')
+    THEN
+      'Max weight 28mt gross cargo weight'
+    ELSE
+      CASE WHEN
+        (dest_location.city = 'HOUSTON' AND dest_location.province_code = 'TX')
+      THEN
+        'Max weight 25mt gross cargo weight'
+      ELSE
+        (CASE WHEN
+          dest_location.country_code3_gid = 'TWN'
+        THEN
+          'Max weight 25mt gross cargo weight. Any dead freight for containers not loaded within 2% of the max weight will be charged back to shipper.'
+        ELSE
+          'Target and Max weight of 26.5mt gross cargo weight for 40'' containers and 20mt gross cargo weight for 20'' containers - Any dead freight for containers not loaded within 2% of the max weight will be charged back to shipper.'
+        END)
+      END
+    END
+  END
+  AS max_weight_text,
+  CASE WHEN
+    dest_location.country_code3_gid = 'USA'
+  THEN
+    'MUST BE LOADED IN JUMBO/ BIG BAGS'
+  END
+  AS jumbo_bags_text,
+  dest_location.country_code3_gid,
+  CASE WHEN
+    dest_location.country_code3_gid = 'CHN' OR
+    dest_location.country_code3_gid = 'CAN' OR
+    dest_location.country_code3_gid = 'USA'
+  THEN
+    'Y'
+  ELSE
+    'N'
+  END
+  AS IS_CHN_CAN_OR_USA
+FROM
+  ship_group sg
+INNER JOIN
+  ship_group_d sgd ON
+    sgd.ship_group_gid = sg.ship_group_gid
+INNER JOIN
+  shipment s ON
+  (s.shipment_gid = sgd.shipment_gid AND
+  s.consol_gid IS NULL)
+INNER JOIN
+  shipment_refnum srefcomm ON
+    srefcomm.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' AND
+    srefcomm.shipment_gid = s.shipment_gid
+INNER JOIN
+  item commitem ON
+    commitem.item_gid = CONCAT('SCOULAR.', srefcomm.shipment_refnum_value)
+INNER JOIN
+  shipment_s_equipment_join ssej ON
+    ssej.shipment_gid = s.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj ON
+    sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul ON
+    ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN
+  ob_order_base oob ON
+    oob.order_base_gid = ssul.order_base_gid
+INNER JOIN
+  shipment_refnum sref ON
+    sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE' AND
+    sref.shipment_gid = s.shipment_gid
+INNER JOIN
+  consol c ON
+    c.charter_voyage_gid = CONCAT('SCOULAR/BCO.', sref.shipment_refnum_value)
+INNER JOIN
+  charter_voyage cv ON c.charter_voyage_gid = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  location cv_loadport ON cv.source_location_gid = cv_loadport.location_gid
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_lp ON
+  (cvr_lp.charter_voyage_gid = cv.charter_voyage_gid AND
+  cvr_lp.charter_voyage_refnum_qual_gid = 'SCOULAR/BCO.VIA_LOCATION_ID')
+LEFT OUTER JOIN
+  location cvr_loadport ON CONCAT('SCOULAR.', cvr_lp.charter_voyage_refnum_value) = cvr_loadport.location_gid
+LEFT OUTER JOIN
+  location cv_destport ON cv.dest_location_gid = cv_destport.location_gid
+LEFT OUTER JOIN
+  location shipline ON s.servprov_gid = shipline.location_gid
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_cutoff_ramp ON cv.charter_voyage_gid = cvr_cutoff_ramp.charter_voyage_gid AND
+  cvr_cutoff_ramp.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_cutoff_port ON cv.charter_voyage_gid = cvr_cutoff_port.charter_voyage_gid AND
+  cvr_cutoff_port.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_pickup ON cv.charter_voyage_gid = cvr_pickup.charter_voyage_gid AND
+  cvr_pickup.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_EMPTY PICKUP LOCATION'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_dropoff ON cv.charter_voyage_gid = cvr_dropoff.charter_voyage_gid AND
+  cvr_dropoff.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DROP OFF LOCATION'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_earliestpickup ON cv.charter_voyage_gid = cvr_earliestpickup.charter_voyage_gid AND
+  cvr_earliestpickup.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_EARLIEST PICKUP DATE'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_earliestdropoff ON cv.charter_voyage_gid = cvr_earliestdropoff.charter_voyage_gid AND
+  cvr_earliestdropoff.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_EARLIEST DROP OFF DATE'
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr_shipline ON
+    cvr_shipline.charter_voyage_gid = cv.charter_voyage_gid AND
+    cvr_shipline.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_REMARKS'
+LEFT OUTER JOIN
+  location carrier ON
+    carrier.location_gid = cv.servprov_gid
+LEFT OUTER JOIN
+  location dest_location ON
+    dest_location.location_gid = s.dest_location_gid
+LEFT OUTER JOIN
+  (
+    SELECT
+      sg.ship_group_gid,
+      CONCAT('SCOULAR/BCO.', sgr.ship_group_refnum_value) AS charter_voyage_gid,
+      COUNT(ssu20.s_ship_unit_gid) AS max_num_teu,
+      COUNT(ssu40.s_ship_unit_gid) AS max_num_feu
+    FROM
+      ship_group sg
+    LEFT OUTER JOIN
+      ship_group_refnum sgr ON
+        sgr.ship_group_gid = sg.ship_group_gid AND
+        sgr.ship_group_refnum_qual_gid = 'CHARTER VOYAGE'
+    INNER JOIN
+      ship_group_d sgd ON
+        sgd.ship_group_gid = sg.ship_group_gid
+    INNER JOIN
+      shipment s ON
+      s.shipment_gid = sgd.shipment_gid
+    INNER JOIN
+      shipment_stop_d ssd ON
+        ssd.stop_num = 1 AND
+        ssd.shipment_gid = s.shipment_gid
+    LEFT OUTER JOIN
+      s_ship_unit ssu40 ON
+        ssu40.s_ship_unit_gid = ssd.s_ship_unit_gid AND
+        ssu40.received_ship_unit_count = 40
+    LEFT OUTER JOIN
+      s_ship_unit ssu20 ON
+        ssu20.s_ship_unit_gid = ssd.s_ship_unit_gid AND
+        ssu20.received_ship_unit_count = 20
+    GROUP BY
+      sg.ship_group_gid,
+      sgr.ship_group_refnum_value
+  ) vloc ON vloc.charter_voyage_gid = cv.charter_voyage_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO' AND
+  sg.SHIP_GROUP_GID = 
+  (	SELECT
+      ship_group_gid
+    FROM
+      ship_group_refnum
+    WHERE
+      ship_group_refnum_qual_gid='CHARTER VOYAGE' AND
+      ship_group_refnum_value =
+      (
+        SELECT
+          charter_voyage_xid
+        FROM
+          charter_voyage
+        WHERE
+          charter_voyage_gid = :BOOKING_ID
+      )
+  )
+GROUP BY
+  sg.ship_group_gid,
+  sg.ship_group_xid,
+  cv.charter_voyage_gid,
+  cv.charter_voyage_xid,
+  s.shipment_gid,
+  s.shipment_xid,
+  commitem.description,
+  COALESCE(cvr_loadport.location_name, cv_loadport.location_name),
+  cv_destport.location_name,
+  cv.departure_date,
+  shipline.location_name,
+  cv.voyage_name,
+  NVL(REPLACE(cvr_pickup.charter_voyage_refnum_value, '\n', chr(13) || chr(10)), REPLACE(cvr_dropoff.charter_voyage_refnum_value, '\n', chr(13) || chr(10))),
+  REPLACE(cvr_dropoff.charter_voyage_refnum_value, '\n', chr(13) || chr(10)),
+  cvr_earliestpickup.charter_voyage_refnum_value,
+  cvr_earliestdropoff.charter_voyage_refnum_value,
+  cvr_cutoff_ramp.charter_voyage_refnum_value,
+  cvr_cutoff_port.charter_voyage_refnum_value,
+  vloc.max_num_teu,
+  vloc.max_num_feu,
+  cvr_shipline.charter_voyage_refnum_value,
+  carrier.location_name,
+  dest_location.location_name,
+  dest_location.city,
+  dest_location.province_code,
+  dest_location.country_code3_gid,
+  oob.order_base_xid
+ORDER BY
+  sg.ship_group_gid,
+  sg.ship_group_xid,
+  cv.charter_voyage_gid,
+  cv.charter_voyage_gid,
+  s.shipment_gid,
+  s.shipment_xid]]></sqlStatement>
+    <sqlStatement name="Q_PACKAGING_ROWS"><![CDATA[
+	SELECT
+		LISTAGG(NVL(obr1.ob_refnum_value, '') || ' ' || NVL(obr2.ob_refnum_value, '') || ' ' || NVL(obr3.ob_refnum_value, ''), ', ') 
+			WITHIN GROUP (ORDER BY NVL(obr1.ob_refnum_value, '') || ' ' || NVL(obr2.ob_refnum_value, '') || ' ' || NVL(obr3.ob_refnum_value, ''))
+		 AS PACKAGING
+	FROM
+		ob_order_base oob
+	LEFT OUTER JOIN
+		ob_refnum obr1 ON
+			obr1.order_base_gid = oob.order_base_gid AND
+			obr1.ob_refnum_qual_gid = 'SCOULAR.PACKAGING NUMBER'
+	LEFT OUTER JOIN
+		ob_refnum obr2 ON
+			obr2.order_base_gid = oob.order_base_gid AND
+			obr2.ob_refnum_qual_gid = 'SCOULAR.PACKAGING UNIT OF MEASURE'
+	LEFT OUTER JOIN
+		ob_refnum obr3 ON
+			obr3.order_base_gid = oob.order_base_gid AND
+			obr3.ob_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+	WHERE
+		oob.domain_name = 'SCOULAR/BCO' AND
+		oob.order_base_xid IN
+		(
+			SELECT
+				srso.shipment_refnum_value AS SALES_ORDER
+			FROM
+				shipment smain
+			LEFT OUTER JOIN
+				shipment_refnum srso ON
+					srso.shipment_gid = smain.shipment_gid AND
+					srso.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO'
+			WHERE
+					srso.shipment_gid IN
+					(
+						SELECT
+							srcvso.shipment_gid
+						FROM
+							shipment sso
+						LEFT OUTER JOIN
+							shipment_refnum srcvso ON
+							srcvso.shipment_gid = sso.shipment_gid
+						WHERE
+							sso.domain_name = 'SCOULAR/BCO' AND
+							sso.is_primary = 'Y' AND
+							sso.transport_mode_gid = 'VESSEL-CO' AND
+							srcvso.shipment_refnum_qual_gid = 'CHARTER VOYAGE' AND
+							srcvso.shipment_refnum_value = REPLACE(:BOOKING_ID, 'SCOULAR/BCO.', '')
+					)
+		)
+]]></sqlStatement>
+    <sqlStatement name="Q_COMM_DETAIL_ROWS"><![CDATA[
+	SELECT
+		srcommdetail.remark_text AS COMM_DETAIL
+	FROM
+	  shipment s
+	LEFT OUTER JOIN
+		shipment_refnum scv ON
+			scv.shipment_gid = s.shipment_gid AND
+			scv.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+	LEFT OUTER JOIN
+		shipment_remark srcommdetail ON
+			srcommdetail.shipment_gid = s.shipment_gid AND
+			srcommdetail.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+	WHERE
+		srcommdetail.remark_text IS NOT NULL AND
+		scv.domain_name || '.' || scv.shipment_refnum_value = :BOOKING_ID
+]]></sqlStatement>
+    <sqlStatement name="Q_CONSIGNEE_ROWS"><![CDATA[
+	SELECT
+		CONSIGNEE
+	FROM
+		(SELECT *
+	  FROM TABLE (GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_CONSIGNEE(
+	    (SELECT ship_group_gid
+	    FROM ship_group_refnum
+	    WHERE ship_group_refnum_qual_gid='CHARTER VOYAGE'
+	    AND ship_group_refnum_value     =
+	      (SELECT charter_voyage_xid
+	      FROM charter_voyage
+	      WHERE charter_voyage_gid = :BOOKING_ID
+	      )
+	    )))
+	  )
+	WHERE
+		CONSIGNEE IS NOT NULL
+]]></sqlStatement>
+    <sqlStatement name="Q_NOTIFY_PARTY_ROWS"><![CDATA[
+	SELECT
+		NOTIFY_PARTY
+	FROM
+		(SELECT *
+	  FROM TABLE (GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_NOTIFY(
+	    (SELECT ship_group_gid
+	    FROM ship_group_refnum
+	    WHERE ship_group_refnum_qual_gid='CHARTER VOYAGE'
+	    AND ship_group_refnum_value     =
+	      (SELECT charter_voyage_xid
+	      FROM charter_voyage
+	      WHERE charter_voyage_gid = :BOOKING_ID
+	      )
+	    )))
+	  )
+	WHERE
+		NOTIFY_PARTY IS NOT NULL
+]]></sqlStatement>
+    <sqlStatement name="Q_DOC_ROWS"><![CDATA[
+	SELECT
+		remark_text AS DOCUMENT_DESC
+	FROM
+		(SELECT *
+	  FROM TABLE (GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_DOCS_REQ_FISH(
+	    (SELECT ship_group_gid
+	    FROM ship_group_refnum
+	    WHERE ship_group_refnum_qual_gid='CHARTER VOYAGE'
+	    AND ship_group_refnum_value     =
+	      (SELECT charter_voyage_xid
+	      FROM charter_voyage
+	      WHERE charter_voyage_gid = :BOOKING_ID
+	      )
+	    )))
+	  )
+	WHERE
+		remark_text IS NOT NULL
+]]></sqlStatement>
+    <sqlStatement name="Q_STATEMENT_ROWS"><![CDATA[
+	SELECT
+		--PURCHASE CONTRACT CUST EU CERTIFIED?
+	--	s.shipment_xid,
+	--	srob.shipment_refnum_value AS "Contract #",
+	--	cv.charter_voyage_gid,
+		gpr.remark_text AS eu_certified
+	--	dest_location.city,
+	--	dest_location.province_code
+	FROM
+		gtm_party_remark gpr
+	INNER JOIN
+		ob_involved_party obip ON
+			obip.involved_party_contact_gid = gpr.contact_gid AND
+			obip.involved_party_qual_gid = 'CUSTOMER'
+	INNER JOIN
+		shipment_refnum srob ON
+			srob.shipment_refnum_qual_gid = 'SCOULAR/BCO.RELATED PURCHASE ORDER' AND
+			obip.order_base_gid = CONCAT('SCOULAR/BCO.', srob.shipment_refnum_value)
+	INNER JOIN
+		shipment s ON
+			s.shipment_gid = srob.shipment_gid AND
+			s.domain_name = 'SCOULAR/BCO' AND
+			s.is_primary = 'Y' AND
+			s.transport_mode_gid = 'VESSEL-CO'
+	INNER JOIN
+		shipment_refnum sr ON
+			sr.shipment_gid = s.shipment_gid AND
+			sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE' AND
+			sr.shipment_refnum_value = REPLACE(:BOOKING_ID, 'SCOULAR/BCO.', '')
+	--		AND
+	--		sr.shipment_refnum_value = REPLACE('SCOULAR/BCO.FISHLOSTL', 'SCOULAR/BCO.', '')
+	INNER JOIN
+		charter_voyage cv ON
+			cv.charter_voyage_gid = CONCAT('SCOULAR/BCO.', sr.shipment_refnum_value)
+	INNER JOIN
+		location dest_location ON
+			dest_location.location_gid = s.dest_location_gid
+	WHERE
+		gpr.remark_qual_gid = 'SCOULAR.EU CERTIFIED' AND
+		gpr.remark_text = 'YES' AND
+		dest_location.country_code3_gid
+		IN
+		(
+			'AUT', --'Austria',
+			'BEL', --'Belgium',
+			'BGR', --'Bulgaria',
+			'HRV', --'Croatia',
+			'CYP', --'Cyprus',
+			'CZE', --'Czech Republic',
+			'DNK', --'Denmark',
+			'EST', --'Estonia',
+			'FIN', --'Finland',
+			'FRA', --'France',
+			'DEU', --'Germany',
+			'GRC', --'Greece',
+			'HUN', --'Hungary',
+			'IRL', --'Ireland',
+			'ITA', --'Italy',
+			'LVA', --'Latvia',
+			'LTU', --'Lithuania',
+			'LUX', --'Luxembourg',
+			'MLT', --'Malta',
+			'NLD', --'Netherlands',
+			'POL', --'Poland',
+			'PRT', --'Portugal',
+			'ROU', --'Romania',
+			'SVK', --'Slovakia',
+			'SVN', --'Slovenia',
+			'ESP', --'Spain',
+			'SWE', --'Sweden',
+			'GBR', --'United Kingdom'
+			'USA'  --USA
+		)
+--		(
+--			(dest_location.city = 'OAKLAND' and dest_location.province_code = 'CA') OR
+--			(dest_location.city LIKE 'ST%LOUIS%' AND dest_location.province_code = 'MO') OR
+--			(dest_location.city = 'WASHINGTON PARK%' AND dest_location.province_code = 'IL') OR
+--			(dest_location.location_name = 'GATEWAY CO-PACKING') OR
+--			(dest_location.city = 'CHARLESTON' AND dest_location.province_code = 'SC')
+--		)
+--	UNION ALL
+--	--SALE CONTRACT CUST EU CERTIFIED?
+--	--Per Vijay 10/31/16
+--	--i meant to say, please do fix the code to not check for EU flag on sales order side customer ID, just check it on purchase side customer ID only
+--	--other than that, your logic is correct with respecting to checking for destination country in USA OR EU region
+--	SELECT
+--	--	s.shipment_xid,
+--	--	srob.shipment_refnum_value AS "Contract #",
+--	--	cv.charter_voyage_gid,
+------		gpr.remark_text AS eu_certified
+--	CASE WHEN NOT s.shipment_gid IS NULL THEN 'YES' ELSE NULL END AS eu_certified
+--	--	dest_location.city,
+--	--	dest_location.province_code
+--	FROM
+--		gtm_party_remark gpr
+--	INNER JOIN
+--		ob_involved_party obip ON
+--			obip.involved_party_contact_gid = gpr.contact_gid AND
+--			obip.involved_party_qual_gid = 'CUSTOMER'
+--	INNER JOIN
+--		shipment_refnum srob ON
+--			srob.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO' AND
+--			obip.order_base_gid = CONCAT('SCOULAR/BCO.', srob.shipment_refnum_value)
+--	INNER JOIN
+--		shipment s ON
+--			s.shipment_gid = srob.shipment_gid AND
+--		shipment s
+--	INNER JOIN
+--		shipment_refnum sr ON
+--			sr.shipment_gid = s.shipment_gid AND
+--			sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE' AND
+--			sr.shipment_refnum_value = REPLACE(:BOOKING_ID, 'SCOULAR/BCO.', '')
+--	--		AND
+--	--		sr.shipment_refnum_value = REPLACE('SCOULAR/BCO.EULOTEST', 'SCOULAR/BCO.', '')
+--	--		AND
+--	--		sr.shipment_refnum_value = REPLACE('SCOULAR/BCO.FISHLOSTL', 'SCOULAR/BCO.', '')
+--	INNER JOIN
+--		charter_voyage cv ON
+--			cv.charter_voyage_gid = CONCAT('SCOULAR/BCO.', sr.shipment_refnum_value)
+--	INNER JOIN
+--		location dest_location ON
+--			dest_location.location_gid = s.dest_location_gid
+--	WHERE
+----		gpr.remark_qual_gid = 'SCOULAR.EU CERTIFIED' AND
+----		gpr.remark_text = 'YES' AND
+--		s.domain_name = 'SCOULAR/BCO' AND
+--		s.is_primary = 'Y' AND
+--		s.transport_mode_gid = 'VESSEL-CO' AND
+--		dest_location.country_code3_gid
+--		IN
+--		(
+--			'AUT', --'Austria',
+--			'BEL', --'Belgium',
+--			'BGR', --'Bulgaria',
+--			'HRV', --'Croatia',
+--			'CYP', --'Cyprus',
+--			'CZE', --'Czech Republic',
+--			'DNK', --'Denmark',
+--			'EST', --'Estonia',
+--			'FIN', --'Finland',
+--			'FRA', --'France',
+--			'DEU', --'Germany',
+--			'GRC', --'Greece',
+--			'HUN', --'Hungary',
+--			'IRL', --'Ireland',
+--			'ITA', --'Italy',
+--			'LVA', --'Latvia',
+--			'LTU', --'Lithuania',
+--			'LUX', --'Luxembourg',
+--			'MLT', --'Malta',
+--			'NLD', --'Netherlands',
+--			'POL', --'Poland',
+--			'PRT', --'Portugal',
+--			'ROU', --'Romania',
+--			'SVK', --'Slovakia',
+--			'SVN', --'Slovenia',
+--			'ESP', --'Spain',
+--			'SWE', --'Sweden',
+--			'GBR', --'United Kingdom'
+--			'USA'  --USA
+--		)
+----		(
+----			(dest_location.city = 'OAKLAND' and dest_location.province_code = 'CA') OR
+----			(dest_location.city LIKE 'ST%LOUIS%' AND dest_location.province_code = 'MO') OR
+----			(dest_location.city = 'WASHINGTON PARK%' AND dest_location.province_code = 'IL') OR
+----			(dest_location.location_name = 'GATEWAY CO-PACKING') OR
+----			(dest_location.city = 'CHARLESTON' AND dest_location.province_code = 'SC')
+----		)
+	]]></sqlStatement>
+    <sqlStatement name="Q_SPEC_ROWS"><![CDATA[
+	SELECT
+		ship_group_gid,
+		specification_desc,
+		specification_value
+	FROM
+	(SELECT *
+  FROM TABLE(GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_SPECS(
+    (SELECT ship_group_gid
+    FROM ship_group_refnum
+    WHERE ship_group_refnum_qual_gid='CHARTER VOYAGE'
+    AND ship_group_refnum_value     =
+      (SELECT charter_voyage_xid
+      FROM charter_voyage
+      WHERE charter_voyage_gid = :BOOKING_ID
+      )
+    )))
+	 )
+]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="afterParameterFormTrigger" source="reportowner.load_order_report_fish.afterpform" />
+  <dataTrigger name="beforeReportTrigger" source="reportowner.load_order_report_fish.beforereport" />
+  <dataTrigger name="updatecontainercountTrigger" source="reportowner.load_order_report_fish.updatecontainercount(:BOOKING_ID)" />
+  <dataTrigger name="updateshipgroupstatusTrigger" source="reportowner.load_order_report_fish.updateshipgroupstatus(:BOOKING_ID)" />
+  <dataStructure>
+    <group name="G_TRANSLOADER_ROWS" source="Q_TRANSLOADER_ROWS">
+      <element name="FGIS_REQUIRED" value="FGIS_REQUIRED"></element>
+      <element name="ORIG_CONTACT" value="ORIG_CONTACT"></element>
+      <element name="ADDITIONAL_NOTES" value="ADDITIONAL_NOTES"></element>
+    </group>
+    <group name="G_SHIPMENT_ROWS" source="Q_SHIPMENT_ROWS">
+      <element name="CONTAINER_DESC" value="CONTAINER_DESC"></element>
+      <element name="COMMODITY_DESC" value="COMMODITY_DESC"></element>
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT"></element>
+      <element name="LOAD_PORT" value="LOAD_PORT"></element>
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID"></element>
+      <element name="CUTOFF_DATE" value="CUTOFF_DATE"></element>
+      <element name="SAIL_DATE" value="SAIL_DATE"></element>
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER"></element>
+      <element name="VESSEL" value="VESSEL"></element>
+      <element name="PICKUP_LOCATION" value="PICKUP_LOCATION"></element>
+      <element name="DROPOFF_LOCATION" value="DROPOFF_LOCATION"></element>
+      <element name="EARLIEST_PICKUP_DATE" value="EARLIEST_PICKUP_DATE"></element>
+      <element name="EARLIEST_DROPOFF_DATE" value="EARLIEST_DROPOFF_DATE"></element>
+      <element name="CARRIER_NOTE" value="CARRIER_NOTE"></element>
+      <element name="FREIGHT_PROVIDER" value="FREIGHT_PROVIDER"></element>
+      <element name="MAX_WEIGHT_TEXT" value="MAX_WEIGHT_TEXT"></element>
+      <element name="JUMBO_BAGS_TEXT" value="JUMBO_BAGS_TEXT"></element>
+      <element name="COUNTRY_CODE3_GID" value="COUNTRY_CODE3_GID"></element>
+      <element name="IS_CHN_CAN_OR_USA" value="IS_CHN_CAN_OR_USA"></element>
+    </group>
+    <group name="G_PACKAGING_ROWS" source="Q_PACKAGING_ROWS">
+      <element name="PACKAGING" value="PACKAGING"></element>
+    </group>
+    <group name="G_COMM_DETAIL_ROWS" source="Q_COMM_DETAIL_ROWS">
+      <element name="COMM_DETAIL" value="COMM_DETAIL"></element>
+    </group>
+    <group name="G_CONSIGNEE_ROWS" source="Q_CONSIGNEE_ROWS">
+      <element name="CONSIGNEE" value="CONSIGNEE"></element>
+    </group>
+    <group name="G_NOTIFY_PARTY_ROWS" source="Q_NOTIFY_PARTY_ROWS">
+      <element name="NOTIFY_PARTY" value="NOTIFY_PARTY"></element>
+    </group>
+    <group name="G_DOC_ROWS" source="Q_DOC_ROWS">
+      <element name="DOCUMENT_DESC" value="DOCUMENT_DESC"></element>
+    </group>
+    <group name="G_STATEMENT_ROWS" source="Q_STATEMENT_ROWS">
+      <element name="EU_CERTIFIED" value="EU_CERTIFIED"></element>
+    </group>
+    <group name="G_SPEC_ROWS" source="Q_SPEC_ROWS">
+      <element name="SPECIFICATION_DESC" value="SPECIFICATION_DESC"></element>
+      <element name="SPECIFICATION_VALUE" value="SPECIFICATION_VALUE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

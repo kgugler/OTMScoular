@@ -1,0 +1,613 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_LOAD_ORDER_AUTO" description="BCO Load Order - Auto" dataSourceRef="ORCL" defaultPackage="REPORTOWNER.LOAD_ORDER_REPORT_AUTO" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="SHIP_GROUP_ID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_SAMPLE"><![CDATA[SELECT  
+  DECODE(
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN
+    shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+  AND
+    sref.shipment_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION CODE'
+  WHERE 
+    sref.shipment_refnum_value IN ('XL2147T','XL2347T','COASTAL','SALMVIT')
+  AND
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')
+  trans_exists,
+  DECODE(  
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL     
+  INNER JOIN
+    shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+  AND
+    sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+  WHERE 
+    sref.shipment_refnum_value IN ('YSB','YC')
+  AND
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')  
+  ysb_yc_exists,
+  DECODE(  
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL     
+  INNER JOIN
+    shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+  AND
+    sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+  WHERE 
+    sref.shipment_refnum_value IN ('SRWW','HRWW','SWW','DNSW')
+  AND
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')  
+  wheat_exists,
+  DECODE(  
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL     
+  INNER JOIN
+    shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+  AND
+    sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+  WHERE 
+    sref.shipment_refnum_value IN ('SRWW','HRWW','SWW','DNSW','BLY')
+  AND
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')  
+  wheat_bly_exists  
+FROM
+  DUAL]]></sqlStatement>
+    <sqlStatement name="Q_QUALITY"><![CDATA[SELECT  
+  DECODE(
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN
+    order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  INNER JOIN 
+    ob_order_base ob ON orel.order_base_gid = ob.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%AFLATOXIN%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID
+  UNION
+  SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid 
+  AND
+    sstopd.stop_num = 1
+  INNER JOIN 
+    s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid 
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.RELATED PURCHASE ORDER RELEASE NUMBER'
+  INNER JOIN 
+    order_release orel ON orel.order_release_gid = CONCAT('SCOULAR/BCO.', ssur.refnum_value)
+  INNER JOIN 
+    ob_order_base ob ON ob.order_base_gid = orel.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%AFLATOXIN%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')
+  afla_exists,
+  DECODE(
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN
+    order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  INNER JOIN 
+    ob_order_base ob ON orel.order_base_gid = ob.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%PROTEIN%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID
+  UNION
+  SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid 
+  AND
+    sstopd.stop_num = 1
+  INNER JOIN 
+    s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid 
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.RELATED PURCHASE ORDER RELEASE NUMBER'
+  INNER JOIN 
+    order_release orel ON orel.order_release_gid = CONCAT('SCOULAR/BCO.', ssur.refnum_value)
+  INNER JOIN 
+    ob_order_base ob ON ob.order_base_gid = orel.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%PROTEIN%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')
+  protein_exists,  
+  DECODE(
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN
+    order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  INNER JOIN 
+    ob_order_base ob ON orel.order_base_gid = ob.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%OIL%'
+  WHERE 
+   sg.ship_group_gid = :SHIP_GROUP_ID
+  UNION
+  SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid 
+  AND
+    sstopd.stop_num = 1
+  INNER JOIN 
+    s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid 
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.RELATED PURCHASE ORDER RELEASE NUMBER'
+  INNER JOIN 
+    order_release orel ON orel.order_release_gid = CONCAT('SCOULAR/BCO.', ssur.refnum_value)
+  INNER JOIN 
+    ob_order_base ob ON ob.order_base_gid = orel.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%OIL%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')
+  oil_exists,
+  DECODE(
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN
+    order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  INNER JOIN 
+    ob_order_base ob ON orel.order_base_gid = ob.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%VOMITOXIN%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID
+  UNION
+  SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid 
+  AND
+    sstopd.stop_num = 1
+  INNER JOIN 
+    s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid 
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.RELATED PURCHASE ORDER RELEASE NUMBER'
+  INNER JOIN 
+    order_release orel ON orel.order_release_gid = CONCAT('SCOULAR/BCO.', ssur.refnum_value)
+  INNER JOIN 
+    ob_order_base ob ON ob.order_base_gid = orel.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%VOMITOXIN%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')
+  vomo_exists,  
+  DECODE(
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+  INNER JOIN 
+    s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN 
+    s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN
+    order_release orel ON ssul.order_release_gid = orel.order_release_gid
+  INNER JOIN 
+    ob_order_base ob ON orel.order_base_gid = ob.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%FALLING NUMBER%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID
+  UNION
+  SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL       
+  INNER JOIN 
+    shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid 
+  AND
+    sstopd.stop_num = 1
+  INNER JOIN 
+    s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid 
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.RELATED PURCHASE ORDER RELEASE NUMBER'
+  INNER JOIN 
+    order_release orel ON orel.order_release_gid = CONCAT('SCOULAR/BCO.', ssur.refnum_value)
+  INNER JOIN 
+    ob_order_base ob ON ob.order_base_gid = orel.order_base_gid
+  INNER JOIN
+    ob_refnum obr ON ob.order_base_gid = obr.order_base_gid
+  AND
+    obr.ob_refnum_qual_gid LIKE 'SCOULAR/BCO.GRADE%' 
+  AND
+    obr.ob_refnum_value LIKE '%FALLING NUMBER%'
+  WHERE 
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')
+  fall_exists,
+  DECODE(  
+  (SELECT DISTINCT
+    'YES'
+  FROM
+    ship_group sg
+  INNER JOIN
+    ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+  INNER JOIN
+    shipment s ON s.shipment_gid = sgd.shipment_gid 
+  AND
+    s.consol_gid IS NULL     
+  INNER JOIN
+    shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+  AND
+    sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+  WHERE 
+    sref.shipment_refnum_value IN ('SRWW','HRWW','SWW','DNSW','YSB','YC','NS','HWW','BLY')
+  AND
+    sg.ship_group_gid = :SHIP_GROUP_ID),'YES','YES',NULL,'NO','NO')  
+  commodity_exists
+FROM
+  DUAL]]></sqlStatement>
+    <sqlStatement name="Q_TRANSLOADER_ROWS"><![CDATA[
+			SELECT
+				SHIP_GROUP_GID,
+				SHIP_GROUP_XID,
+				TRANSLOADER,
+				FGIS_REQUIRED,
+				LOC_CODE,
+				ORIG_CONTACT,
+				TRANS_CONTACT,
+				SPEC_CONTACT,
+				ADDITIONAL_NOTES
+			FROM
+				(SELECT *
+					FROM TABLE (GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER(:SHIP_GROUP_ID)))
+		]]></sqlStatement>
+    <sqlStatement name="Q_SHIPMENT_ROWS"><![CDATA[
+			SELECT
+				SHIP_GROUP_GID,
+				SHIP_GROUP_XID,
+				CHARTER_VOYAGE_GID,
+				CHARTER_VOYAGE_XID,
+				SHIPMENT_GID,
+				SHIPMENT_XID,
+				TRANSLOADER_BOOKING,
+				CONTAINER_DESC,
+				COMMODITY_CODE,
+				LOAD_PORT,
+				DISCHARGE_PORT,
+				CUTOFF_DATE,
+				SAIL_DATE,
+				BOOKING_NUMBER,
+				SHIP_LINE,
+				VESSEL,
+				PICKUP_LOCATION,
+				DROPOFF_LOCATION,
+				EARLIEST_PICKUP_DATE,
+				EARLIEST_DROPOFF_DATE
+			FROM
+				(SELECT *
+				  FROM TABLE(GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_SHIPMENT(:SHIP_GROUP_ID)))
+		]]></sqlStatement>
+    <sqlStatement name="Q_CONSTRAINT_ROWS"><![CDATA[
+			SELECT DISTINCT
+				obr.ob_refnum_value
+			FROM
+				ship_group sg
+			INNER JOIN
+				ship_group_d sgd ON sgd.ship_group_gid = sg.ship_group_gid
+			INNER JOIN
+		  shipment s ON
+		  	(s.shipment_gid = sgd.shipment_gid AND
+		  	s.consol_gid IS NULL)
+		  INNER JOIN shipment_s_equipment_join ssej
+		    ON ssej.shipment_gid = s.shipment_gid
+		  INNER JOIN s_equipment_s_ship_unit_join sessuj
+		    ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+		  INNER JOIN s_ship_unit_line ssul
+		    ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+		  INNER JOIN ob_order_base oob
+		    ON oob.order_base_gid = ssul.order_base_gid
+			INNER JOIN
+				ob_refnum obr ON
+					obr.order_base_gid = oob.order_base_gid AND
+					ob_refnum_qual_gid = 'SCOULAR/BCO.EQUIPMENT_CONSTRAINT_TEXT'
+			WHERE
+				sg.ship_group_gid = :SHIP_GROUP_ID
+		]]></sqlStatement>
+    <sqlStatement name="Q_DOC_ROWS"><![CDATA[
+		  SELECT remark_text AS DOCUMENT_DESC
+			FROM
+				(SELECT *
+			  	FROM TABLE(GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_DOCS_REQ(:SHIP_GROUP_ID)))
+		]]></sqlStatement>
+    <sqlStatement name="Q_SPEC_ROWS"><![CDATA[
+	    SELECT
+			ship_group_gid,
+			specification_desc,
+			specification_value
+			FROM
+				(SELECT *
+				  FROM TABLE(GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_SPECS(:SHIP_GROUP_ID)))
+		]]></sqlStatement>
+    <sqlStatement name="Q_TREAT_ROWS"><![CDATA[
+		  SELECT ship_group_gid,
+			treatment_desc
+			FROM
+				(SELECT *
+			  FROM TABLE(GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_TREATMENTS(:SHIP_GROUP_ID)))
+		]]></sqlStatement>
+    <sqlStatement name="Q_LAB_ROWS"><![CDATA[
+	    SELECT ship_group_gid,
+				ship_group_xid,
+				lab_gid,
+				lab_name,
+				full_address,
+				phone,
+				sample_size
+			FROM
+				(SELECT *
+			 		FROM TABLE(GLOGOWNER.XXSCOU_BCO_LOAD_ORDER.FUNC_LOAD_ORDER_LABS(:SHIP_GROUP_ID)))
+		]]></sqlStatement>
+    <sqlStatement name="Q_IMAGE_TOTAL"><![CDATA[
+    	SELECT COUNT(*) Image_Total
+		  FROM document doc, document_content doc_con
+		 	WHERE doc.document_gid = doc_con.document_content_gid
+		       AND document_gid LIKE :SHIP_GROUP_ID || '_LAB%'
+		]]></sqlStatement>
+    <sqlStatement name="Q_IMAGE"><![CDATA[
+    	SELECT blob_content image1
+		  FROM document doc, document_content doc_con
+		 	WHERE doc.document_gid = doc_con.document_content_gid
+		       AND document_gid LIKE :SHIP_GROUP_ID || '_LAB%'
+		]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="afterParameterFormTrigger" source="reportowner.LOAD_ORDER_REPORT_AUTO.afterpform" />
+  <dataTrigger name="beforeReportTrigger" source="reportowner.LOAD_ORDER_REPORT_AUTO.beforereport" />
+  <dataTrigger name="updatecontainercountTrigger" source="reportowner.LOAD_ORDER_REPORT_AUTO.UPDATECONTCOUNT_SG(:SHIP_GROUP_ID)" />
+  <dataTrigger name="updateshipgroupstatusTrigger" source="reportowner.LOAD_ORDER_REPORT_AUTO.UPDATESHIPGROUPSTATUS_SG(:SHIP_GROUP_ID)" />
+  <dataStructure>
+    <group name="G_SAMPLE" source="Q_SAMPLE">
+      <element name="TRANS_EXISTS" value="TRANS_EXISTS"></element>
+      <element name="YSB_YC_EXISTS" value="YSB_YC_EXISTS"></element>
+      <element name="WHEAT_EXISTS" value="WHEAT_EXISTS"></element>
+      <element name="WHEAT_BLY_EXISTS" value="WHEAT_BLY_EXISTS"></element>
+    </group>
+    <group name="G_QUALITY" source="Q_QUALITY">
+      <element name="AFLA_EXISTS" value="AFLA_EXISTS"></element>
+      <element name="PROTEIN_EXISTS" value="PROTEIN_EXISTS"></element>
+      <element name="OIL_EXISTS" value="OIL_EXISTS"></element>
+      <element name="VOMO_EXISTS" value="VOMO_EXISTS"></element>
+      <element name="FALL_EXISTS" value="FALL_EXISTS"></element>
+      <element name="COMMODITY_EXISTS" value="COMMODITY_EXISTS"></element>
+    </group>
+    <group name="G_TRANSLOADER_ROWS" source="Q_TRANSLOADER_ROWS">
+      <element name="TRANSLOADER" value="TRANSLOADER"></element>
+      <element name="FGIS_REQUIRED" value="FGIS_REQUIRED"></element>
+      <element name="ORIG_CONTACT" value="ORIG_CONTACT"></element>
+      <element name="TRANS_CONTACT" value="TRANS_CONTACT"></element>
+      <element name="SPEC_CONTACT" value="SPEC_CONTACT"></element>
+      <element name="ADDITIONAL_NOTES" value="ADDITIONAL_NOTES"></element>
+    </group>
+    <group name="G_SHIPMENT_ROWS" source="Q_SHIPMENT_ROWS">
+      <element name="TRANSLOADER_BOOKING" value="TRANSLOADER_BOOKING"></element>
+      <element name="CONTAINER_DESC" value="CONTAINER_DESC"></element>
+      <element name="COMMODITY_CODE" value="COMMODITY_CODE"></element>
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT"></element>
+      <element name="LOAD_PORT" value="LOAD_PORT"></element>
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID"></element>
+      <element name="CUTOFF_DATE" value="CUTOFF_DATE"></element>
+      <element name="SAIL_DATE" value="SAIL_DATE"></element>
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER"></element>
+      <element name="SHIP_LINE" value="SHIP_LINE"></element>
+      <element name="VESSEL" value="VESSEL"></element>
+      <element name="PICKUP_LOCATION" value="PICKUP_LOCATION"></element>
+      <element name="DROPOFF_LOCATION" value="DROPOFF_LOCATION"></element>
+      <element name="EARLIEST_PICKUP_DATE" value="EARLIEST_PICKUP_DATE"></element>
+      <element name="EARLIEST_DROPOFF_DATE" value="EARLIEST_DROPOFF_DATE"></element>
+    </group>
+    <group name="G_CONSTRAINT_ROWS" source="Q_CONSTRAINT_ROWS">
+      <element name="OB_REFNUM_VALUE" value="OB_REFNUM_VALUE"></element>
+    </group>
+    <group name="G_DOC_ROWS" source="Q_DOC_ROWS">
+      <element name="DOCUMENT_DESC" value="DOCUMENT_DESC"></element>
+    </group>
+    <group name="G_SPEC_ROWS" source="Q_SPEC_ROWS">
+      <element name="SPECIFICATION_DESC" value="SPECIFICATION_DESC"></element>
+      <element name="SPECIFICATION_VALUE" value="SPECIFICATION_VALUE"></element>
+    </group>
+    <group name="G_TREAT_ROWS" source="Q_TREAT_ROWS">
+      <element name="TREATMENT_DESC" value="TREATMENT_DESC"></element>
+    </group>
+    <group name="G_LAB_ROWS" source="Q_LAB_ROWS">
+      <element name="LAB_NAME" value="LAB_NAME"></element>
+      <element name="FULL_ADDRESS" value="FULL_ADDRESS"></element>
+      <element name="PHONE" value="PHONE"></element>
+      <element name="SAMPLE_SIZE" value="SAMPLE_SIZE"></element>
+    </group>
+    <group name="G_IMAGE_TOTAL" source="Q_IMAGE_TOTAL">
+      <element name="IMAGE_TOTAL" value="IMAGE_TOTAL" />
+      <group name="G_IMAGE" source="Q_IMAGE">
+        <element name="IMAGE1" value="IMAGE1" />
+      </group>
+    </group>
+  </dataStructure>
+</dataTemplate>

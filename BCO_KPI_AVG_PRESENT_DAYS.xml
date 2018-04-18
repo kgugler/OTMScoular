@@ -1,0 +1,568 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_KPI_AVG_PRESENT_DAYS" description="BCO KPI Average Presentation Days" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="YEAR" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :YEAR yr
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  a.doc_man,
+  SUM(a.jan_ct)
+  jan_t,
+  (CASE WHEN SUM(a.jan_ct) = 0 THEN
+    0
+  ELSE
+    ROUND(SUM(a.jan_days) / SUM(a.jan_ct), 0)
+  END)
+  jan_a,
+  SUM(a.feb_ct)
+  feb_t,
+  (CASE WHEN SUM(a.feb_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.feb_days) / SUM(a.feb_ct), 0)
+  END)
+  feb_a,  
+  SUM(a.mar_ct)
+  mar_t,
+  (CASE WHEN SUM(a.mar_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.mar_days) / SUM(a.mar_ct), 0)
+  END)
+  mar_a,  
+  SUM(a.apr_ct)
+  apr_t,
+  (CASE WHEN SUM(a.apr_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.apr_days) / SUM(a.apr_ct), 0)
+  END)
+  apr_a,  
+  SUM(a.may_ct)
+  may_t,
+  (CASE WHEN SUM(a.may_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.may_days) / SUM(a.may_ct), 0)
+  END)
+  may_a,  
+  SUM(a.jun_ct)
+  jun_t,
+  (CASE WHEN SUM(a.jun_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.jun_days) / SUM(a.jun_ct), 0)
+  END)
+  jun_a,  
+  SUM(a.jul_ct)
+  jul_t,
+  (CASE WHEN SUM(a.jul_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.jul_days) / SUM(a.jul_ct), 0)
+  END)
+  jul_a,  
+  SUM(a.aug_ct)
+  aug_t,
+  (CASE WHEN SUM(a.aug_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.aug_days) / SUM(a.aug_ct), 0)
+  END)
+  aug_a,  
+  SUM(a.sep_ct)
+  sep_t,
+  (CASE WHEN SUM(a.sep_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.sep_days) / SUM(a.sep_ct), 0)
+  END)
+  sep_a,  
+  SUM(a.oct_ct)
+  oct_t,
+  (CASE WHEN SUM(a.oct_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.oct_days) / SUM(a.oct_ct), 0)
+  END)
+  oct_a,  
+  SUM(a.nov_ct)
+  nov_t,
+  (CASE WHEN SUM(a.nov_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.nov_days) / SUM(a.nov_ct), 0)
+  END)
+  nov_a,  
+  SUM(a.dec_ct)
+  dec_t,
+  (CASE WHEN SUM(a.dec_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.dec_days) / SUM(a.dec_ct), 0)
+  END)
+  dec_a
+FROM
+(SELECT DISTINCT
+  con.contact_gid,
+  NVL(TRIM(con.first_name || ' ' || con.last_name),'BLANK DOCUMENT MANAGER')
+  doc_man,
+  s.shipment_gid,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 1 THEN
+    1
+  ELSE
+    0
+  END)
+  jan_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 1 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  jan_days,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 2 THEN
+    1
+  ELSE
+    0
+  END)
+  feb_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 2 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  feb_days,  
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 3 THEN
+    1
+  ELSE
+    0
+  END)
+  mar_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 3 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  mar_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 4 THEN
+    1
+  ELSE
+    0
+  END)
+  apr_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 4 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  apr_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 5 THEN
+    1
+  ELSE
+    0
+  END)
+  may_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 5 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  may_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 6 THEN
+    1
+  ELSE
+    0
+  END)
+  jun_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 6 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  jun_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 7 THEN
+    1
+  ELSE
+    0
+  END)
+  jul_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 7 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  jul_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 8 THEN
+    1
+  ELSE
+    0
+  END)
+  aug_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 8 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  aug_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 9 THEN
+    1
+  ELSE
+    0
+  END)
+  sep_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 9 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  sep_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 10 THEN
+    1
+  ELSE
+    0
+  END)
+  oct_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 10 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  oct_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 11 THEN
+    1
+  ELSE
+    0
+  END)
+  nov_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 11 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  nov_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 12 THEN
+    1
+  ELSE
+    0
+  END)
+  dec_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 12 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  dec_days,    
+  s.sail_date
+FROM
+  shipment s
+INNER JOIN 
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid  
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+  oob.order_base_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+AND
+  sref.shipment_refnum_value IN ('2083','2084','2184','2200','3311','5078','5531')
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND 
+  sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+LEFT OUTER JOIN
+  contact con ON sip.involved_party_contact_gid = con.contact_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND NOT
+  s.attribute_date7 IS NULL
+AND
+  TO_NUMBER(TO_CHAR(s.sail_date,'YYYY')) = TO_NUMBER(:YEAR)) a
+GROUP BY
+  a.doc_man
+ORDER BY 
+  a.doc_man]]></sqlStatement>
+    <sqlStatement name="Q_TOTALS"><![CDATA[SELECT
+  SUM(a.jan_ct)
+  jan_tt,
+  (CASE WHEN SUM(a.jan_ct) = 0 THEN
+    0
+  ELSE
+    ROUND(SUM(a.jan_days) / SUM(a.jan_ct), 0)
+  END)
+  jan_ta,
+  SUM(a.feb_ct)
+  feb_tt,
+  (CASE WHEN SUM(a.feb_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.feb_days) / SUM(a.feb_ct), 0)
+  END)
+  feb_ta,  
+  SUM(a.mar_ct)
+  mar_tt,
+  (CASE WHEN SUM(a.mar_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.mar_days) / SUM(a.mar_ct), 0)
+  END)
+  mar_ta,  
+  SUM(a.apr_ct)
+  apr_tt,
+  (CASE WHEN SUM(a.apr_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.apr_days) / SUM(a.apr_ct), 0)
+  END)
+  apr_ta,  
+  SUM(a.may_ct)
+  may_tt,
+  (CASE WHEN SUM(a.may_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.may_days) / SUM(a.may_ct), 0)
+  END)
+  may_ta,  
+  SUM(a.jun_ct)
+  jun_tt,
+  (CASE WHEN SUM(a.jun_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.jun_days) / SUM(a.jun_ct), 0)
+  END)
+  jun_ta,  
+  SUM(a.jul_ct)
+  jul_tt,
+  (CASE WHEN SUM(a.jul_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.jul_days) / SUM(a.jul_ct), 0)
+  END)
+  jul_ta,  
+  SUM(a.aug_ct)
+  aug_tt,
+  (CASE WHEN SUM(a.aug_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.aug_days) / SUM(a.aug_ct), 0)
+  END)
+  aug_ta,  
+  SUM(a.sep_ct)
+  sep_tt,
+  (CASE WHEN SUM(a.sep_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.sep_days) / SUM(a.sep_ct), 0)
+  END)
+  sep_ta,  
+  SUM(a.oct_ct)
+  oct_tt,
+  (CASE WHEN SUM(a.oct_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.oct_days) / SUM(a.oct_ct), 0)
+  END)
+  oct_ta,  
+  SUM(a.nov_ct)
+  nov_tt,
+  (CASE WHEN SUM(a.nov_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.nov_days) / SUM(a.nov_ct), 0)
+  END)
+  nov_ta,  
+  SUM(a.dec_ct)
+  dec_tt,
+  (CASE WHEN SUM(a.dec_ct) = 0 THEN
+    0
+  ELSE  
+    ROUND(SUM(a.dec_days) / SUM(a.dec_ct), 0)
+  END)
+  dec_ta
+FROM
+(SELECT DISTINCT
+  s.shipment_gid,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 1 THEN
+    1
+  ELSE
+    0
+  END)
+  jan_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 1 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  jan_days,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 2 THEN
+    1
+  ELSE
+    0
+  END)
+  feb_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 2 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  feb_days,  
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 3 THEN
+    1
+  ELSE
+    0
+  END)
+  mar_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 3 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  mar_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 4 THEN
+    1
+  ELSE
+    0
+  END)
+  apr_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 4 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  apr_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 5 THEN
+    1
+  ELSE
+    0
+  END)
+  may_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 5 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  may_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 6 THEN
+    1
+  ELSE
+    0
+  END)
+  jun_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 6 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  jun_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 7 THEN
+    1
+  ELSE
+    0
+  END)
+  jul_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 7 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  jul_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 8 THEN
+    1
+  ELSE
+    0
+  END)
+  aug_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 8 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  aug_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 9 THEN
+    1
+  ELSE
+    0
+  END)
+  sep_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 9 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  sep_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 10 THEN
+    1
+  ELSE
+    0
+  END)
+  oct_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 10 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  oct_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 11 THEN
+    1
+  ELSE
+    0
+  END)
+  nov_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 11 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  nov_days,    
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 12 THEN
+    1
+  ELSE
+    0
+  END)
+  dec_ct,
+  (CASE WHEN TO_NUMBER(TO_CHAR(s.sail_date,'MM')) = 12 THEN
+    ROUND(s.attribute_date7 - s.sail_date,0)
+  ELSE
+    0
+  END)  
+  dec_days,    
+  s.sail_date
+FROM
+  shipment s
+INNER JOIN 
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid  
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+  oob.order_base_gid LIKE 'SCOULAR/BCO.S%'
+INNER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+AND
+  sref.shipment_refnum_value IN ('2083','2084','2184','2200','3311','5078','5531')
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND NOT
+  s.attribute_date7 IS NULL
+AND
+  TO_NUMBER(TO_CHAR(s.sail_date,'YYYY')) = TO_NUMBER(:YEAR)) a]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

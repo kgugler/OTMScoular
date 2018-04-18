@@ -2,12 +2,10 @@
 <dataTemplate name="BCO_GRADE_CERTIFICATE" description="BCO Grade Certificate" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
 	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') booking_date,
 	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
 	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
@@ -38,51 +36,11 @@ LEFT OUTER JOIN
 AND
   cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'   
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-UNION
-SELECT
-	NVL(TO_CHAR(s.sail_date, 'fmMonth DD, YYYY'), 'Data Missing in System') booking_date,
-	(CASE WHEN (SELECT COUNT(sstopdd.s_ship_unit_gid)	FROM shipment_stop_d sstopdd
-	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
-	AND NOT sunit.tag_3 IS NULL
-	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1) = 0 THEN 'Data Missing in System'
-	ELSE TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM	shipment_stop_d sstopdd
-	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
-	AND NOT sunit.tag_3 IS NULL
-	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' || 
-  NVL(TRIM(TO_CHAR(
-  (SELECT ssu.received_ship_unit_count
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
-  ,'999,999')), 'Data Missing in System') || ' FT CONTAINERS' END) quantity,
-	NVL(TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value), 'Data Missing in System') vessel,
-	NVL((SELECT sr.shipment_refnum_value
-	FROM shipment_refnum sr
-	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
-	AND sr.shipment_gid = s.shipment_gid AND rownum = 1), 'Data Missing in System') bl_num
-FROM
-	shipment s
-LEFT OUTER JOIN
-	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
-AND
-	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
-LEFT OUTER JOIN
-	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
-LEFT OUTER JOIN
-  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
-AND
-  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
-WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
-    <sqlStatement name="Q_ORDER"><![CDATA[SELECT
-	obr1.remark_text credit_number,
-	COALESCE(obr2.remark_text,
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  obr1.remark_text
+  credit_number,
+  COALESCE(obr2.remark_text,
   (SELECT it.description
   FROM shipment_stop_d sstopd
   INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
@@ -90,17 +48,17 @@ AND
   INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
   INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
   INNER JOIN item it ON pi.item_gid = it.item_gid
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
-  ) description
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1))  
+  description
 FROM
 	shipment s
-LEFT OUTER JOIN
-  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
-  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
-  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
 	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 LEFT OUTER JOIN
 	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
@@ -112,63 +70,476 @@ AND
 	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
 WHERE
 	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'FINAL'
-AND NOT
-  oob.order_base_gid IS NULL
-UNION
+UNION ALL
 SELECT
-	NVL(obr1.remark_text, 'Data Missing in System') credit_number,
-	NVL(COALESCE(obr2.remark_text, 
+  ''
+  credit_number,
   (SELECT it.description
   FROM shipment_stop_d sstopd
   INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
   AND	NOT ssu.tag_3 IS NULL
   INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
-  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
   INNER JOIN item it ON pi.item_gid = it.item_gid
-  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
-  ), 'Data Missing in System') description
+  WHERE sstopd.shipment_gid = :SHIPMENT_ID AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  description
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
 FROM
 	shipment s
-LEFT OUTER JOIN
-  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
-LEFT OUTER JOIN
-  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
-LEFT OUTER JOIN
-  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
-LEFT OUTER JOIN
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
 	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
-LEFT OUTER JOIN
-	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
-AND
-	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
-LEFT OUTER JOIN
-	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
-AND
-	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
 WHERE
-	s.shipment_gid = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT'
-AND NOT
-  oob.order_base_gid IS NULL]]></sqlStatement>
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
-  REPLACE(REPLACE(REPLACE(vsa.specification_desc,'Max',''),'Min',''),'Range','')
-  description,
-  vsa.specification_value
-  grade,
-  vsa.spec_uom
-  units
+		s_ship_unit_refnum_qual_gid,
+		REPLACE(REPLACE(REPLACE(specs.spec_desc,'Max',''),'Min',''),'Range','')
+    description,
+		specs.spec_value
+    grade,
+		CASE WHEN select_statement_used IN (1, 2) THEN specs.spec_uom ELSE '' END
+    units
 FROM
-	view_specs_actual vsa
-WHERE
-	vsa.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  (SELECT
+      1 as select_statement_used,
+      s_ship_unit_refnum_qual_gid,
+      spec_desc,
+      CAST(ROUND(CAST(SUM(CAST(spec_value AS DECIMAL(25,10))) / qf_count AS DECIMAL(20,2)), 2) AS VARCHAR(100)) AS spec_value,
+      MAX(spec_uom) AS spec_uom
+    FROM
+      (SELECT
+        ssur.rowid row_id,
+        ssu.s_ship_unit_gid,
+        ssur.s_ship_unit_refnum_qual_gid,
+        INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+        REGEXP_REPLACE(qf.uom, '[0-9,. ]', '') AS spec_uom,
+        ssur.refnum_value AS spec_value,
+        CASE WHEN ssur.s_ship_unit_refnum_qual_gid LIKE '%\_MAX%' ESCAPE '\' OR ssur.s_ship_unit_refnum_qual_gid LIKE '% MAX%' AND
+          ssur.s_ship_unit_refnum_qual_gid != 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_AGE MAX_TIME OF LOADING' THEN -1 ELSE 0 END AS is_max,
+        qfcount.qf_count
+      FROM
+        shipment s
+      INNER JOIN shipment_stop_d sstopd ON
+        s.shipment_gid = sstopd.shipment_gid AND
+        sstopd.stop_num = 1
+      INNER JOIN s_ship_unit ssu ON
+        sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN
+        s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+      AND
+        ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'          
+      INNER JOIN
+        quality_cert_containers qcc ON
+          qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+      INNER JOIN
+        quality_factors qf ON
+          qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qf.cert_number_gid = qcc.cert_number_gid
+      INNER JOIN
+        (SELECT
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+          REGEXP_REPLACE(uom.uom, '[0-9,. ]', '') AS spec_uom,
+          uom.uom,
+          COUNT(s.shipment_gid) AS qf_count
+        FROM
+          shipment s
+        INNER JOIN shipment_stop_d sstopd ON
+          s.shipment_gid = sstopd.shipment_gid AND
+          sstopd.stop_num = 1
+        INNER JOIN s_ship_unit ssu ON
+          sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+        INNER JOIN
+          s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+        AND
+          ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'            
+        INNER JOIN
+          quality_cert_containers qcc ON
+            qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+        INNER JOIN
+          quality_factors qf ON
+            qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+            qf.cert_number_gid = qcc.cert_number_gid
+        INNER JOIN
+          quality_factor_uom uom on
+            uom.s_ship_unit_refnum_qual_gid = qf.s_ship_unit_refnum_qual_gid AND
+            uom.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID
+        GROUP BY
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')),
+          uom.uom) qfcount ON
+          qfcount.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qfcount.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID)
+    WHERE
+      is_max = -1  
+    GROUP BY
+      spec_desc,
+      s_ship_unit_refnum_qual_gid,
+      qf_count
+    UNION
+    SELECT
+      2,
+      s_ship_unit_refnum_qual_gid,
+      spec_desc,
+      CAST(ROUND(CAST(SUM(CAST(spec_value AS DECIMAL(25,10))) / qf_count AS DECIMAL(20,2)), 2) AS VARCHAR(100)) AS spec_value,
+      MAX(spec_uom) AS spec_uom
+    FROM
+      (SELECT
+        ssur.rowid row_id,
+        ssu.s_ship_unit_gid,
+        ssur.s_ship_unit_refnum_qual_gid,
+        INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+        REGEXP_REPLACE(qf.uom, '[0-9,. ]', '') AS spec_uom,
+        ssur.refnum_value AS spec_value,
+        CASE WHEN ssur.s_ship_unit_refnum_qual_gid LIKE '%\_MIN%' ESCAPE '\' THEN -1 ELSE 0 END AS is_min,
+        qfcount.qf_count
+      FROM
+        shipment s
+      INNER JOIN shipment_stop_d sstopd ON
+        s.shipment_gid = sstopd.shipment_gid AND
+        sstopd.stop_num = 1
+      INNER JOIN s_ship_unit ssu ON
+        sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN
+        s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+      AND
+        ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'          
+      INNER JOIN
+        quality_cert_containers qcc ON
+          qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+      INNER JOIN
+        quality_factors qf ON
+          qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qf.cert_number_gid = qcc.cert_number_gid
+      INNER JOIN
+        (SELECT
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+          REGEXP_REPLACE(uom.uom, '[0-9,. ]', '') AS spec_uom,
+          uom.uom,
+          COUNT(s.shipment_gid) AS qf_count
+        FROM
+          shipment s
+        INNER JOIN shipment_stop_d sstopd ON
+          s.shipment_gid = sstopd.shipment_gid AND
+          sstopd.stop_num = 1
+        INNER JOIN s_ship_unit ssu ON
+          sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+        INNER JOIN
+          s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+        AND
+          ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'            
+        INNER JOIN
+          quality_cert_containers qcc ON
+            qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+        INNER JOIN
+          quality_factors qf ON
+            qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+            qf.cert_number_gid = qcc.cert_number_gid
+        INNER JOIN
+          quality_factor_uom uom on
+            uom.s_ship_unit_refnum_qual_gid = qf.s_ship_unit_refnum_qual_gid AND
+            uom.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID
+        GROUP BY
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')),
+          uom.uom) qfcount ON
+          qfcount.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qfcount.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID)
+    WHERE
+      is_min = -1    
+    GROUP BY
+      spec_desc,
+      s_ship_unit_refnum_qual_gid,
+      qf_count
+    UNION
+    SELECT
+      3,
+      s_ship_unit_refnum_qual_gid,
+      spec_desc,
+      MAX(spec_value) AS spec_value,
+      MAX(spec_uom) AS spec_uom
+    FROM
+      (SELECT DISTINCT
+        ssur.rowid row_id,
+        ssu.s_ship_unit_gid,
+        ssur.s_ship_unit_refnum_qual_gid,
+        INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+        CASE WHEN SUBSTR(ssur.refnum_value, 1, 1) = '.' THEN
+          REGEXP_REPLACE('0' || ssur.refnum_value, '([/%^ [:alpha:]])', '')
+        ELSE
+          REGEXP_REPLACE(ssur.refnum_value, '([/%^ [:alpha:]])', '')
+        END AS spec_number,
+        REGEXP_REPLACE(qf.uom, '[0-9,. ]', '') AS spec_uom,
+        qf.uom,
+        ssur.refnum_value AS spec_value,
+        CASE WHEN ssur.refnum_value = 'YES' THEN -1 ELSE 0 END AS is_yes,
+        qfcount.qf_count
+      FROM
+        shipment s
+      INNER JOIN shipment_stop_d sstopd ON
+        s.shipment_gid = sstopd.shipment_gid AND
+        sstopd.stop_num = 1
+      INNER JOIN s_ship_unit ssu ON
+        sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN
+        s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+      AND
+        ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'          
+      INNER JOIN
+        quality_cert_containers qcc ON
+          qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+      INNER JOIN
+        quality_factors qf ON
+          qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qf.cert_number_gid = qcc.cert_number_gid
+      INNER JOIN
+        (SELECT
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+          REGEXP_REPLACE(uom.uom, '[0-9,. ]', '') AS spec_uom,
+          uom.uom,
+          COUNT(s.shipment_gid) AS qf_count
+        FROM
+          shipment s
+        INNER JOIN shipment_stop_d sstopd ON
+          s.shipment_gid = sstopd.shipment_gid AND
+          sstopd.stop_num = 1
+        INNER JOIN s_ship_unit ssu ON
+          sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+        INNER JOIN
+          s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+        AND
+          ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'            
+        INNER JOIN
+          quality_cert_containers qcc ON
+            qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+        INNER JOIN
+          quality_factors qf ON
+            qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+            qf.cert_number_gid = qcc.cert_number_gid
+        INNER JOIN
+          quality_factor_uom uom on
+            uom.s_ship_unit_refnum_qual_gid = qf.s_ship_unit_refnum_qual_gid AND
+            uom.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID
+        GROUP BY
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')),
+          uom.uom) qfcount ON
+          qfcount.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qfcount.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID)
+    WHERE
+      is_yes = -1
+    GROUP BY
+      spec_desc,
+      s_ship_unit_refnum_qual_gid
+    UNION
+    SELECT
+      4,
+      s_ship_unit_refnum_qual_gid,
+      spec_desc,
+      MAX(spec_value) AS spec_value,
+      MAX(spec_uom) AS spec_uom
+    FROM
+      (SELECT
+        ssur.rowid row_id,
+        ssu.s_ship_unit_gid,
+        ssur.s_ship_unit_refnum_qual_gid,
+        INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+        CASE WHEN SUBSTR(ssur.refnum_value, 1, 1) = '.' THEN
+          REGEXP_REPLACE('0' || ssur.refnum_value, '([/%^ [:alpha:]])', '')
+        ELSE
+          REGEXP_REPLACE(ssur.refnum_value, '([/%^ [:alpha:]])', '')
+        END AS spec_number,
+        REGEXP_REPLACE(qf.uom, '[0-9,. ]', '') AS spec_UOM,
+        ssur.refnum_value AS spec_value,
+        CASE
+        WHEN
+          NOT
+          (
+            ssur.s_ship_unit_refnum_qual_gid LIKE '%\_MAX%' ESCAPE '\' OR
+            ssur.s_ship_unit_refnum_qual_gid LIKE '% MAX%' OR
+            ssur.s_ship_unit_refnum_qual_gid LIKE '%\_MIN%' ESCAPE '\' OR
+            ssur.refnum_value = 'YES'
+          )
+        THEN -1 ELSE 0 END AS is_other,
+        qfcount.qf_count
+      FROM
+        shipment s
+      INNER JOIN shipment_stop_d sstopd ON
+        s.shipment_gid = sstopd.shipment_gid AND
+        sstopd.stop_num = 1
+      INNER JOIN s_ship_unit ssu ON
+        sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN
+        s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+      AND
+        ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'          
+      INNER JOIN
+        quality_cert_containers qcc ON
+          qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+      INNER JOIN
+        quality_factors qf ON
+          qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qf.cert_number_gid = qcc.cert_number_gid
+      INNER JOIN
+        (SELECT
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+          REGEXP_REPLACE(uom.uom, '[0-9,. ]', '') AS spec_UOM,
+          uom.uom,
+          COUNT(s.shipment_gid) AS qf_count
+        FROM
+          shipment s
+        INNER JOIN shipment_stop_d sstopd ON
+          s.shipment_gid = sstopd.shipment_gid AND
+          sstopd.stop_num = 1
+        INNER JOIN s_ship_unit ssu ON
+          sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+        INNER JOIN
+          s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+        AND
+          ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'            
+        INNER JOIN
+          quality_cert_containers qcc ON
+            qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+        INNER JOIN
+          quality_factors qf ON
+            qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+            qf.cert_number_gid = qcc.cert_number_gid
+        INNER JOIN
+          quality_factor_uom uom on
+            uom.s_ship_unit_refnum_qual_gid = qf.s_ship_unit_refnum_qual_gid AND
+            uom.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID
+        GROUP BY
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')),
+          uom.uom) qfcount ON
+          qfcount.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qfcount.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID)
+    WHERE
+      is_other = -1  
+    GROUP BY
+      spec_desc,
+      s_ship_unit_refnum_qual_gid
+    UNION
+    SELECT
+      5,
+      s_ship_unit_refnum_qual_gid,
+      spec_desc,
+      CAST(MAX(spec_value) AS VARCHAR(100)) AS spec_value,
+      MAX(spec_uom) AS spec_uom
+    FROM
+      (SELECT
+        ssur.rowid row_id,
+        ssu.s_ship_unit_gid,
+        ssur.s_ship_unit_refnum_qual_gid,
+        INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+        CASE WHEN SUBSTR(ssur.refnum_value, 1, 1) = '.' THEN
+          REGEXP_REPLACE('0' || ssur.refnum_value, '([/%^ [:alpha:]])', '')
+        ELSE
+          REGEXP_REPLACE(ssur.refnum_value, '([/%^ [:alpha:]])', '')
+        END AS spec_number,
+        REGEXP_REPLACE(qf.uom, '[0-9,. ]', '') AS spec_UOM,
+        ssur.refnum_value AS spec_value,
+        CASE WHEN ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_AGE MAX_TIME OF LOADING' THEN
+        -1 ELSE 0 END AS is_date,
+        qfcount.qf_count
+      FROM
+        shipment s
+      INNER JOIN shipment_stop_d sstopd ON
+        s.shipment_gid = sstopd.shipment_gid AND
+        sstopd.stop_num = 1
+      INNER JOIN s_ship_unit ssu ON
+        sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+      INNER JOIN
+        s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+      AND
+        ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'          
+      INNER JOIN
+        quality_cert_containers qcc ON
+          qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+      INNER JOIN
+        quality_factors qf ON
+          qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qf.cert_number_gid = qcc.cert_number_gid
+      INNER JOIN
+        (SELECT
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')) AS spec_desc,
+          REGEXP_REPLACE(uom.uom, '[0-9,. ]', '') AS spec_UOM,
+          uom.uom,
+          COUNT(s.shipment_gid) AS qf_count
+        FROM
+          shipment s
+        INNER JOIN shipment_stop_d sstopd ON
+          s.shipment_gid = sstopd.shipment_gid AND
+          sstopd.stop_num = 1
+        INNER JOIN s_ship_unit ssu ON
+          sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+        INNER JOIN
+          s_ship_unit_refnum ssur ON ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+        AND
+          ssur.s_ship_unit_refnum_qual_gid LIKE 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC\_%' ESCAPE '\'            
+        INNER JOIN
+          quality_cert_containers qcc ON
+            qcc.s_ship_unit_gid = ssur.s_ship_unit_gid
+        INNER JOIN
+          quality_factors qf ON
+            qf.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+            qf.cert_number_gid = qcc.cert_number_gid
+        INNER JOIN
+          quality_factor_uom uom on
+            uom.s_ship_unit_refnum_qual_gid = qf.s_ship_unit_refnum_qual_gid AND
+            uom.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID
+        GROUP BY
+          ssur.s_ship_unit_refnum_qual_gid,
+          INITCAP(REPLACE(REPLACE(ssur.s_ship_unit_refnum_qual_gid, 'SCOULAR/BCO.BCO_ACT PRODUCT SPEC_', ''), '_', ' ')),
+          uom.uom) qfcount ON
+          qfcount.s_ship_unit_refnum_qual_gid = ssur.s_ship_unit_refnum_qual_gid AND
+          qfcount.uom = qf.uom
+        WHERE
+          s.shipment_gid = :SHIPMENT_ID)
+    WHERE
+      is_date = -1     
+    GROUP BY
+      spec_desc,
+      s_ship_unit_refnum_qual_gid
+  ) specs
+GROUP BY
+  select_statement_used,
+  s_ship_unit_refnum_qual_gid,
+  specs.spec_desc,
+  specs.spec_value,
+  specs.spec_uom]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="BOOKING_DATE" value="BOOKING_DATE" />
       <element name="QUANTITY" value="QUANTITY" />

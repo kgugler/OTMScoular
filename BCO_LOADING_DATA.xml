@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_LOADING_DATA" description="BCO Loading Data" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  TO_NUMBER(TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'MM')) mo,
+  TO_NUMBER(TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'YYYY')) yer,
+  ssref1.refnum_value
+  transloader,
+  sref2.shipment_refnum_value
+  commodity,
+  TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'MON')
+  mth,
+  TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'YYYY')
+  yr,
+  COUNT(ssu.s_ship_unit_xid)
+  total_boxes,
+  loc1.location_name
+  gateway,
+  cc.country_name
+  destination,
+  sprov.servprov_xid
+  ssl
+FROM
+	s_ship_unit ssu
+INNER JOIN
+	shipment_stop_d sstopd ON ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+AND
+	sstopd.stop_num = 1
+INNER JOIN
+	shipment s ON sstopd.shipment_gid = s.shipment_gid
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+INNER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+INNER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'  
+INNER JOIN
+  s_ship_unit_refnum ssref1 ON ssu.s_ship_unit_gid = ssref1.s_ship_unit_gid
+AND
+  ssref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME'  
+INNER JOIN
+  servprov sprov ON s.servprov_gid = sprov.servprov_gid
+INNER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid
+INNER JOIN
+  country_code cc ON loc2.country_code3_gid = cc.country_code3_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+	ssu.s_ship_unit_xid LIKE 'S%'
+AND
+  sref1.shipment_refnum_value IN ('2083','2084','2184','2185','3311','5071','5078','5531','2200')
+AND
+  (TO_DATE(ssu.tag_2,'MM/DD/YYYY') >= TRUNC(TO_DATE(:START_DATE,'YYYY-MM-DD')) - (TO_NUMBER(TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'DD')) - 1)
+AND
+  TO_DATE(ssu.tag_2,'MM/DD/YYYY') <= ADD_MONTHS(TRUNC(TO_DATE(:END_DATE,'YYYY-MM-DD')) - (TO_NUMBER(TO_CHAR(TO_DATE(:END_DATE,'YYYY-MM-DD'),'DD')) - 1), 1) -1)
+GROUP BY
+  TO_NUMBER(TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'YYYY')), TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'YYYY'), 
+  TO_NUMBER(TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'MM')), TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'MON'), 
+  ssref1.refnum_value, sref2.shipment_refnum_value, loc1.location_name, cc.country_name, sprov.servprov_xid
+ORDER BY
+  TO_NUMBER(TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'YYYY')), TO_NUMBER(TO_CHAR(TO_DATE(ssu.tag_2,'MM/DD/YYYY'),'MM')), 
+  ssref1.refnum_value, sref2.shipment_refnum_value, loc1.location_name, cc.country_name, sprov.servprov_xid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

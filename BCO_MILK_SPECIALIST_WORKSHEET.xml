@@ -1,0 +1,206 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_MILK_SPECIALIST_WORKSHEET" description="BCO Milk Specialist Worksheet" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS1"><![CDATA[SELECT 
+  a.*,
+  '=L' || TO_CHAR(ROWNUM + 2) || '-M' || TO_CHAR(ROWNUM + 2)
+  difference
+FROM
+(SELECT DISTINCT
+  sref3.shipment_refnum_value 
+  booking_no,
+  (SELECT ssur.refnum_value
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1)
+  po_no,
+  sref4.shipment_refnum_value 
+  contract_no,
+  loc2.location_name
+  dest_port,
+  s.total_ship_unit_count
+  container_count,
+  ROUND((SELECT SUM(ssu.unit_net_weight_base)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid) / 2204.62262,3)
+  actual_weight,
+  TO_CHAR(s.sail_date,'MM/DD/YYYY')
+  depart_date,
+  TO_CHAR(s.port_discharge_eta,'MM/DD/YYYY')
+  eta,
+  sref5.shipment_refnum_value
+  container_cost,
+  ROUND((SELECT SUM(ship.total_actual_cost_base)
+  FROM shipment ship
+  WHERE ship.shipment_gid IN
+  (SELECT shp1.shipment_gid
+  FROM shipment shp1
+  WHERE shp1.shipment_gid = s.shipment_gid
+  UNION
+  SELECT shp2.shipment_gid
+  FROM shipment shp2
+  WHERE shp2.original_shipment_gid = s.shipment_gid)) / 
+  ROUND((SELECT SUM(ssu.unit_net_weight_base)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid) / 2204.62262,3),2)
+  freight,
+  ROUND(TO_NUMBER((SELECT oref.ob_refnum_value
+  FROM ob_refnum oref
+  WHERE oref.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+  AND oref.order_base_gid = 'SCOULAR/BCO.' || sref4.shipment_refnum_value)),2)
+  price,
+  ROUND((ROUND(TO_NUMBER((SELECT oref.ob_refnum_value
+  FROM ob_refnum oref
+  WHERE oref.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+  AND oref.order_base_gid = 'SCOULAR/BCO.' || sref4.shipment_refnum_value)),2) -
+  (0.015 * 2204.62) - 
+  ROUND((SELECT SUM(ship.total_actual_cost_base)
+  FROM shipment ship
+  WHERE ship.shipment_gid IN
+  (SELECT shp1.shipment_gid
+  FROM shipment shp1
+  WHERE shp1.shipment_gid = s.shipment_gid
+  UNION
+  SELECT shp2.shipment_gid
+  FROM shipment shp2
+  WHERE shp2.original_shipment_gid = s.shipment_gid)) / 
+  ROUND((SELECT SUM(ssu.unit_net_weight_base)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid) / 2204.62262,3),2))/2204.62, 4)
+  ex_works_price,
+  0
+  base_price
+FROM
+  shipment s
+INNER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+LEFT OUTER JOIN
+  shipment_refnum sref4 ON s.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO' 
+LEFT OUTER JOIN
+  shipment_refnum sref5 ON s.shipment_gid = sref5.shipment_gid
+AND
+  sref5.shipment_refnum_qual_gid = 'SCOULAR.COST_PER_CONTAINER'   
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'  
+LEFT OUTER JOIN 
+  location loc1 ON sip.involved_party_contact_gid = loc1.location_gid  
+LEFT OUTER JOIN 
+  location loc2 ON s.port_of_dis_location_gid = loc2.location_gid    
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  sref1.shipment_refnum_value = '5071'
+AND
+  sref2.shipment_refnum_value = 'PDPW'
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') >= TO_DATE(SYSDATE-5,'dd-mm-rr')
+AND
+  EXISTS
+  (SELECT ssu.s_ship_unit_gid
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND NOT ssu.tag_3 IS NULL
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid)
+AND
+  EXISTS
+  (SELECT ssej.shipment_gid
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND oob.order_base_xid LIKE 'S%')) a]]></sqlStatement>
+    <sqlStatement name="Q_ROWS2"><![CDATA[SELECT DISTINCT
+  sref3.shipment_refnum_value 
+  booking_num,
+  (SELECT ssur.refnum_value
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssur ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1)
+  po_num,
+  sref4.shipment_refnum_value 
+  so_num,
+  ssu.tag_3
+  container_num,
+  ROUND((ssu.unit_net_weight_base / 2204.62262),3)
+  container_wt,
+  ssu.tag_2
+  load_date
+FROM
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND NOT
+  ssu.tag_3 IS NULL
+INNER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+INNER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+INNER JOIN
+  shipment_refnum sref4 ON s.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO'
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  sref1.shipment_refnum_value = '5071'
+AND
+  sref2.shipment_refnum_value = 'PDPW'
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') >= TO_DATE(SYSDATE-5,'dd-mm-rr')
+AND
+  EXISTS
+  (SELECT ssej.shipment_gid
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND oob.order_base_xid LIKE 'S%')]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

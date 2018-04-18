@@ -1,0 +1,138 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_CONTAINER_EVENTS" description="TSC Container Events Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character"></parameter>
+    <parameter name="BOOKING" dataType="character" />
+    <parameter name="CONTAINERS" dataType="character" />
+    <parameter name="SAIL_START_DATE" dataType="character" />
+    <parameter name="SAIL_END_DATE" dataType="character" />
+    <parameter name="ETA_START_DATE" dataType="character" />
+    <parameter name="ETA_END_DATE" dataType="character" />
+    <parameter name="SOURCE" dataType="character" />
+    <parameter name="DEST" dataType="character" />
+    <parameter name="PORT_LOAD" dataType="character" />
+    <parameter name="PORT_DISCH" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  sssu.i_transaction_no,
+  iess.eventdate,
+  sref.shipment_refnum_value
+  booking_no,
+  s.shipment_xid
+  shipment_no,
+  TO_CHAR(s.sail_date,'MM/DD/YY')
+  sail_dt,
+  TO_CHAR(s.port_discharge_eta,'MM/DD/YY')
+  eta,  
+  loc1.location_name
+  source_loc,
+  loc2.location_name
+  dest_loc,
+  loc3.location_name
+  load_port,
+  loc4.location_name
+  disch_port,  
+  ssu.tag_3
+  container_no,
+  bssc.description
+  status_code,
+  TO_CHAR(iess.eventdate,'MM/DD/YY HH24:MI') || ' ' || iess.time_zone_gid
+  event_dt_tm,
+  NVL(loc5.location_name,iessst.location_name)
+  event_location,
+  iessst.event_city ||
+  (CASE WHEN NOT iessst.event_state IS NULL THEN
+    ', ' || iessst.event_state
+  END)
+  event_city_state,
+  NVL(cc1.country_name,cc2.country_name)
+  event_country
+FROM 
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  ss_s_ship_unit sssu ON ssu.s_ship_unit_gid = sssu.s_ship_unit_gid
+LEFT OUTER JOIN
+  ie_shipmentstatus iess ON sssu.i_transaction_no = iess.i_transaction_no
+LEFT OUTER JOIN
+  ie_ss_stop iessst ON iess.i_transaction_no = iessst.i_transaction_no
+LEFT OUTER JOIN
+  bs_status_code bssc ON iess.status_code_gid = bssc.bs_status_code_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  location loc3 ON s.port_of_load_location_gid = loc3.location_gid  
+LEFT OUTER JOIN
+  location loc4 ON s.port_of_dis_location_gid = loc4.location_gid  
+LEFT OUTER JOIN
+  location loc5 ON iessst.location_gid = loc5.location_gid 
+LEFT OUTER JOIN
+  country_code cc1 ON loc5.country_code3_gid = cc1.country_code3_gid
+LEFT OUTER JOIN
+  country_code cc2 ON iessst.event_country = cc2.country_code2
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.transport_mode_gid = 'VESSEL-CO'
+AND
+  s.servprov_gid = 'SCOULAR.TSCCDO'
+AND
+  (:SHIPMENT_ID IS NULL OR 
+  (NOT :SHIPMENT_ID IS NULL AND  
+  s.shipment_gid IN (SELECT REGEXP_SUBSTR(:SHIPMENT_ID, '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR(:SHIPMENT_ID, ',', 1, LEVEL - 1) > 0)))
+AND
+  (:BOOKING IS NULL OR 
+  (NOT :BOOKING IS NULL AND  
+  sref.shipment_refnum_value IN (SELECT REGEXP_SUBSTR(:BOOKING, '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR(:BOOKING, ',', 1, LEVEL - 1) > 0)))
+AND
+  (:CONTAINERS IS NULL OR 
+  (NOT :CONTAINERS IS NULL AND  
+  ssu.tag_3 IN (SELECT REGEXP_SUBSTR(:CONTAINERS, '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR(:CONTAINERS, ',', 1, LEVEL - 1) > 0)))
+AND
+  (:SAIL_START_DATE IS NULL AND :SAIL_END_DATE IS NULL OR
+  (NOT NVL(:SAIL_START_DATE,:SAIL_END_DATE) IS NULL AND NOT NVL(:SAIL_END_DATE,:SAIL_START_DATE) IS NULL AND
+  (TO_DATE(s.sail_date,'dd-mm-rr') >= TO_DATE(NVL(:SAIL_START_DATE,:SAIL_END_DATE),'YYYY-MM-DD') AND
+  TO_DATE(s.sail_date,'dd-mm-rr') <= TO_DATE(NVL(:SAIL_END_DATE,:SAIL_START_DATE),'YYYY-MM-DD'))))
+AND
+  (:ETA_START_DATE IS NULL AND :ETA_END_DATE IS NULL OR
+  (NOT NVL(:ETA_START_DATE,:ETA_END_DATE) IS NULL AND NOT NVL(:ETA_END_DATE,:ETA_START_DATE) IS NULL AND
+  (TO_DATE(s.port_discharge_eta,'dd-mm-rr') >= TO_DATE(NVL(:ETA_START_DATE,:ETA_END_DATE),'YYYY-MM-DD') AND
+  TO_DATE(s.port_discharge_eta,'dd-mm-rr') <= TO_DATE(NVL(:ETA_END_DATE,:ETA_START_DATE),'YYYY-MM-DD'))))
+AND
+  (:SOURCE IS NULL OR 
+  (NOT :SOURCE IS NULL AND
+  loc1.location_gid = :SOURCE))
+AND
+  (:DEST IS NULL OR 
+  (NOT :DEST IS NULL AND
+  loc2.location_gid = :DEST))  
+AND
+  (:PORT_LOAD IS NULL OR 
+  (NOT :PORT_LOAD IS NULL AND
+  loc3.location_gid = :PORT_LOAD)) 
+AND
+  (:PORT_DISCH IS NULL OR 
+  (NOT :PORT_DISCH IS NULL AND
+  loc4.location_gid = :PORT_DISCH))     
+ORDER BY
+  sref.shipment_refnum_value, s.shipment_xid, ssu.tag_3, iess.eventdate DESC]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

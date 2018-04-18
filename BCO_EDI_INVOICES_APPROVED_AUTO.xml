@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_EDI_INVOICES_APPROVED_AUTO" description="BCO EDI Invoices Approved (Auto)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  TO_CHAR(SYSDATE-7,'YYYY-MM-DD') rec_start_date,
+  TO_CHAR(SYSDATE,'YYYY-MM-DD') rec_end_date
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  inv.insert_date,
+  invref1.invoice_refnum_value 
+  loc_num,
+  glog_util.remove_domain(inv.servprov_gid)
+  carrier_id,
+  invref2.invoice_refnum_value 
+  shipment_id,
+  sref1.shipment_refnum_value 
+  booking_no,
+  sref2.shipment_refnum_value 
+  bill_lading_no,  
+  inv.invoice_number
+  invoice_no,
+  sh.total_ship_unit_count 
+  containers,
+  sref3.shipment_refnum_value 
+  per_container,
+  TRIM(TO_CHAR(inv.net_amount_base,'999,999,990.00'))
+  total_amount,
+  TO_CHAR(inv.net_due_date, 'MM/DD/YYYY') 
+  due_date,
+  TO_CHAR(from_tz(CAST(inv.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YYYY')
+  date_received,
+  (CASE WHEN 
+    (SELECT COUNT(vouch.invoice_gid)
+    FROM voucher vouch
+    WHERE vouch.invoice_gid = inv.invoice_gid) > 0
+  THEN 'YES' ELSE 'NO' END)
+  approved,
+  (CASE WHEN
+  (SELECT COUNT(vouch.invoice_gid)
+  FROM voucher vouch
+  WHERE vouch.invoice_gid = inv.invoice_gid
+  AND vouch.was_auto_approved = 'Y') > 0 THEN
+  'YES'
+  ELSE
+    (CASE WHEN
+    (SELECT COUNT(vouch.invoice_gid)
+    FROM voucher vouch
+    WHERE vouch.invoice_gid = inv.invoice_gid
+    AND vouch.was_auto_approved = 'Y') = 0 AND 
+    (SELECT COUNT(vouch.invoice_gid)
+    FROM voucher vouch
+    WHERE vouch.invoice_gid = inv.invoice_gid
+    AND vouch.was_auto_approved = 'N') > 0   
+    THEN
+    'NO'
+    ELSE
+    ''
+    END)
+  END)
+  auto_approved
+FROM
+  invoice inv
+LEFT OUTER JOIN
+  invoice_refnum invref1 ON inv.invoice_gid = invref1.invoice_gid
+AND
+  invref1.invoice_refnum_qual_gid = 'SCOULAR/BCO.LOC_CODE'
+LEFT OUTER JOIN
+  invoice_refnum invref2 ON inv.invoice_gid = invref2.invoice_gid
+AND
+  invref2.invoice_refnum_qual_gid = 'SCOULAR.SHIPMENT ID' 
+LEFT OUTER JOIN
+  shipment sh ON 'SCOULAR/BCO.' || invref2.invoice_refnum_value = sh.shipment_gid
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'  
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON sh.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.COST PER CONTAINER'
+WHERE
+  inv.domain_name = 'SCOULAR/BCO'
+AND 
+  inv.invoice_source = 'I'
+AND 
+  (TO_DATE(TO_CHAR(from_tz(CAST(inv.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YYYY'),'MM/DD/YYYY') >= TO_DATE(SYSDATE-7,'dd-mm-rr')
+AND
+  TO_DATE(TO_CHAR(from_tz(CAST(inv.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YYYY'),'MM/DD/YYYY') <= TO_DATE(SYSDATE,'dd-mm-rr'))
+ORDER BY
+  inv.insert_date DESC]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

@@ -1,0 +1,256 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_LATE_TONNAGE" description="BCO Late Tonnage" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="YEAR" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  SUBSTR(:YEAR,3,2) yr
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  b.shp_loc,
+  TO_CHAR(ROUND((SUM(jan_l) / (SUM(jan_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  jan_p,
+  TO_CHAR(ROUND(SUM(jan_l),3),'999999990.000')
+  jan_t,
+  TO_CHAR(ROUND((SUM(feb_l) / (SUM(feb_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  feb_p,
+  TO_CHAR(ROUND(SUM(feb_l),3),'999999990.000')
+  feb_t,  
+  TO_CHAR(ROUND((SUM(mar_l) / (SUM(mar_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  mar_p,
+  TO_CHAR(ROUND(SUM(mar_l),3),'999999990.000')
+  mar_t,  
+  TO_CHAR(ROUND((SUM(apr_l) / (SUM(apr_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  apr_p,
+  TO_CHAR(ROUND(SUM(apr_l),3),'999999990.000')
+  apr_t,  
+  TO_CHAR(ROUND((SUM(may_l) / (SUM(may_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  may_p,
+  TO_CHAR(ROUND(SUM(may_l),3),'999999990.000')
+  may_t,  
+  TO_CHAR(ROUND((SUM(jun_l) / (SUM(jun_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  jun_p,
+  TO_CHAR(ROUND(SUM(jun_l),3),'999999990.000')
+  jun_t,  
+  TO_CHAR(ROUND((SUM(jul_l) / (SUM(jul_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  jul_p,
+  TO_CHAR(ROUND(SUM(jul_l),3),'999999990.000')
+  jul_t,  
+  TO_CHAR(ROUND((SUM(aug_l) / (SUM(aug_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  aug_p,
+  TO_CHAR(ROUND(SUM(aug_l),3),'999999990.000')
+  aug_t,  
+  TO_CHAR(ROUND((SUM(sep_l) / (SUM(sep_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  sep_p,
+  TO_CHAR(ROUND(SUM(sep_l),3),'999999990.000')
+  sep_t,  
+  TO_CHAR(ROUND((SUM(oct_l) / (SUM(oct_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  oct_p,
+  TO_CHAR(ROUND(SUM(oct_l),3),'999999990.000')
+  oct_t,  
+  TO_CHAR(ROUND((SUM(nov_l) / (SUM(nov_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  nov_p,
+  TO_CHAR(ROUND(SUM(nov_l),3),'999999990.000')
+  nov_t,  
+  TO_CHAR(ROUND((SUM(dec_l) / (SUM(dec_t) + 0.00000000001)) * 100,2),'990.00') || '%'
+  dec_p,
+  TO_CHAR(ROUND(SUM(dec_l),3),'999999990.000')
+  dec_t
+FROM
+(SELECT
+  a.shp_loc,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  jan_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  jan_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  feb_l,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN  
+    a.total_net_weight
+  ELSE
+    0    
+  END)),0)
+  feb_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  mar_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  mar_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  apr_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  apr_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  may_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  may_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  jun_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN  
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  jun_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  jul_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  jul_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  aug_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  aug_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  sep_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  sep_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  oct_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  oct_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  nov_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    a.total_net_weight
+  ELSE
+    0
+  END))
+  nov_t,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 AND a.sail_date > a.late_delivery_date THEN
+    a.total_net_weight
+  ELSE
+    0
+  END))
+  dec_l,
+  SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    a.total_net_weight
+  ELSE
+    0    
+  END))
+  dec_t
+FROM
+(SELECT DISTINCT
+  sref.shipment_refnum_value
+  shp_loc,
+  s.shipment_gid,
+  s.total_net_weight,
+  s.sail_date,
+  obl.late_delivery_date
+FROM
+  shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid  
+INNER JOIN
+  ob_line obl ON oob.order_base_gid = obl.order_base_gid
+INNER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  oob.order_base_xid like 'S%'  
+AND
+  EXISTS (SELECT ssu.s_ship_unit_gid
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.stop_num = 1
+  AND ssd.shipment_gid = s.shipment_gid
+  AND NOT ssu.tag_3 IS NULL)
+AND
+  TO_NUMBER(TO_CHAR(s.sail_date,'YYYY')) = TO_NUMBER(:YEAR)) a
+GROUP BY
+  a.shp_loc,
+  a.sail_date,
+  a.late_delivery_date) b
+GROUP BY
+  b.shp_loc
+ORDER BY
+  b.shp_loc]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

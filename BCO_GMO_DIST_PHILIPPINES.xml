@@ -3,57 +3,122 @@
   <lexicals></lexicals>
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
-	TO_CHAR(SAIL_DATE),
-	SHIPMENT_XID AS SHIPMENT_NUMBER,
-	CREDIT_NUMBER,
-	CONTAINER_COUNTANDDETAIL,
-	VESSEL,
-	CONTRACT_NUMBER,
-	TO_CHAR(ROUND(MT_WEIGHT_NUMONLY,3),'999,999,990.000') || ' MT' MT_WEIGHT_NUMONLY,
-	COMMODITY_DETAIL,
-	NOTIFY_PARTY
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	TO_CHAR(s.sail_date) 
+  sail_date,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999'))
+  || ' CONTAINERS'
+  quantity,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) 
+  vessel,
+  TRIM(TO_CHAR(ROUND((SELECT SUM(ROUND((CASE WHEN ssunit.tag_3 IS NULL THEN 0 ELSE ssunit.unit_net_weight_base END / 2204.5855379), 3))
+  FROM shipment_stop_d sstopd 
+  INNER JOIN s_ship_unit ssunit ON sstopd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid
+  AND sstopd.stop_num = 1),3),'999,999,990.000')) || ' MT'
+  mt_weight_numonly
 FROM
-	VIEW_SHIPMENT_SUMMARY VSS
-WHERE
-	SHIPMENT_GID = :SHIPMENT_ID
+  shipment s
+LEFT OUTER JOIN
+	shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
 AND
-	:P_RUN = 'FINAL'
-UNION
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	consol csl ON csl.charter_voyage_gid = CONCAT('SCOULAR/BCO.', sref.shipment_refnum_value)
+LEFT OUTER JOIN
+	charter_voyage cv ON csl.charter_voyage_gid = cv.charter_voyage_gid  
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+WHERE
+  s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  obr1.remark_text   
+  credit_number,
+  COALESCE(obr2.remark_text, 
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)) 
+  description,
+  oref.ob_refnum_value
+  notify_party
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+  ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+AND
+  oref.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
 SELECT
-	NVL(TO_CHAR(SAIL_DATE),'Data Missing in System') SAIL_DATE,
-	'TBD' AS SHIPMENT_NUMBER,
-	NVL(CREDIT_NUMBER, 'Data Missing in System') CREDIT_NUMBER,
-	NVL(CONTAINER_COUNTANDDETAIL, 'Data Missing in System') CONTAINER_COUNTANDDETAIL,
-	NVL(VESSEL, 'Data Missing in System') VESSEL,
-	NVL(CONTRACT_NUMBER, 'Data Missing in System') CONTRACT_NUMBER,
-	NVL(TO_CHAR(ROUND(MT_WEIGHT_NUMONLY,3),'999,999,990.000'), 'Data Missing in System') || ' MT' MT_WEIGHT_NUMONLY,
-	NVL(COMMODITY_DETAIL, 'Data Missing in System') COMMODITY_DETAIL,
-	NVL(NOTIFY_PARTY, 'Data Missing in System') NOTIFY_PARTY
+  ''
+  credit_number,
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = :SHIPMENT_ID AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  description,
+  ''
+  notify_party
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
 FROM
-	VIEW_SHIPMENT_SUMMARY VSS
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
 WHERE
-	SHIPMENT_GID = :SHIPMENT_ID
-AND
-	:P_RUN = 'DRAFT']]></sqlStatement>
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="SAIL_DATE" value="SAIL_DATE" />
-      <element name="SHIPMENT_NUMBER" value="SHIPMENT_NUMBER" />
-      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
-      <element name="CONTAINER_COUNTANDDETAIL" value="CONTAINER_COUNTANDDETAIL" />
+      <element name="QUANTITY" value="QUANTITY" />
       <element name="VESSEL" value="VESSEL"></element>
-      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER" />
       <element name="MT_WEIGHT_NUMONLY" value="MT_WEIGHT_NUMONLY" />
-      <element name="COMMODITY_DETAIL" value="COMMODITY_DETAIL" />
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
       <element name="NOTIFY_PARTY" value="NOTIFY_PARTY" />
     </group>
   </dataStructure>
