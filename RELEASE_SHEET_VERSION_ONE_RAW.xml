@@ -1,0 +1,197 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="RELEASE_SHEET_VERSION_ONE_RAW" description="Release Sheet Version One Raw" dataSourceRef="ORCL" version="1.0">
+  <parameters>
+    <parameter name="P_LOCATION_GID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+:P_LOCATION_GID location
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT sh.shipment_gid,
+                sh.end_time AS end_date,
+                sh.start_time AS start_date,
+                NVL(ssur1.refnum_value,sh.shipment_xid) Shipment,
+                (SELECT transport_mode_xid
+                   FROM transport_mode
+                  WHERE sh.transport_mode_gid = transport_mode_gid)
+                   AS mode1,
+                (SELECT location_name
+                   FROM location
+                  WHERE location_gid = sh.servprov_gid)
+                   AS carrier,
+                (SELECT location_name
+                   FROM location
+                  WHERE location_gid = ordrel.dest_location_gid)
+                   AS dest_customer,
+                (SELECT location_name
+                   FROM location
+                  WHERE location_gid = ordrel.source_location_gid)
+                   AS source_customer,
+                GLOGOWNER.xxscou_utility_pkg.xxscou_get_location_addr_fcn (
+                   ordrel.dest_location_gid)
+                || (SELECT DECODE (loc.city, NULL, NULL, ',' || loc.city)
+                           || DECODE (loc.province_code,
+                                      NULL, NULL,
+                                      ',' || loc.province_code)
+                           || DECODE (loc.postal_code,
+                                      NULL, NULL,
+                                      ',' || loc.postal_code)
+                      FROM location loc
+                     WHERE 1 = 1 AND loc.location_gid = ordrel.dest_location_gid)
+                   dest_Address,
+                GLOGOWNER.xxscou_utility_pkg.xxscou_get_location_addr_fcn (
+                   ordrel.source_location_gid)
+                || (SELECT DECODE (loc.city, NULL, NULL, ',' || loc.city)
+                           || DECODE (loc.province_code,
+                                      NULL, NULL,
+                                      ',' || loc.province_code)
+                           || DECODE (loc.postal_code,
+                                      NULL, NULL,
+                                      ',' || loc.postal_code)
+                      FROM location loc
+                     WHERE 1 = 1
+                           AND loc.location_gid = ordrel.source_location_gid)
+                   source_Address,
+                GLOGOWNER.XX_SCOULAR_RELEASE_SHEET_1_PKG.xxscou_get_ref_num_fcn (
+                   sh.shipment_gid,
+                   'CUSTOMER PO RELEASE NUMBER')
+                   po,
+                pi.packaged_item_xid AS product,
+                ssul.weight_base AS quantity,
+                'LB' AS uom,
+                (CASE WHEN NOT pi.packaged_item_type_gid IS NULL AND pi.package_ship_unit_weight > 0  THEN
+                     TO_CHAR(pi.package_ship_unit_weight,'999999999')
+                ELSE
+                GLOGOWNER.XX_SCOULAR_RELEASE_SHEET_1_PKG.xxscou_get_rel_ref_num_fcn (
+                   ssul.order_release_gid,
+                   'PACKAGING NUMBER') END)
+                   packaging_num,
+                (CASE WHEN NOT pi.packaged_item_type_gid IS NULL AND pi.package_ship_unit_weight > 0 THEN
+                     pi.package_ship_unit_weight_uom
+                ELSE
+                GLOGOWNER.XX_SCOULAR_RELEASE_SHEET_1_PKG.xxscou_get_rel_ref_num_fcn (
+                   ssul.order_release_gid,
+                   'PACKAGING UNIT OF MEASURE')  END)
+                   packaging_uom,
+                (CASE WHEN NOT pi.packaged_item_type_gid IS NULL AND pi.package_ship_unit_weight > 0 THEN
+                    (SELECT pit.packaged_item_type_xid
+                    FROM packaged_item_type pit
+                    WHERE pi.packaged_item_type_gid = pit.packaged_item_type_gid)
+                ELSE
+                GLOGOWNER.XX_SCOULAR_RELEASE_SHEET_1_PKG.xxscou_get_rel_ref_num_fcn (
+                   ssul.order_release_gid,
+                   'LTL PACKAGING DESCRIPTION')  END)
+                   packaging_ltl,
+                GLOGOWNER.XX_SCOULAR_RELEASE_SHEET_1_PKG.xxscou_get_blend_fcn (
+                   pi.packaged_item_gid,
+                   ordrel.source_location_gid,
+                   ordrel.dest_location_gid,
+                   sh.start_time)
+                   confidential,
+                (SELECT sv.status_value_xid
+                   FROM shipment_status ss1, status_value sv
+                  WHERE     ss1.status_type_gid = 'SCOULAR/FOOD.ENROUTE'
+                        AND ss1.status_type_gid = sv.status_type_gid
+                        AND ss1.status_value_gid = sv.status_value_gid
+                        AND ss1.shipment_gid = sh.shipment_gid)
+                   shipment_statu,
+                (SELECT DECODE (status_value_gid, 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD_YES', 'Yes')
+                       FROM shipment_status
+                      WHERE     status_type_gid LIKE '%SHIPMENT_FDA_HOLD%'
+                            AND shipment_gid = sh.shipment_gid) fda_hold,
+                loc.location_gid,
+                loc.location_xid,
+                ordrel.dest_location_gid,
+                ordrel.source_location_gid,
+                ssul.s_ship_unit_gid   -- Added by Anil 11-02-2014
+	   FROM shipment sh
+	   INNER JOIN shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+           INNER JOIN shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+           INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+           INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+           INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+           INNER JOIN order_release ordrel ON ssul.order_release_gid = ordrel.order_release_gid
+           INNER JOIN location loc ON ordrel.source_location_gid = loc.location_gid
+                     OR ordrel.dest_location_gid = loc.location_gid
+	   LEFT OUTER JOIN s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
+		     AND ssur1.s_ship_unit_refnum_qual_gid LIKE '%CONTAINER ID%'
+           LEFT OUTER JOIN s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
+		     AND ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT'
+	  	     AND rownum = 1
+          WHERE     1 = 1
+                AND loc.location_gid = :P_LOCATION_GID
+                AND sh.shipment_type_gid = 'TRANSPORT'
+                AND ((NVL(ssur1.refnum_value,sh.shipment_xid) != sh.shipment_xid
+                AND (NVL(ssur1.refnum_value,sh.shipment_xid) != sh.shipment_xid
+                AND NVL(ssur2.refnum_value,sh.shipment_xid) = sh.shipment_xid))
+                OR (NVL(ssur1.refnum_value,sh.shipment_xid) = sh.shipment_xid
+                AND (ss.status_type_gid LIKE
+                        '%CONTINUE_PRINTING_IN_RELEASE_SHEET%'
+                     AND ss.status_value_gid LIKE
+                            '%CONTINUE_PRINTING_IN_RELEASE_SHEET_YES%')))]]></sqlStatement>
+    <sqlStatement name="Q_ROW_COUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (
+SELECT COUNT(DISTINCT sh.shipment_gid)
+	   FROM shipment sh
+	   INNER JOIN shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+           INNER JOIN shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+           INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+           INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+           INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+           INNER JOIN order_release ordrel ON ssul.order_release_gid = ordrel.order_release_gid
+           INNER JOIN location loc ON ordrel.source_location_gid = loc.location_gid
+                     OR ordrel.dest_location_gid = loc.location_gid
+	   LEFT OUTER JOIN s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
+		     AND ssur1.s_ship_unit_refnum_qual_gid LIKE '%CONTAINER ID%'
+           LEFT OUTER JOIN s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
+		     AND ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT'
+	  	     AND rownum = 1
+          WHERE     1 = 1
+                AND loc.location_gid = :P_LOCATION_GID
+                AND sh.shipment_type_gid = 'TRANSPORT'
+                AND ((NVL(ssur1.refnum_value,sh.shipment_xid) != sh.shipment_xid
+                AND (NVL(ssur1.refnum_value,sh.shipment_xid) != sh.shipment_xid
+                AND NVL(ssur2.refnum_value,sh.shipment_xid) = sh.shipment_xid))
+                OR (NVL(ssur1.refnum_value,sh.shipment_xid) = sh.shipment_xid
+                AND (ss.status_type_gid LIKE
+                        '%CONTINUE_PRINTING_IN_RELEASE_SHEET%'
+                     AND ss.status_value_gid LIKE
+                            '%CONTINUE_PRINTING_IN_RELEASE_SHEET_YES%')))
+)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+      <element name="LOCATION" value="LOCATION" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_GID" value="SHIPMENT_GID" />
+      <element name="END_DATE" value="END_DATE"></element>
+      <element name="START_DATE" value="START_DATE" />
+      <element name="SHIPMENT" value="SHIPMENT" />
+      <element name="MODE1" value="MODE1" />
+      <element name="CARRIER" value="CARRIER" />
+      <element name="DEST_CUSTOMER" value="DEST_CUSTOMER" />
+      <element name="SOURCE_CUSTOMER" value="SOURCE_CUSTOMER" />
+      <element name="DEST_ADDRESS" value="DEST_ADDRESS" />
+      <element name="SOURCE_ADDRESS" value="SOURCE_ADDRESS" />
+      <element name="PO" value="PO" />
+      <element name="PRODUCT" value="PRODUCT" />
+      <element name="QUANTITY" value="QUANTITY"></element>
+      <element name="UOM" value="UOM" />
+      <element name="PACKAGING_NUM" value="PACKAGING_NUM" />
+      <element name="PACKAGING_UOM" value="PACKAGING_UOM" />
+      <element name="PACKAGING_LTL" value="PACKAGING_LTL" />
+      <element name="CONFIDENTIAL" value="CONFIDENTIAL" />
+      <element name="SHIPMENT_STATU" value="SHIPMENT_STATU"></element>
+      <element name="FDA_HOLD" value="FDA_HOLD"></element>
+      <element name="LOCATION_GID" value="LOCATION_GID"></element>
+      <element name="LOCATION_XID" value="LOCATION_XID"></element>
+      <element name="DEST_LOCATION_GID" value="DEST_LOCATION_GID"></element>
+      <element name="SOURCE_LOCATION_GID" value="SOURCE_LOCATION_GID"></element>
+      <element name="S_SHIP_UNIT_GID" value="S_SHIP_UNIT_GID"></element>
+    </group>
+    <group name="G_ROW_COUNT" source="Q_ROW_COUNT">
+      <element name="ROW_COUNT" value="ROW_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

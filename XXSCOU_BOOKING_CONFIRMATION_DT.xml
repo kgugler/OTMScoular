@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="XXSCOU_BOOKING_CONFIRMATION_DT" description="Charter Voyage Booking Confirmation" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_BOOKING_REVISION_PKG" version="1.0">
+  <parameters>
+    <parameter name="P_CHARTER_VOYAGE_GID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+	cv.charter_voyage_xid,
+	cv.servprov_gid,
+	(SELECT loc.location_name
+		FROM location loc
+		WHERE loc.location_gid = cv.source_location_gid
+	) source_location_name,
+	(SELECT TRIM(loc.city || ' ' || loc.country_code3_gid)
+		FROM location loc
+		WHERE loc.location_gid = cv.source_location_gid
+	) source_city_country,
+	(SELECT loc.location_name
+		FROM location loc
+		WHERE loc.location_gid = cv.dest_location_gid
+	) dest_location_name,
+	(SELECT TRIM(loc.city || ' ' || loc.country_code3_gid)
+		FROM location loc
+		WHERE loc.location_gid = cv.dest_location_gid
+	) dest_city_country,
+	TO_CHAR(cv.departure_date,'fmMonth DD, yyyy') departure_date,
+	TO_CHAR(cv.arrival_date,'fmMonth DD, yyyy') arrival_date,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME'
+	)	ramp_cutoff_time,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'
+	)	port_cutoff_time,
+	(CASE WHEN cv.voyage_name IS NULL
+  THEN v.vessel_name
+  ELSE cv.voyage_name END) voyage_name,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+	)	voyage_number,
+	(CASE WHEN cv.is_cancelled = 'N' Then 'No' ELSE 'Yes' END) is_cancelled,
+	(SELECT loc.location_name
+		FROM charter_voyage_refnum chr
+		LEFT OUTER JOIN location loc ON 'SCOULAR.' || TRIM(chr.charter_voyage_refnum_value) = loc.location_gid
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND (chr.charter_voyage_refnum_qual_gid = 'SCOULAR/BCO.VIA_LOCATION_ID' OR chr.charter_voyage_refnum_qual_gid = 'SCOULAR/NVO.VIA_LOCATION_ID')
+	)	via_port_location_name,
+	(SELECT TRIM(loc.city || ' ' || loc.country_code3_gid)
+		FROM charter_voyage_refnum chr
+		LEFT OUTER JOIN location loc ON 'SCOULAR.' || TRIM(chr.charter_voyage_refnum_value) = loc.location_gid
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND (chr.charter_voyage_refnum_qual_gid = 'SCOULAR/BCO.VIA_LOCATION_ID' OR chr.charter_voyage_refnum_qual_gid = 'SCOULAR/NVO.VIA_LOCATION_ID')
+	)	via_port_city_country,
+	(SELECT loc.location_name
+		FROM charter_voyage_refnum chr
+		LEFT OUTER JOIN location loc ON 'SCOULAR.' || TRIM(chr.charter_voyage_refnum_value) = loc.location_gid
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE'
+	)	discharge_port_name,
+	(SELECT TRIM(loc.city || ' ' || loc.country_code3_gid)
+		FROM charter_voyage_refnum chr
+		LEFT OUTER JOIN location loc ON 'SCOULAR.' || TRIM(chr.charter_voyage_refnum_value) = loc.location_gid
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE'
+	)	discharge_port_city_country,  
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_20FTRF COUNT'
+	)	twenty_footrf_count,    
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FT COUNT'
+	)	forty_foot_count,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTHC COUNT'
+	)	forty_foothc_count,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_40FTRF COUNT'
+	)	forty_footrf_count,  
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_45FTRF COUNT'
+	)	forty_five_footrf_count,  
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_45FT COUNT'
+	)	forty_five_foothc_count,   
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TEU COUNT'
+	)	teu_count,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.LCL COUNT'
+	)	lcl_count,  
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_BOOKING REQUEST NUMBER'
+	)	booking_request_number,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_PICKUP LOCATION'
+	) pickup_location,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DROP OFF LOCATION'
+	) dropoff_location,  
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME'
+	) doc_closing_time,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER_VESSEL_NAME'
+	)	feeder_vessel_name,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER_VOYAGE_NAME'
+	)	feeder_voyage_name,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT'
+	)	tranship_port,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_REMARKS'
+	)	remarks,
+	(SELECT chr.charter_voyage_refnum_value
+		FROM charter_voyage_refnum chr
+		WHERE cv.charter_voyage_gid = chr.charter_voyage_gid
+		AND chr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_AES CUT DATE'
+	)	aes_cut_date
+FROM
+	charter_voyage cv
+LEFT OUTER JOIN
+  vessel v ON cv.vessel_gid = v.vessel_gid
+WHERE
+	cv.charter_voyage_gid = :P_CHARTER_VOYAGE_GID]]></sqlStatement>
+    <sqlStatement name="Q_MODIFIED"><![CDATA[
+SELECT column_name, old_value, new_value
+  FROM GLOGOWNER.xxscou_booking_revision_tbl
+ WHERE modified = 'Y' AND charter_voyage_gid = :P_CHARTER_VOYAGE_GID
+]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay,Month DD, yyyy ')) CURR_DATE from dual
+]]></sqlStatement>
+    <sqlStatement name="Q_VERSION"><![CDATA[SELECT r_version,r_version-1 o_version FROM glogowner.xxscou_booking_revision_tbl WHERE charter_voyage_gid = :P_CHARTER_VOYAGE_GID AND rownum<2
+]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_BOOKING_REVISION_PKG.before_report" />
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="CHARTER_VOYAGE_XID" value="CHARTER_VOYAGE_XID" />
+      <element name="SERVPROV_GID" value="SERVPROV_GID" />
+      <element name="SOURCE_LOCATION_NAME" value="SOURCE_LOCATION_NAME" />
+      <element name="SOURCE_CITY_COUNTRY" value="SOURCE_CITY_COUNTRY" />
+      <element name="DEST_LOCATION_NAME" value="DEST_LOCATION_NAME"></element>
+      <element name="DEST_CITY_COUNTRY" value="DEST_CITY_COUNTRY"></element>
+      <element name="DEPARTURE_DATE" value="DEPARTURE_DATE" />
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE" />
+      <element name="RAMP_CUTOFF_TIME" value="RAMP_CUTOFF_TIME" />
+      <element name="PORT_CUTOFF_TIME" value="PORT_CUTOFF_TIME" />
+      <element name="VOYAGE_NAME" value="VOYAGE_NAME" />
+      <element name="VOYAGE_NUMBER" value="VOYAGE_NUMBER" />
+      <element name="IS_CANCELLED" value="IS_CANCELLED" />
+      <element name="VIA_PORT_LOCATION_NAME" value="VIA_PORT_LOCATION_NAME" />
+      <element name="VIA_PORT_CITY_COUNTRY" value="VIA_PORT_CITY_COUNTRY" />
+      <element name="DISCHARGE_PORT_NAME" value="DISCHARGE_PORT_NAME" />
+      <element name="DISCHARGE_PORT_CITY_COUNTRY" value="DISCHARGE_PORT_CITY_COUNTRY"></element>
+      <element name="FORTY_FOOT_COUNT" value="FORTY_FOOT_COUNT"></element>
+      <element name="FORTY_FOOTHC_COUNT" value="FORTY_FOOTHC_COUNT" />
+      <element name="FORTY_FOOTRF_COUNT" value="FORTY_FOOTRF_COUNT"></element>
+      <element name="FORTY_FIVE_FOOTRF_COUNT" value="FORTY_FIVE_FOOTRF_COUNT"></element>
+      <element name="FORTY_FIVE_FOOTHC_COUNT" value="FORTY_FIVE_FOOTHC_COUNT"></element>
+      <element name="TEU_COUNT" value="TEU_COUNT" />
+      <element name="LCL_COUNT" value="LCL_COUNT"></element>
+      <element name="BOOKING_REQUEST_NUMBER" value="BOOKING_REQUEST_NUMBER"></element>
+      <element name="PICKUP_LOCATION" value="PICKUP_LOCATION" />
+      <element name="DROPOFF_LOCATION" value="DROPOFF_LOCATION"></element>
+      <element name="DOC_CLOSING_TIME" value="DOC_CLOSING_TIME" />
+      <element name="FEEDER_VESSEL_NAME" value="FEEDER_VESSEL_NAME" />
+      <element name="FEEDER_VOYAGE_NAME" value="FEEDER_VOYAGE_NAME" />
+      <element name="TRANSHIP_PORT" value="TRANSHIP_PORT" />
+      <element name="REMARKS" value="REMARKS" />
+      <element name="AES_CUT_DATE" value="AES_CUT_DATE" />
+    </group>
+    <group name="G_MODIFIED" source="Q_MODIFIED">
+      <element name="COLUMN_NAME" value="COLUMN_NAME" />
+      <element name="OLD_VALUE" value="OLD_VALUE" />
+      <element name="NEW_VALUE" value="NEW_VALUE" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_VERSION" source="Q_VERSION">
+      <element name="R_VERSION" value="R_VERSION" />
+      <element name="O_VERSION" value="O_VERSION" />
+    </group>
+  </dataStructure>
+</dataTemplate>

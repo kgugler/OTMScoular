@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="PURCH_ORD_RELEASES_LINKED_TO_SHIPMENTS" description="Purchase Order Releases Linked to Cross Country Shipments" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  sh.shipment_gid shipment_num,
+  orr.order_release_refnum_value order_rel
+FROM
+  shipment sh 
+INNER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_value = 'X'
+INNER JOIN
+  view_shipment_order_release vsor ON sh.shipment_gid = vsor.shipment_gid 
+INNER JOIN
+  order_release_refnum orr ON vsor.order_release_gid = orr.order_release_gid 
+AND
+  orr.order_release_refnum_value like 'PEW%'
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  sh.domain_name = 'SCOULAR/FOOD'
+ORDER BY
+  sh.shipment_gid, orr.order_release_refnum_value]]></sqlStatement>
+    <sqlStatement name="Q_ROW_COUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (
+SELECT DISTINCT
+  sh.shipment_gid shipment_num,
+  orr.order_release_refnum_value order_rel
+FROM
+  shipment sh 
+INNER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_value = 'X'
+INNER JOIN
+  view_shipment_order_release vsor ON sh.shipment_gid = vsor.shipment_gid 
+INNER JOIN
+  order_release_refnum orr ON vsor.order_release_gid = orr.order_release_gid 
+AND
+  orr.order_release_refnum_value like 'PEW%'
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  sh.domain_name = 'SCOULAR/FOOD'
+ORDER BY
+  sh.shipment_gid, orr.order_release_refnum_value
+)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_NUM" value="SHIPMENT_NUM" />
+      <element name="ORDER_REL" value="ORDER_REL"></element>
+    </group>
+    <group name="G_ROW_COUNT" source="Q_ROW_COUNT">
+      <element name="ROW_COUNT" value="ROW_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

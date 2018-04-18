@@ -1,0 +1,232 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="RELEASE_SHEET_MONITOR" description="Release Sheet Monitoring Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOCATION_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT 
+  (CASE WHEN :LOCATION_ID IS NULL THEN 'All Warehouses' ELSE REPLACE(:LOCATION_ID,'SCOULAR.','') END) warehouse
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.*
+FROM
+(SELECT
+  sh.end_time,
+  ((CASE WHEN sh.transport_mode_gid = 'RAIL'        
+  AND NOT ssur2.refnum_value IS NULL THEN        
+  ssur2.refnum_value        
+  ELSE        
+  NVL(ssur1.refnum_value,sh.shipment_xid)        
+  END) || CHR(13) ||
+  orel.order_release_xid)
+  shipment_id,  
+  sh.transport_mode_gid transport_mode, 
+  sref.shipment_refnum_value record_type,
+  REPLACE(sh.source_location_gid,'SCOULAR.','') source_loc,
+  REPLACE(sh.dest_location_gid,'SCOULAR.','') dest_loc,
+  TO_CHAR(sh.start_time,'MM/DD/YYYY') pickup_date, 
+  TO_CHAR(sh.end_time,'MM/DD/YYYY') delivery_date,
+  (SELECT REPLACE(sv.status_value_xid,'ENROUTE_','')                        
+  FROM shipment_status ss1
+  INNER JOIN status_value sv ON ss1.status_type_gid = sv.status_type_gid 
+  AND ss1.status_value_gid = sv.status_value_gid   
+  WHERE ss1.status_type_gid = 'SCOULAR/FOOD.ENROUTE'                        
+  AND ss1.shipment_gid = sh.shipment_gid) enroute_status,
+  (SELECT ssref.refnum_value
+  FROM s_ship_unit_refnum ssref
+  WHERE ssref.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND ssref.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT') dest_weight,
+  (SELECT DECODE (status_value_gid, 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD_YES', 'Yes', 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD_NO', 'No')                         
+  FROM shipment_status                         
+  WHERE status_type_gid = 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD'                        
+  AND shipment_gid = sh.shipment_gid) fda_status,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') insert_user
+FROM 
+  shipment sh                  
+INNER JOIN 
+  shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+INNER JOIN 
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid                  
+INNER JOIN 
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid                 
+INNER JOIN 
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid     
+INNER JOIN 
+  order_release orel ON ssul.order_release_gid = orel.order_release_gid  
+INNER JOIN 
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid                   
+AND 
+  sref.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+LEFT OUTER JOIN 
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid                         
+AND 
+  ssur1.s_ship_unit_refnum_qual_gid IN ('SCOULAR.CONTAINER ID','SCOULAR/FOOD.CONTAINER ID')                              
+LEFT OUTER JOIN 
+  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid                    
+AND 
+  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.RAIL CAR ID'      
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  TO_DATE(sh.start_time,'DD-MM-RR') <= TO_DATE(SYSDATE,'DD-MM-RR')
+AND 
+  (ss.status_type_gid = 'SCOULAR/FOOD.CONTINUE_PRINTING_IN_RELEASE_SHEET'                
+  AND ss.status_value_gid = 'SCOULAR/FOOD.CONTINUE_PRINTING_IN_RELEASE_SHEET_YES')
+AND NOT EXISTS
+  (SELECT sstat.shipment_gid
+  FROM shipment_status sstat
+  WHERE sstat.shipment_gid = sh.shipment_gid
+  AND sstat.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND sstat.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES')
+AND
+  (:LOCATION_ID IS NULL
+OR
+  (NOT :LOCATION_ID IS NULL
+AND
+  (orel.source_location_gid = :LOCATION_ID 
+OR
+  orel.dest_location_gid = :LOCATION_ID)))
+UNION
+SELECT
+  sh.end_time,
+  ((CASE WHEN sh.transport_mode_gid = 'RAIL'        
+  AND NOT ssur2.refnum_value IS NULL THEN        
+  ssur2.refnum_value        
+  ELSE        
+  NVL(ssur1.refnum_value,sh.shipment_xid)        
+  END) || CHR(13) ||
+  orel.order_release_xid)
+  shipment_id,
+  sh.transport_mode_gid transport_mode, 
+  sref.shipment_refnum_value record_type,
+  REPLACE(sh.source_location_gid,'SCOULAR.','') source_loc,
+  REPLACE(sh.dest_location_gid,'SCOULAR.','') dest_loc,
+  TO_CHAR(sh.start_time,'MM/DD/YYYY') pickup_date, 
+  TO_CHAR(sh.end_time,'MM/DD/YYYY') delivery_date,
+  (SELECT REPLACE(sv.status_value_xid,'ENROUTE_','')                         
+  FROM shipment_status ss1
+  INNER JOIN status_value sv ON ss1.status_type_gid = sv.status_type_gid 
+  AND ss1.status_value_gid = sv.status_value_gid   
+  WHERE ss1.status_type_gid = 'SCOULAR/FOOD.ENROUTE'                        
+  AND ss1.shipment_gid = sh.shipment_gid) enroute_status,
+  (SELECT ssref.refnum_value
+  FROM s_ship_unit_refnum ssref
+  WHERE ssref.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND ssref.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT') dest_weight,
+  (SELECT DECODE (status_value_gid, 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD_YES', 'Yes', 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD_NO', 'No')                         
+  FROM shipment_status                         
+  WHERE status_type_gid LIKE 'SCOULAR/FOOD.SHIPMENT_FDA_HOLD'                      
+  AND shipment_gid = sh.shipment_gid) fda_status,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') insert_user
+FROM 
+  shipment sh                  
+INNER JOIN 
+  shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+INNER JOIN 
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid                  
+INNER JOIN 
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid                 
+INNER JOIN 
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid     
+INNER JOIN 
+  order_release orel ON ssul.order_release_gid = orel.order_release_gid 
+INNER JOIN 
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid   
+AND 
+  sref.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'  
+LEFT OUTER JOIN 
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid                         
+AND 
+  ssur1.s_ship_unit_refnum_qual_gid IN ('SCOULAR.CONTAINER ID','SCOULAR/FOOD.CONTAINER ID')                                 
+LEFT OUTER JOIN 
+  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid                    
+AND 
+  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.RAIL CAR ID'       
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  sh.transport_mode_gid = 'VESSEL-CO'
+AND
+  TO_DATE(sh.start_time,'DD-MM-RR') <= TO_DATE(SYSDATE,'DD-MM-RR')
+AND NOT EXISTS
+  (SELECT ssur.s_ship_unit_gid
+  FROM s_ship_unit_refnum ssur
+  WHERE ssur.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT')
+AND 
+  (ss.status_type_gid = 'SCOULAR/FOOD.CONTINUE_PRINTING_IN_RELEASE_SHEET'                
+  AND ss.status_value_gid = 'SCOULAR/FOOD.CONTINUE_PRINTING_IN_RELEASE_SHEET_NO')
+AND NOT EXISTS
+  (SELECT sstat.shipment_gid
+  FROM shipment_status sstat
+  WHERE sstat.shipment_gid = sh.shipment_gid
+  AND sstat.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND sstat.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES') 
+AND
+  (CASE WHEN 
+    (CASE WHEN :LOCATION_ID IS NULL THEN
+      (CASE WHEN sref.shipment_refnum_value = 'U' THEN 1
+      ELSE
+        (CASE WHEN
+          (sref.shipment_refnum_value = 'X'
+        AND
+          orel.dest_location_gid IN
+          (SELECT SUBSTR(SUBSTR(pr1.topic_parameters,
+          INSTR(pr1.topic_parameters,'WAREHOUSE_GID=')+14,25),0,INSTR(SUBSTR(pr1.topic_parameters,
+          INSTR(pr1.topic_parameters,'WAREHOUSE_GID=')+14,25),'&')-1) warehouse_gid
+          FROM process_control_request pr1
+          WHERE NOT pr1.next_process_time IS NULL
+          AND pr1.topic_parameters like '%P_WAREHOUSE_GID=%'
+          AND pr1.topic_class_name='glog.server.workflow.adhoc.ScheduleReportTopic')) THEN 1
+        ELSE 0
+        END)
+      END)    
+    ELSE 
+      (CASE WHEN NOT :LOCATION_ID IS NULL
+      AND orel.dest_location_gid = :LOCATION_ID 
+      THEN 1
+      ELSE 0
+      END)
+    END) = 1 THEN 1 END) = 1) a
+WHERE 
+  ('SCOULAR.' || a.source_loc IN 
+  (SELECT SUBSTR(SUBSTR(pr1.topic_parameters,
+        INSTR(pr1.topic_parameters,'WAREHOUSE_GID=')+14,25),0,INSTR(SUBSTR(pr1.topic_parameters,
+        INSTR(pr1.topic_parameters,'WAREHOUSE_GID=')+14,25),'&')-1) warehouse_gid
+  FROM process_control_request pr1
+  WHERE NOT pr1.next_process_time IS NULL
+  AND pr1.topic_parameters like '%P_WAREHOUSE_GID=%'
+  AND pr1.topic_class_name='glog.server.workflow.adhoc.ScheduleReportTopic')
+OR
+  'SCOULAR.' || a.dest_loc IN 
+  (SELECT SUBSTR(SUBSTR(pr1.topic_parameters,
+        INSTR(pr1.topic_parameters,'WAREHOUSE_GID=')+14,25),0,INSTR(SUBSTR(pr1.topic_parameters,
+        INSTR(pr1.topic_parameters,'WAREHOUSE_GID=')+14,25),'&')-1) warehouse_gid
+  FROM process_control_request pr1
+  WHERE NOT pr1.next_process_time IS NULL
+  AND pr1.topic_parameters like '%P_WAREHOUSE_GID=%'
+  AND pr1.topic_class_name='glog.server.workflow.adhoc.ScheduleReportTopic'))
+ORDER BY 
+  a.end_time ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="WAREHOUSE" value="WAREHOUSE" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="TRANSPORT_MODE" value="TRANSPORT_MODE"></element>
+      <element name="RECORD_TYPE" value="RECORD_TYPE" />
+      <element name="SOURCE_LOC" value="SOURCE_LOC" />
+      <element name="DEST_LOC" value="DEST_LOC" />
+      <element name="PICKUP_DATE" value="PICKUP_DATE" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE"></element>
+      <element name="ENROUTE_STATUS" value="ENROUTE_STATUS" />
+      <element name="DEST_WEIGHT" value="DEST_WEIGHT"></element>
+      <element name="FDA_STATUS" value="FDA_STATUS"></element>
+      <element name="INSERT_USER" value="INSERT_USER"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

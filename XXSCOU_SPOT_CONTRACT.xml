@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="XXSCOU_SPOT_CONTRACT_NOTIFICATION_DT" description="Release Sheet" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_SPOT_CONTRACT_PKG" version="1.0">
+  <parameters>
+    <parameter name="P_ORDER_BASE_GID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_CONTRACT"><![CDATA[SELECT
+  a.order_base_xid,
+  ROUND(obl.weight_base, 3) total_weight,
+  TO_CHAR(obl.early_pickup_date,'MM/DD/YYYY') early_pickup_date,
+  TO_CHAR(obl.late_delivery_date,'MM/DD/YYYY') late_delivery_date,
+  obl.source_location_gid,
+  obl.dest_location_gid,
+  a.inco_term_gid,
+  a.term_location_text,
+  (SELECT LISTAGG(obr.remark_text, '; ') 
+  WITHIN GROUP (ORDER BY obr.remark_text)
+  FROM ob_remark obr
+  WHERE obr.order_base_gid = a.order_base_gid
+  AND obr.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES') additional_notes
+FROM
+(SELECT 
+  oob.order_base_gid,
+  oob.order_base_xid,
+  oob.inco_term_gid,
+  oob.term_location_text              
+FROM ob_order_base oob
+WHERE oob.order_base_gid = :P_ORDER_BASE_GID) a
+INNER JOIN
+  ob_line obl ON a.order_base_gid = obl.order_base_gid
+LEFT OUTER JOIN
+  location loc1 ON obl.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON obl.dest_location_gid = loc2.location_gid
+WHERE
+  ROWNUM = 1]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay,Month DD, yyyy ')) CURR_DATE from dual]]></sqlStatement>
+    <sqlStatement name="Q_MODIFIED"><![CDATA[
+SELECT column_name, old_value, new_value
+  FROM GLOGOWNER.xxscou_spot_contract_tbl
+ WHERE modified = 'Y' AND order_base_gid = :P_ORDER_BASE_GID
+]]></sqlStatement>
+    <sqlStatement name="Q_VERSION"><![CDATA[SELECT r_version,r_version-1 o_version FROM glogowner.xxscou_spot_contract_tbl WHERE order_base_gid = :P_ORDER_BASE_GID AND rownum<2
+]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_SPOT_CONTRACT_PKG.before_report" />
+  <dataStructure>
+    <group name="G_CONTRACT" source="Q_CONTRACT">
+      <element name="ORDER_BASE_XID" value="ORDER_BASE_XID" />
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+      <element name="EARLY_PICKUP_DATE" value="EARLY_PICKUP_DATE" />
+      <element name="LATE_DELIVERY_DATE" value="LATE_DELIVERY_DATE" />
+      <element name="SOURCE_LOCATION_GID" value="SOURCE_LOCATION_GID" />
+      <element name="DEST_LOCATION_GID" value="DEST_LOCATION_GID" />
+      <element name="INCO_TERM_GID" value="INCO_TERM_GID" />
+      <element name="TERM_LOCATION_TEXT" value="TERM_LOCATION_TEXT" />
+      <element name="ADDITIONAL_NOTES" value="ADDITIONAL_NOTES" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_MODIFIED" source="Q_MODIFIED">
+      <element name="COLUMN_NAME" value="COLUMN_NAME" />
+      <element name="OLD_VALUE" value="OLD_VALUE" />
+      <element name="NEW_VALUE" value="NEW_VALUE" />
+    </group>
+    <group name="G_VERSION" source="Q_VERSION">
+      <element name="R_VERSION" value="R_VERSION" />
+      <element name="O_VERSION" value="O_VERSION" />
+    </group>
+  </dataStructure>
+</dataTemplate>

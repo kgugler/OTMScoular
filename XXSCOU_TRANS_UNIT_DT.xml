@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="XXSCOU_TRANS_UNIT_DT" description="Unit Monthly Transport Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="P_MONTH1" dataType="character" />
+    <parameter name="P_YEAR1" dataType="character" />
+    <parameter name="P_MONTH2" dataType="character" />
+    <parameter name="P_YEAR2" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_CON_DATE"><![CDATA[SELECT
+	TRUNC(SYSDATE) TSYSDATE,
+	initcap(:P_MONTH1)||' '||:P_YEAR1 || ' - ' || initcap(:P_MONTH2)||' '||:P_YEAR2 P_MON
+FROM
+	SYS.DUAL]]></sqlStatement>
+    <sqlStatement name="Q_COST"><![CDATA[SELECT
+	SUM(ftpd.text_value) Cost
+FROM
+	ff_text_profile ftp,
+	ff_text_profile_d ftpd
+WHERE
+	ftp.ff_text_profile_gid = ftpd.ff_text_profile_gid
+AND
+	(TO_DATE(SUBSTR(ftp.ff_text_profile_xid,1,INSTR(ftp.ff_text_profile_xid,'20')-1) || '-1-' || SUBSTR(ftp.ff_text_profile_xid,-4),'month-dd-yyyy') >= TO_DATE(UPPER(:P_MONTH1)|| '-1-' || :P_YEAR1,'month-dd-yyyy')
+AND
+	TO_DATE(SUBSTR(ftp.ff_text_profile_xid,1,INSTR(ftp.ff_text_profile_xid,'20')-1) || '-1-' || SUBSTR(ftp.ff_text_profile_xid,-4),'month-dd-yyyy') < TO_DATE(UPPER(:P_MONTH2)|| '-1-' || :P_YEAR2,'month-dd-yyyy') + INTERVAL '1' month(1))]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT NVL(SUM(Labor_Total_T),0) labor_total_cost
+FROM
+(SELECT
+(COUNT (shipment_gid)
+* (SELECT labor_units
+	FROM glogowner.labor_units
+	WHERE provider_type = main_tab.transport_mode
+	AND mode1 = main_tab.truck_type))
+Labor_Total_T
+FROM
+(SELECT sh.insert_user username,
+DECODE ((SELECT loc.province
+				FROM location loc
+				WHERE loc.location_gid = sh.source_location_gid),
+				'Alaska', 'Alaska',
+				DECODE ((SELECT loc.country_code3_gid
+								FROM location loc
+ 								WHERE loc.location_gid = sh.source_location_gid),
+								(SELECT loc.country_code3_gid
+								FROM location loc
+								WHERE loc.location_gid = sh.dest_location_gid), 'DOMESTIC','INTERNATIONAL'))
+				transaction_type,
+				trm.transport_mode_xid transport_mode,
+				equi_group.equipment_group_xid truck_type,
+				sh.shipment_gid
+FROM
+	shipment sh,
+	transport_mode trm,
+	shipment_s_equipment_join shsejn,
+	equipment_group equi_group,
+	s_equipment seq
+WHERE 1 = 1
+AND (sh.insert_date >= TO_DATE(UPPER(:P_MONTH1)|| '-1-' || :P_YEAR1,'month-dd-yyyy')
+AND sh.insert_date < TO_DATE(UPPER(:P_MONTH2)|| '-1-' || :P_YEAR2,'month-dd-yyyy') + INTERVAL '1' month(1))
+AND trm.transport_mode_gid = sh.transport_mode_gid
+AND shsejn.shipment_gid = sh.shipment_gid
+AND seq.s_equipment_gid = shsejn.s_equipment_gid
+AND seq.equipment_group_gid = equi_group.equipment_group_gid) main_tab
+GROUP BY
+	username,
+	transaction_type,
+	transport_mode,
+	truck_type)]]></sqlStatement>
+    <sqlStatement name="Q_DATA"><![CDATA[SELECT
+	main_tab.username,
+	main_tab.transaction_type,
+	main_tab.transport_mode,
+	main_tab.truck_type,
+	COUNT (main_tab.shipment_gid) NoOfLoads,
+	NVL((SELECT labor_units
+			FROM glogowner.labor_units
+			WHERE provider_type = main_tab.transport_mode
+			AND mode1 = main_tab.truck_type),0) Labor_units,
+	(COUNT (shipment_gid) *
+		NVL((SELECT labor_units
+				FROM glogowner.labor_units
+				WHERE provider_type = main_tab.transport_mode
+ 				AND mode1 = main_tab.truck_type),0)) Labor_Total_T,
+	:Labor_Total_cost tl_cost,
+	:cost cost1
+FROM
+	(SELECT sh.insert_user username,
+	DECODE ((SELECT loc.province
+					FROM location loc
+					WHERE loc.location_gid = sh.source_location_gid),
+					'Alaska', 'Alaska',
+					DECODE ((SELECT loc.country_code3_gid
+									FROM location loc
+									WHERE loc.location_gid = sh.source_location_gid),
+									(SELECT loc.country_code3_gid
+									FROM location loc
+									WHERE loc.location_gid = sh.dest_location_gid), 'DOMESTIC','INTERNATIONAL'))
+	transaction_type,
+	trm.transport_mode_xid transport_mode,
+	equi_group.equipment_group_xid truck_type,
+	sh.shipment_gid
+FROM
+	shipment sh,
+	transport_mode trm,
+	shipment_s_equipment_join shsejn,
+	equipment_group equi_group,
+	s_equipment seq
+WHERE 1 = 1
+AND
+	(sh.insert_date >= TO_DATE(UPPER(:P_MONTH1)|| '-1-' || :P_YEAR1,'month-dd-yyyy')
+AND
+	sh.insert_date < TO_DATE(UPPER(:P_MONTH2)|| '-1-' || :P_YEAR2,'month-dd-yyyy') + INTERVAL '1' month(1))
+AND
+	trm.transport_mode_gid = sh.transport_mode_gid
+AND
+	shsejn.shipment_gid = sh.shipment_gid
+AND
+	seq.s_equipment_gid = shsejn.s_equipment_gid
+AND
+	seq.equipment_group_gid = equi_group.equipment_group_gid) main_tab
+GROUP BY
+	username,
+	transaction_type,
+	transport_mode,
+	truck_type]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay,Month DD, yyyy ')) CURR_DATE from dual
+]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_CON_DATE" source="Q_CON_DATE">
+      <element name="TSYSDATE" value="TSYSDATE" />
+      <element name="P_MON" value="P_MON" />
+    </group>
+    <group name="G_COST" source="Q_COST">
+      <element name="COST" value="COST" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="LABOR_TOTAL_COST" value="LABOR_TOTAL_COST" />
+    </group>
+    <group name="G_USER" source="Q_DATA">
+      <element name="USERNAME" value="USERNAME" />
+      <group name="G_NATIONAL" source="Q_DATA">
+        <element name="TRANSACTION_TYPE" value="TRANSACTION_TYPE" />
+        <group name="G_MODE" source="Q_DATA">
+          <element name="TRANSPORT_MODE" value="TRANSPORT_MODE" />
+          <element name="TRUCK_TYPE" value="TRUCK_TYPE" />
+          <element name="NOOFLOADS" value="NOOFLOADS" />
+          <element name="LABOR_UNITS" value="LABOR_UNITS" />
+          <element name="LABOR_TOTAL_T" value="LABOR_TOTAL_T" />
+          <element name="TL_COST" value="TL_COST" />
+          <element name="COST1" value="COST1" />
+        </group>
+      </group>
+    </group>
+  </dataStructure>
+</dataTemplate>

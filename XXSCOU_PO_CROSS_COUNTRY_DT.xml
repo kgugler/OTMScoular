@@ -1,0 +1,265 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="XXSCOU_PO_CROSS_COUNTRY_DT" description="PO Cross Country" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <!-- Query Start -->
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT 
+  COUNT(*) total 
+FROM (
+  SELECT 
+    ore.order_release_xid
+  FROM 
+    order_release ore
+  INNER JOIN 
+    order_release_status ors ON ore.order_release_gid = ors.order_release_gid
+  AND 
+    ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+  AND 
+    ors.status_value_gid = 'SCOULAR/FOOD.PLANNING_PLANNED - HOLD'
+  AND 
+    (ors.order_release_gid IN 
+      (SELECT order_release_gid 
+      FROM order_release_status 
+      WHERE (status_type_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS%'
+      AND status_value_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS_YES%')))
+  INNER JOIN 
+    order_release_refnum orr ON ore.order_release_xid = orr.order_release_refnum_value
+  AND 
+    orr.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER'
+  AND 
+    orr.order_release_gid LIKE '%SE%'
+  INNER JOIN 
+    order_release ore1 ON orr.order_release_gid = ore1.order_release_gid
+  WHERE 
+    1 = 1
+  AND 
+    ore.order_release_xid LIKE 'PE%'       
+UNION       
+  SELECT 
+    ore.order_release_xid
+  FROM 
+    order_release ore
+  INNER JOIN 
+    order_release_status ors ON ore.order_release_gid = ors.order_release_gid
+  AND 
+    ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+  AND 
+    ors.status_value_gid = 'SCOULAR/FOOD.PLANNING_PLANNED - HOLD'
+  AND 
+    (ors.order_release_gid IN 
+      (SELECT order_release_gid 
+      FROM order_release_status 
+      WHERE (status_type_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS%'
+      AND status_value_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS_YES%')))
+  WHERE
+    1 = 1
+  AND 
+    ore.order_release_xid LIKE 'PE%'
+  AND 
+    ore.order_release_gid NOT IN 
+      (SELECT ore1.order_release_gid 
+      FROM order_release ore1
+      INNER JOIN order_release_status ors ON ore1.order_release_gid = ors.order_release_gid
+      AND ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+      AND ors.status_value_gid = 'SCOULAR/FOOD.PLANNING_PLANNED - HOLD'
+      INNER JOIN order_release_refnum orr ON ore1.order_release_gid = orr.order_release_refnum_value
+      AND orr.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER'
+      AND orr.order_release_gid LIKE '%SE%'
+      INNER JOIN order_release ore1 ON orr.order_release_gid = ore1.order_release_gid
+      WHERE 1 = 1
+      AND ore1.order_release_xid LIKE 'PE%'))]]></sqlStatement>
+    <sqlStatement name="Q_HEADER"><![CDATA[SELECT DISTINCT
+  (SELECT order_release_refnum_value
+  FROM order_release_refnum
+  WHERE order_release_refnum_qual_gid LIKE '%LOC_CODE%'
+  AND order_release_gid = ore.order_release_gid) loc_code_value
+FROM 
+  order_release ore
+INNER JOIN 
+  order_release_status ors ON ore.order_release_gid = ors.order_release_gid
+AND 
+  ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+AND 
+  ors.status_value_gid = 'SCOULAR/FOOD.PLANNING_PLANNED - HOLD'
+AND 
+  (ors.order_release_gid IN 
+    (SELECT order_release_gid 
+    FROM order_release_status 
+    WHERE (status_type_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS%'
+    AND status_value_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS_YES%')))
+INNER JOIN 
+  order_release_refnum orr ON ore.order_release_xid = orr.order_release_refnum_value
+AND 
+  orr.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER'
+AND 
+  orr.order_release_gid LIKE '%SE%'
+INNER JOIN 
+  order_release ore1 ON orr.order_release_gid = ore1.order_release_gid
+WHERE 
+  1 = 1
+AND 
+  ore.order_release_xid LIKE 'PE%' ]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT 
+  ore.order_release_xid po_number,
+  ore.total_weight po_weight,
+  orr1.order_release_refnum_value Loc_Code,
+  (SELECT TO_CHAR (insert_date, 'MM/DD/YYYY')
+  FROM ob_order_base
+  WHERE order_base_gid = ore.order_base_gid)
+  insert_date,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_ord_rel_item_fcn(ore.order_release_gid)
+  item,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_ordrel_idesc_fcn(ore.order_release_gid)
+  item_desc,
+  ore1.order_release_xid so_number,
+  ore1.total_weight so_weight,
+  (ore.total_weight - NVL(
+    (SELECT SUM(ore2.total_weight)
+    FROM order_release ore2
+    WHERE ore2.order_release_gid IN
+      (SELECT order_release_gid
+      FROM order_release_refnum orr1
+      WHERE orr1.order_release_refnum_value = orr.order_release_refnum_value
+      AND orr1.order_release_gid LIKE '%SE%'
+      AND orr1.order_release_refnum_qual_gid LIKE 'SCOULAR.RELATED PO NUMBER')),0))
+  difference
+FROM 
+  order_release ore
+INNER JOIN 
+  order_release_status ors ON ore.order_release_gid = ors.order_release_gid
+AND 
+  ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+AND 
+  ors.status_value_gid = 'SCOULAR/FOOD.PLANNING_PLANNED - HOLD'
+AND 
+  (ors.order_release_gid IN 
+    (SELECT order_release_gid 
+    FROM order_release_status 
+    WHERE (status_type_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS%'
+    AND status_value_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS_YES%')))
+INNER JOIN 
+  order_release_refnum orr ON ore.order_release_xid = orr.order_release_refnum_value
+AND 
+  orr.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER'
+AND 
+  orr.order_release_gid LIKE '%SE%'
+INNER JOIN
+  order_release_refnum orr1 ON ore.order_release_gid = orr1.order_release_gid
+AND 
+  orr1.order_release_refnum_qual_gid LIKE '%LOC_CODE%'  
+INNER JOIN 
+  order_release ore1 ON orr.order_release_gid = ore1.order_release_gid
+WHERE 
+  1 = 1
+AND 
+  ore.order_release_xid LIKE 'PE%'           
+AND 
+  orr1.order_release_refnum_value = :loc_code_value]]></sqlStatement>
+    <sqlStatement name="Q_IND"><![CDATA[SELECT 
+  ore.order_release_xid po_number,
+  ore.total_weight po_weight,
+  orr1.order_release_refnum_value loc_code,
+  (SELECT TO_CHAR(insert_date,'MM/DD/YYYY')
+  FROM ob_order_base
+  WHERE order_base_gid = ore.order_base_gid)
+  insert_date,         
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_ord_rel_item_fcn(ore.order_release_gid)
+  item,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_ordrel_idesc_fcn(ore.order_release_gid)
+  item_desc,
+  NULL so_number,
+  NULL so_weight,
+  ore.total_weight difference
+FROM 
+  order_release ore
+INNER JOIN
+  order_release_status ors ON ore.order_release_gid = ors.order_release_gid
+INNER JOIN
+  order_release_refnum orr1 ON ore.order_release_gid = orr1.order_release_gid
+AND 
+  orr1.order_release_refnum_qual_gid LIKE '%LOC_CODE%'  
+WHERE
+  1 = 1
+AND
+  ore.order_release_xid LIKE 'PE%'
+AND 
+  orr1.order_release_refnum_value = :loc_code_value
+AND ore.order_release_gid NOT IN
+  (SELECT 
+    ore.order_release_gid
+  FROM 
+    order_release ore
+  INNER JOIN 
+    order_release_status ors ON ore.order_release_gid = ors.order_release_gid
+  AND 
+    ors.status_type_gid = 'SCOULAR/FOOD.PLANNING'
+  AND 
+    ors.status_value_gid = 'SCOULAR/FOOD.PLANNING_PLANNED - HOLD'
+  AND 
+    (ors.order_release_gid IN 
+      (SELECT order_release_gid 
+      FROM order_release_status 
+      WHERE (status_type_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS%'
+      AND status_value_gid LIKE '%CONTINUE_PRINTING_IN_CROSS_REPORTS_YES%')))
+  INNER JOIN 
+    order_release_refnum orr ON ore.order_release_xid = orr.order_release_refnum_value
+  AND 
+    orr.order_release_refnum_qual_gid = 'SCOULAR.RELATED PO NUMBER'
+  AND 
+    orr.order_release_gid LIKE '%SE%'
+  INNER JOIN
+    order_release_refnum orr1 ON ore.order_release_gid = orr1.order_release_gid
+  AND 
+    orr1.order_release_refnum_qual_gid LIKE '%LOC_CODE%'  
+  INNER JOIN 
+    order_release ore1 ON orr.order_release_gid = ore1.order_release_gid
+  WHERE 
+    1 = 1
+  AND 
+    ore.order_release_xid LIKE 'PE%'           
+  AND 
+    orr1.order_release_refnum_value = :loc_code_value)]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay,Month DD, yyyy ')) CURR_DATE from dual
+]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL" value="TOTAL" />
+    </group>
+    <group name="G_HEADER" source="Q_HEADER">
+      <element name="LOC_CODE_VALUE" value="LOC_CODE_VALUE" />
+      <group name="G_MAIN" source="Q_MAIN">
+        <element name="PO_NUMBER" value="PO_NUMBER" />
+        <element name="PO_WEIGHT" value="PO_WEIGHT" />
+        <element name="LOC_CODE" value="LOC_CODE" />
+        <element name="INSERT_DATE" value="INSERT_DATE" />
+        <element name="ITEM" value="ITEM" />
+        <element name="ITEM_DESC" value="ITEM_DESC" />
+        <element name="SO_NUMBER" value="SO_NUMBER" />
+        <element name="SO_WEIGHT" value="SO_WEIGHT" />
+        <element name="DIFFERENCE" value="DIFFERENCE" />
+      </group>
+      <group name="G_IND" source="Q_IND">
+        <element name="PO_NUMBER" value="PO_NUMBER" />
+        <element name="PO_WEIGHT" value="PO_WEIGHT" />
+        <element name="LOC_CODE" value="LOC_CODE" />
+        <element name="INSERT_DATE" value="INSERT_DATE" />
+        <element name="ITEM" value="ITEM" />
+        <element name="ITEM_DESC" value="ITEM_DESC" />
+        <element name="SO_NUMBER" value="SO_NUMBER" />
+        <element name="SO_WEIGHT" value="SO_WEIGHT" />
+        <element name="DIFFERENCE" value="DIFFERENCE" />
+      </group>
+    </group>
+  </dataStructure>
+</dataTemplate>

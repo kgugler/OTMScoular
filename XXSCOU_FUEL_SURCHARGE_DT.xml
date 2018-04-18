@@ -1,0 +1,282 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="XXSCOU_FUEL_SURCHARGE_DT" description="Fuel Surcharge" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties></properties>
+  <parameters>
+    <parameter name="P_START_DATE" dataType="character" />
+    <parameter name="P_END_DATE" dataType="character" />
+    <parameter name="P_LOC_CODE" dataType="character" />
+    <parameter name="P_SHIPMENT_ID" dataType="character" />
+    <parameter name="P_ORIGIN" dataType="character" />
+    <parameter name="P_DESTINATION" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT COUNT(1) total FROM (
+SELECT DISTINCT
+       sh.shipment_xid,
+       (SELECT orel.order_release_xid
+          FROM order_release orel
+         WHERE orel.order_release_gid = vsor.order_release_gid)
+          order_release_xid,
+       (SELECT oob.order_base_xid
+          FROM ob_order_base oob, order_release orel
+         WHERE oob.order_base_gid = orel.order_base_gid
+               AND orel.order_release_gid = vsor.order_release_gid)
+          order_base_xid,
+       TO_CHAR(ROUND(sh.total_actual_cost,2),'999999990.00')
+          shipment_cost,
+          sh.t_actual_cost_currency_gid shipment_uom,
+        (SELECT packaged_item_xid
+          FROM packaged_item pi
+         WHERE pi.packaged_item_gid = orl.packaged_item_gid)
+          commodity_code,
+          vsor.order_release_gid,
+       (SELECT     loc.location_name||decode(loc.city,NULL,NULL,', '||loc.city)||decode(loc.province_code,NULL,NULL,', '||loc.province_code)||decode(loc.postal_code,NULL,NULL,', '||loc.postal_code)||decode(loc.country_code3_gid,NULL,NULL,', '||loc.country_code3_gid)
+          FROM location loc
+         WHERE loc.location_gid = sh.dest_location_gid)
+          deliver_to,
+         sh.dest_location_gid,
+       (SELECT     loc.location_name||decode(loc.city,NULL,NULL,', '||loc.city)||decode(loc.province_code,NULL,NULL,', '||loc.province_code)||decode(loc.postal_code,NULL,NULL,', '||loc.postal_code)||decode(loc.country_code3_gid,NULL,NULL,', '||loc.country_code3_gid)
+          FROM location loc
+         WHERE loc.location_gid = sh.source_location_gid)
+          source_loc,
+        TO_CHAR(sh.end_time,'MM/DD/YYYY') DELIVERY_DATE,
+        TO_CHAR(TO_DATE(ssur.remark_text,'yyyy-mm-dd'),'MM/DD/YYYY') bl_date,
+        (SELECT c.contact_xid
+        FROM shipment_involved_party sip
+        JOIN contact c ON sip.involved_party_contact_gid = c.contact_gid
+        WHERE sip.shipment_gid = sh.shipment_gid
+        AND sip.involved_party_qual_gid = 'CUSTOMER') customer_id,
+        TO_CHAR((ROUND(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_fuel_surcharge_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),2)),'999999990.00')
+          Fuel,
+      DECODE(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_fuel_surcharge_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),NULL,NULL,(SELECT DISTINCT cost_currency_gid
+             FROM allocation_order_release_d
+            WHERE order_release_gid = vsor.order_release_gid))
+          Fuel_uom,
+          TO_CHAR((ROUND(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_freight_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),2)),'999999990.00') Freight,
+          DECODE(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_freight_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),NULL,NULL,(SELECT DISTINCT cost_currency_gid
+             FROM allocation_order_release_d
+            WHERE order_release_gid = vsor.order_release_gid))
+          Freight_uom,
+          TO_CHAR(ROUND(sh.loaded_distance,2),'999999990.00') mileage,
+          sref.shipment_refnum_value loc_code
+  FROM shipment sh,
+			 shipment_stop_d sstopd,
+  		 s_ship_unit ssu,
+  		 s_ship_unit_remark ssur,
+       shipment_status ss,
+       status_type st,
+       status_value sv,
+       shipment_refnum sref,
+       view_shipment_order_Release vsor,
+       order_release_refnum orr,
+       order_release_refnum_qual orrq,
+       order_release_line orl
+ WHERE     sh.shipment_gid = ss.shipment_gid
+       AND sstopd.shipment_gid = sh.shipment_gid
+       AND ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+       AND ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+       AND ssur.remark_qual_gid = 'SCOULAR.TRAN ID DATE'
+       AND TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)) >= NVL(TO_DATE(NVL(:P_START_DATE,'1900-01-01'),'yyyy-mm-dd'),TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)))
+       AND TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)) <= NVL(TO_DATE(NVL(:P_END_DATE,'2999-01-01'),'yyyy-mm-dd'),TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)))
+       AND ss.status_type_gid = st.status_type_gid
+       AND st.status_type_xid = 'SAR_AS400'
+       AND ss.status_value_gid = sv.status_value_gid
+       AND ss.status_type_gid = sv.status_type_gid
+       AND sref.shipment_gid = sh.shipment_gid
+       AND sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+       AND orl.order_release_gid = vsor.order_release_gid
+       AND sv.status_value_xid = 'SAR_AS400_YES'
+       AND vsor.shipment_gid = sh.shipment_gid
+       AND orr.order_release_gid = vsor.order_release_gid
+       AND orr.order_release_refnum_qual_gid = orrq.order_release_refnum_qual_gid
+       AND orrq.order_release_refnum_qual_xid = 'PLUS FUEL SURCHARGE'
+       AND orr.order_release_refnum_value = 'Y'
+       AND NVL(sref.shipment_refnum_value,-999) IN
+       (SELECT NVL(SUBSTR (the_string,
+				DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+				DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+				- DECODE (LEVEL, 1, 0, INSTR (the_string,',',1,LEVEL - 1))- 1)),NVL(sref.shipment_refnum_value,-999)) the_value
+        FROM (SELECT TRIM(:P_LOC_CODE) the_string FROM DUAL)
+        CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+       AND NVL(sh.shipment_gid,-999) IN (SELECT NVL(SUBSTR (the_string,
+        DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+        DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+        - DECODE (LEVEL,1, 0,INSTR (the_string,',',1,LEVEL - 1))- 1)),NVL(sh.shipment_gid,-999)) the_value
+				FROM (SELECT TRIM(:P_SHIPMENT_ID) the_string FROM DUAL)
+        CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+       AND NVL(sh.source_location_gid,-999) IN (SELECT NVL(SUBSTR (the_string,
+        DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+ 				DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+ 				- DECODE (LEVEL,1, 0, INSTR (the_string, ',', 1, LEVEL - 1)) - 1)),NVL(sh.source_location_gid,-999)) the_value
+				FROM (SELECT TRIM(:P_ORIGIN) the_string FROM DUAL)
+				CONNECT BY LEVEL <=LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+       AND NVL(sh.dest_location_gid,-999) IN (SELECT NVL(SUBSTR (the_string,
+        DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+ 				DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+ 				- DECODE (LEVEL,1, 0, INSTR (the_string, ',', 1, LEVEL - 1)) - 1)),NVL(sh.dest_location_gid,-999)) the_value
+				FROM (SELECT TRIM(:P_DESTINATION) the_string FROM DUAL)
+				CONNECT BY LEVEL <=LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+ ORDER BY TO_DATE(bl_date,'mm/dd/yyyy') DESC
+)]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+       sh.shipment_xid,
+       (SELECT orel.order_release_xid
+          FROM order_release orel
+         WHERE orel.order_release_gid = vsor.order_release_gid)
+          order_release_xid,
+       (SELECT oob.order_base_xid
+          FROM ob_order_base oob, order_release orel
+         WHERE oob.order_base_gid = orel.order_base_gid
+               AND orel.order_release_gid = vsor.order_release_gid)
+          order_base_xid,
+       TO_CHAR(ROUND(sh.total_actual_cost,2),'999999990.00')
+          shipment_cost,
+          sh.t_actual_cost_currency_gid shipment_uom,
+        (SELECT packaged_item_xid
+          FROM packaged_item pi
+         WHERE pi.packaged_item_gid = orl.packaged_item_gid)
+          commodity_code,
+          vsor.order_release_gid,
+       (SELECT     loc.location_name||decode(loc.city,NULL,NULL,', '||loc.city)||decode(loc.province_code,NULL,NULL,', '||loc.province_code)||decode(loc.postal_code,NULL,NULL,', '||loc.postal_code)||decode(loc.country_code3_gid,NULL,NULL,', '||loc.country_code3_gid)
+          FROM location loc
+         WHERE loc.location_gid = sh.dest_location_gid)
+          deliver_to,
+         sh.dest_location_gid,
+       (SELECT     loc.location_name||decode(loc.city,NULL,NULL,', '||loc.city)||decode(loc.province_code,NULL,NULL,', '||loc.province_code)||decode(loc.postal_code,NULL,NULL,', '||loc.postal_code)||decode(loc.country_code3_gid,NULL,NULL,', '||loc.country_code3_gid)
+          FROM location loc
+         WHERE loc.location_gid = sh.source_location_gid)
+          source_loc,
+        TO_CHAR(sh.end_time,'MM/DD/YYYY') DELIVERY_DATE,
+        TO_CHAR(TO_DATE(ssur.remark_text,'yyyy-mm-dd'),'MM/DD/YYYY') bl_date,
+        (SELECT c.contact_xid
+        FROM shipment_involved_party sip
+        JOIN contact c ON sip.involved_party_contact_gid = c.contact_gid
+        WHERE sip.shipment_gid = sh.shipment_gid
+        AND sip.involved_party_qual_gid = 'CUSTOMER') customer_id,
+        TO_CHAR((ROUND(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_fuel_surcharge_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),2)),'999999990.00')
+          Fuel,
+      DECODE(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_fuel_surcharge_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),NULL,NULL,(SELECT DISTINCT cost_currency_gid
+             FROM allocation_order_release_d
+            WHERE order_release_gid = vsor.order_release_gid))
+          Fuel_uom,
+          TO_CHAR((ROUND(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_freight_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),2)),'999999990.00') Freight,
+          DECODE(GLOGOWNER.XXSCOU_FUEL_SURCHARGE_PKG.xxscou_get_freight_fcn (
+          sh.shipment_gid,
+          sh.transport_mode_gid,
+          vsor.order_release_gid),NULL,NULL,(SELECT DISTINCT cost_currency_gid
+             FROM allocation_order_release_d
+            WHERE order_release_gid = vsor.order_release_gid))
+          Freight_uom,
+          TO_CHAR(ROUND(sh.loaded_distance,2),'999999990.00') mileage,
+          sref.shipment_refnum_value loc_code
+  FROM shipment sh,
+			 shipment_stop_d sstopd,
+  		 s_ship_unit ssu,
+  		 s_ship_unit_remark ssur,
+       shipment_status ss,
+       status_type st,
+       status_value sv,
+       shipment_refnum sref,
+       view_shipment_order_Release vsor,
+       order_release_refnum orr,
+       order_release_refnum_qual orrq,
+       order_release_line orl
+ WHERE     sh.shipment_gid = ss.shipment_gid
+       AND sstopd.shipment_gid = sh.shipment_gid
+       AND ssu.s_ship_unit_gid = sstopd.s_ship_unit_gid
+       AND ssur.s_ship_unit_gid = ssu.s_ship_unit_gid
+       AND ssur.remark_qual_gid = 'SCOULAR.TRAN ID DATE'
+       AND TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)) >= NVL(TO_DATE(NVL(:P_START_DATE,'1900-01-01'),'yyyy-mm-dd'),TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)))
+       AND TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)) <= NVL(TO_DATE(NVL(:P_END_DATE,'2999-01-01'),'yyyy-mm-dd'),TRUNC(NVL(TO_DATE(NVL(REGEXP_SUBSTR(ssur.remark_text,'^[0-9]{4}-[0-1][0-9]-[0-3][0-9]$'),SYSDATE),'yyyy-mm-dd'),SYSDATE)))
+       AND ss.status_type_gid = st.status_type_gid
+       AND st.status_type_xid = 'SAR_AS400'
+       AND ss.status_value_gid = sv.status_value_gid
+       AND ss.status_type_gid = sv.status_type_gid
+       AND sref.shipment_gid = sh.shipment_gid
+       AND sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+       AND orl.order_release_gid = vsor.order_release_gid
+       AND sv.status_value_xid = 'SAR_AS400_YES'
+       AND vsor.shipment_gid = sh.shipment_gid
+       AND orr.order_release_gid = vsor.order_release_gid
+       AND orr.order_release_refnum_qual_gid = orrq.order_release_refnum_qual_gid
+       AND orrq.order_release_refnum_qual_xid = 'PLUS FUEL SURCHARGE'
+       AND orr.order_release_refnum_value = 'Y'
+       AND NVL(sref.shipment_refnum_value,-999) IN
+       (SELECT NVL(SUBSTR (the_string,
+				DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+				DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+				- DECODE (LEVEL, 1, 0, INSTR (the_string,',',1,LEVEL - 1))- 1)),NVL(sref.shipment_refnum_value,-999)) the_value
+        FROM (SELECT TRIM(:P_LOC_CODE) the_string FROM DUAL)
+        CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+       AND NVL(sh.shipment_gid,-999) IN (SELECT NVL(SUBSTR (the_string,
+        DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+        DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+        - DECODE (LEVEL,1, 0,INSTR (the_string,',',1,LEVEL - 1))- 1)),NVL(sh.shipment_gid,-999)) the_value
+				FROM (SELECT TRIM(:P_SHIPMENT_ID) the_string FROM DUAL)
+        CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+       AND NVL(sh.source_location_gid,-999) IN (SELECT NVL(SUBSTR (the_string,
+        DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+ 				DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+ 				- DECODE (LEVEL,1, 0, INSTR (the_string, ',', 1, LEVEL - 1)) - 1)),NVL(sh.source_location_gid,-999)) the_value
+				FROM (SELECT TRIM(:P_ORIGIN) the_string FROM DUAL)
+				CONNECT BY LEVEL <=LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+       AND NVL(sh.dest_location_gid,-999) IN (SELECT NVL(SUBSTR (the_string,
+        DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+ 				DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL)
+ 				- DECODE (LEVEL,1, 0, INSTR (the_string, ',', 1, LEVEL - 1)) - 1)),NVL(sh.dest_location_gid,-999)) the_value
+				FROM (SELECT TRIM(:P_DESTINATION) the_string FROM DUAL)
+				CONNECT BY LEVEL <=LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+ ORDER BY TO_DATE(bl_date,'mm/dd/yyyy') DESC
+]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay,Month DD, yyyy ')) CURR_DATE from dual
+]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL" value="TOTAL" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="ORDER_RELEASE_XID" value="ORDER_RELEASE_XID" />
+      <element name="ORDER_BASE_XID" value="ORDER_BASE_XID" />
+      <element name="CUSTOMER_ID" value="CUSTOMER_ID" />
+      <element name="SHIPMENT_COST" value="SHIPMENT_COST" />
+      <element name="SHIPMENT_UOM" value="SHIPMENT_UOM" />
+      <element name="COMMODITY_CODE" value="COMMODITY_CODE" />
+      <element name="SOURCE_LOC" value="SOURCE_LOC" />
+      <element name="DELIVER_TO" value="DELIVER_TO" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE" />
+      <element name="BL_DATE" value="BL_DATE" />
+      <element name="MILEAGE" value="MILEAGE" />
+      <element name="FUEL" value="FUEL" />
+      <element name="FUEL_UOM" value="FUEL_UOM" />
+      <element name="FREIGHT" value="FREIGHT" />
+      <element name="FREIGHT_UOM" value="FREIGHT_UOM" />
+    </group>
+  </dataStructure>
+</dataTemplate>

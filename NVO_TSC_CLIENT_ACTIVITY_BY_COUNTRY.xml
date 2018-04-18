@@ -1,0 +1,340 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_TSC_CLIENT_ACTIVITY_BY_COUNTRY" description="NVO TSC Client Activity By Country" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="REPORT_TYPE" dataType="character"></parameter>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+    <parameter name="CUSTOMER_ID" dataType="character"></parameter>
+    <parameter name="DESTINATION_COUNTRY" dataType="character"></parameter>
+    <parameter name="SHOW_TSC" dataType="character" />
+    <parameter name="SHOW_BOOK" dataType="character" />
+    <parameter name="SHOW_ORIG" dataType="character" />
+    <parameter name="SHOW_DEST" dataType="character" />
+    <parameter name="SHOW_REF" dataType="character" />
+    <parameter name="SHOW_EQUIP" dataType="character" />
+    <parameter name="SHOW_CAR" dataType="character" />
+    <parameter name="SHOW_VES" dataType="character" />
+    <parameter name="SHOW_RAIL" dataType="character" />
+    <parameter name="SHOW_PORT" dataType="character" />
+    <parameter name="SHOW_ETD" dataType="character" />
+    <parameter name="SHOW_ATD" dataType="character" />
+    <parameter name="SHOW_ETA" dataType="character" />
+    <parameter name="SHOW_ATA" dataType="character" />
+    <parameter name="SHOW_NOTE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :REPORT_TYPE eta_etd,
+  TO_CHAR(SYSDATE,'MM/DD/YYYY')
+  run_date,
+  :DESTINATION_COUNTRY
+  dest_country,
+  (SELECT location_name
+  FROM location
+  WHERE location_gid = :CUSTOMER_ID)
+  customer_name,
+  TO_CHAR((CASE WHEN :START_DATE IS NULL AND :END_DATE IS NULL THEN
+    (CASE WHEN :REPORT_TYPE = 'ETA' THEN
+      TRUNC(ADD_MONTHS(SYSDATE,-NVL(TO_NUMBER((
+      SELECT location_refnum_value 
+      FROM location_refnum 
+      WHERE location_gid = :CUSTOMER_ID 
+      AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETA')),0)))
+    WHEN :REPORT_TYPE = 'ETD' THEN
+      TRUNC(ADD_MONTHS(SYSDATE,-NVL(TO_NUMBER((
+      SELECT location_refnum_value 
+      FROM location_refnum 
+      WHERE location_gid = :CUSTOMER_ID 
+      AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETD')),0)))    
+    END)
+  WHEN NOT :START_DATE IS NULL AND NOT :END_DATE IS NULL THEN
+    NVL(TO_DATE(:START_DATE,'YYYY-MM-DD'),SYSDATE)
+  END),'MM/DD/YY')
+  start_dt,
+  TO_CHAR((CASE WHEN :START_DATE IS NULL AND :END_DATE IS NULL THEN
+    (CASE WHEN :REPORT_TYPE = 'ETA' THEN  
+      TRUNC(ADD_MONTHS(SYSDATE,NVL(TO_NUMBER((
+      SELECT location_refnum_value 
+      FROM location_refnum 
+      WHERE location_gid = :CUSTOMER_ID 
+      AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETA')),0)))
+    WHEN :REPORT_TYPE = 'ETD' THEN
+      TRUNC(ADD_MONTHS(SYSDATE,NVL(TO_NUMBER((
+      SELECT location_refnum_value 
+      FROM location_refnum 
+      WHERE location_gid = :CUSTOMER_ID 
+      AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETD')),0)))   
+    END)
+  WHEN NOT :START_DATE IS NULL AND NOT :END_DATE IS NULL THEN
+      NVL(TO_DATE(:END_DATE,'YYYY-MM-DD'),SYSDATE)
+  END),'MM/DD/YY')
+  end_dt,
+  :SHOW_TSC tscyn,
+  :SHOW_BOOK bookyn,
+  :SHOW_ORIG origyn,
+  :SHOW_DEST destyn,
+  :SHOW_REF refyn,
+  :SHOW_EQUIP equipyn,
+  :SHOW_CAR caryn,
+  :SHOW_VES vesyn,
+  :SHOW_RAIL railyn,
+  :SHOW_PORT portyn,
+  :SHOW_ETD etdyn,
+  :SHOW_ATD atdyn,
+  :SHOW_ETA etayn,
+  :SHOW_ATA atayn,
+  :SHOW_NOTE noteyn,
+  (CASE WHEN :START_DATE IS NULL OR :END_DATE IS NULL THEN
+    (CASE WHEN :REPORT_TYPE = 'ETA' THEN 
+      (CASE WHEN (SELECT location_refnum_value FROM location_refnum WHERE location_gid = :CUSTOMER_ID AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETA') IS NULL 
+      OR (SELECT location_refnum_value FROM location_refnum WHERE location_gid = :CUSTOMER_ID AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETD') IS NULL THEN
+        'N'
+      ELSE
+        'Y'
+      END)
+    ELSE
+      (CASE WHEN (SELECT location_refnum_value FROM location_refnum WHERE location_gid = :CUSTOMER_ID AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETA') IS NULL 
+      OR (SELECT location_refnum_value FROM location_refnum WHERE location_gid = :CUSTOMER_ID AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETD') IS NULL THEN
+        'N'
+      ELSE
+        'Y'
+      END)    
+    END)
+  ELSE
+    'Y'
+  END)
+  report_run
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  j.job_xid
+  job_id,
+  j.attribute2
+  booking_id,
+  loc1.location_name
+  origin,
+  loc2.location_name
+  destination,
+  j.attribute3
+  ref_no,
+  (SELECT LISTAGG(TRIM(TO_CHAR(COUNT(se.s_equipment_gid),'99990')) || ' X ' || 
+  (CASE WHEN eg.equipment_group_xid = '20FT_22GP' THEN '20'''
+  WHEN eg.equipment_group_xid = '20FT_22RE' THEN '20''''RF'
+  WHEN eg.equipment_group_xid = '20FT_22TG' THEN '20''''ISO'
+  WHEN eg.equipment_group_xid = '40FT_42GP' THEN '40'''
+  WHEN eg.equipment_group_xid = '40FT_45GP' THEN '40HC'
+  WHEN eg.equipment_group_xid = '45FT_L5GP' THEN '45'''
+  WHEN eg.equipment_group_xid = '40FT_45RE' THEN '40''''HCRF'
+  WHEN eg.equipment_group_xid = 'RO RO' THEN 'RORO'
+  ELSE eg.equipment_group_xid
+  END), ', ') 
+  WITHIN GROUP (ORDER BY eg.equipment_group_xid) 
+  FROM shipment_s_equipment_join ssejoin
+  INNER JOIN s_equipment se ON ssejoin.s_equipment_gid  = se.s_equipment_gid
+  INNER JOIN equipment_group eg ON se.equipment_group_gid = eg.equipment_group_gid
+  WHERE ssejoin.shipment_gid = s.shipment_gid
+  GROUP BY eg.equipment_group_xid) 
+  equipment,
+  loc3.location_name
+  carrier,  
+  TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value)
+  vessel_voyage,
+  cvr2.charter_voyage_refnum_value
+  rail_cut,
+  cvr3.charter_voyage_refnum_value
+  port_cut,
+  TO_CHAR(cv.departure_date,'fmMM/DD/YYYY')
+  etd,
+  TO_CHAR(cv.actual_departure_date,'fmMM/DD/YYYY')
+  atd,  
+  TO_CHAR(cv.arrival_date,'fmMM/DD/YYYY')
+  eta,  
+  TO_CHAR(cv.actual_arrival_date,'fmMM/DD/YYYY')
+  ata,    
+  jrem.remark_text
+  notes,
+  :SHOW_TSC tsc_yn,
+  :SHOW_BOOK book_yn,
+  :SHOW_ORIG orig_yn,
+  :SHOW_DEST dest_yn,
+  :SHOW_REF ref_yn,
+  :SHOW_EQUIP equip_yn,
+  :SHOW_CAR car_yn,
+  :SHOW_VES ves_yn,  
+  :SHOW_RAIL rail_yn,
+  :SHOW_PORT port_yn,
+  :SHOW_ETD etd_yn,
+  :SHOW_ATD atd_yn,
+  :SHOW_ETA eta_yn,
+  :SHOW_ATA ata_yn,
+  :SHOW_NOTE note_yn 
+FROM 
+  job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B' 
+INNER JOIN
+  job_order_release_join jorjoin ON j.job_gid = jorjoin.job_gid  
+INNER JOIN
+  s_ship_unit_line ssuline ON jorjoin.order_release_gid = ssuline.order_release_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessujoin ON sessujoin.s_ship_unit_gid = ssuline.s_ship_unit_gid
+INNER JOIN
+  shipment_s_equipment_join ssejoin ON sessujoin.s_equipment_gid = ssejoin.s_equipment_gid
+INNER JOIN
+  shipment sh ON ssejoin.shipment_gid = sh.shipment_gid
+AND
+	sh.shipment_type_gid = 'TRANSPORT'
+AND
+	sh.transport_mode_gid = 'VESSEL-CO'  
+AND
+  sh.perspective = 'S'  
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid  
+INNER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'BILL-TO'
+INNER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid  
+INNER JOIN
+  location loc3 ON s.servprov_gid = loc3.location_gid    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START RAMP CUTOFF TIME' 
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_START PORT CUTOFF TIME'   
+LEFT OUTER JOIN
+  job_remark jrem ON j.job_gid = jrem.job_gid
+AND
+  jrem.remark_qual_gid = 'SCOULAR/NVO.EXPORT ACTIVITY NOTES_EXTERNAL'
+WHERE
+  j.domain_name = 'SCOULAR/NVO'  
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)
+AND
+  ((:REPORT_TYPE = 'ETD'
+AND
+  (:START_DATE IS NULL AND :END_DATE IS NULL
+AND
+  ((TO_DATE(cv.departure_date,'dd-mm-rr') >= 
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,-NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETD')),0))))
+AND
+    TO_DATE(cv.departure_date,'dd-mm-rr') <= 
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETA')),0)))))
+OR    
+  (TO_DATE(cv.actual_departure_date,'dd-mm-rr') >= 
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,-NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETD')),0))))
+AND
+    TO_DATE(cv.actual_departure_date,'dd-mm-rr') <= 
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETA')),0))))))
+OR
+  (NOT :START_DATE IS NULL AND NOT :END_DATE IS NULL
+AND
+  ((TO_DATE(cv.departure_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+OR
+  (TO_DATE(cv.actual_departure_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.actual_departure_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))))))
+OR
+  (:REPORT_TYPE = 'ETA'
+AND
+  ((:START_DATE IS NULL AND :END_DATE IS NULL
+AND
+  ((TO_DATE(cv.arrival_date,'dd-mm-rr') >= 
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,-NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETA')),0))))
+AND
+  TO_DATE(cv.arrival_date,'dd-mm-rr') <=     
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETA')),0)))))
+OR
+  (TO_DATE(cv.actual_arrival_date,'dd-mm-rr') >= 
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,-NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_BEFORE_ETA')),0))))
+AND
+  TO_DATE(cv.actual_arrival_date,'dd-mm-rr') <=     
+    TO_DATE(TRUNC(ADD_MONTHS(SYSDATE,NVL(TO_NUMBER((
+    SELECT location_refnum_value 
+    FROM location_refnum 
+    WHERE location_gid = :CUSTOMER_ID 
+    AND location_refnum_qual_gid = 'SCOULAR/NVO.TSC_CAR_MONTHS_AFTER_ETA')),0))))))
+OR
+  (NOT :START_DATE IS NULL AND NOT :END_DATE IS NULL
+AND
+  ((TO_DATE(cv.arrival_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.arrival_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+OR
+  (TO_DATE(cv.actual_arrival_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.actual_arrival_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))))))))
+AND
+  sip.involved_party_contact_gid = :CUSTOMER_ID
+AND
+  loc2.country_code3_gid IN (SELECT REGEXP_SUBSTR(:DESTINATION_COUNTRY, '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR(:DESTINATION_COUNTRY, ',', 1, LEVEL - 1) > 0)
+ORDER BY
+  j.job_xid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

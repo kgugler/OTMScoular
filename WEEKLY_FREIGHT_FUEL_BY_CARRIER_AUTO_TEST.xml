@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="WEEKLY_FREIGHT_FUEL_BY_CARRIER_AUTO" description="Weekly Freight And Fuel By Carrier - Auto" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="CARRIER_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  sprov.servprov_xid carrier,
+  (CASE WHEN INSTR(s.shipment_xid,'_') > 0 THEN
+    SUBSTR(LTRIM(s.shipment_xid,'0'),1,INSTR(LTRIM(s.shipment_xid,'0'),'_') -1)
+  ELSE
+    LTRIM(s.shipment_xid,'0')
+  END) shipment_id,
+  loc1.location_name origin_location,
+  loc1.city origin_city,
+  NVL(loc1.province_code, loc1.province) origin_state,
+  loc2.location_name destination_location,
+  loc2.city destination_city,
+  NVL(loc2.province_code, loc2.province) destination_state,
+  TO_CHAR((CASE WHEN s.source_location_gid IS NULL THEN 
+    s.start_time
+  ELSE 
+    glogowner.utc.get_local_date(s.start_time,s.source_location_gid)
+  END), 'MM/DD/YYYY') pickup_date,
+  TO_CHAR((CASE WHEN s.dest_location_gid IS NULL THEN 
+    s.end_time
+  ELSE 
+    glogowner.utc.get_local_date(s.end_time,s.dest_location_gid)
+  END), 'MM/DD/YYYY') delivery_date,
+  (CASE WHEN s.shipment_type_gid = 'SECONDARY CHARGE' THEN '0.00'
+  ELSE TRIM(TO_CHAR(ROUND(s.loaded_distance, 2),'999,999,990.00'))
+  END) mileage,
+  TRIM(TO_CHAR((SELECT SUM(sc1.cost_base)
+  FROM shipment_cost sc1
+  WHERE sc1.shipment_gid = s.shipment_gid
+  AND (NOT sc1.accessorial_code_gid = 'SCOULAR/FOOD.FSC' OR sc1.accessorial_code_gid IS NULL)),'$999,999,990.00'))
+  freight_cost,
+  TRIM(TO_CHAR(NVL((SELECT SUM(sc1.cost_base)
+  FROM shipment_cost sc1
+  WHERE sc1.shipment_gid = s.shipment_gid
+  AND sc1.accessorial_code_gid = 'SCOULAR/FOOD.FSC'), 0),'$999,999,990.00'))
+  fuel_cost,
+  TRIM(TO_CHAR((SELECT SUM(sc1.cost_base)
+  FROM shipment_cost sc1
+  WHERE sc1.shipment_gid = s.shipment_gid),'$999,999,990.00'))
+  total_cost
+FROM
+  shipment s
+INNER JOIN
+  shipment_status ss ON s.shipment_gid = ss.shipment_gid
+LEFT OUTER JOIN
+  servprov sprov ON s.servprov_gid = sprov.servprov_gid
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  ss.status_value_gid = 'SCOULAR/FOOD.ENROUTE_COMPLETED'
+AND
+  ((CASE WHEN s.source_location_gid IS NULL THEN 
+    s.start_time
+  ELSE 
+    glogowner.utc.get_local_date(s.start_time,s.source_location_gid)
+  END) >= TRUNC(NEXT_DAY(SYSDATE, 'WED')) - 14
+AND
+  (CASE WHEN s.source_location_gid IS NULL THEN 
+    s.start_time
+  ELSE 
+    glogowner.utc.get_local_date(s.start_time,s.source_location_gid)
+  END) <  TRUNC (NEXT_DAY(SYSDATE, 'WED')) -  7)
+AND
+  s.servprov_gid = :CARRIER_ID
+ORDER BY
+  sprov.servprov_xid ASC,
+  (CASE WHEN s.source_location_gid IS NULL THEN 
+    s.start_time
+  ELSE 
+    glogowner.utc.get_local_date(s.start_time,s.source_location_gid)
+  END) ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CARRIER" value="CARRIER" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID"></element>
+      <element name="ORIGIN_LOCATION" value="ORIGIN_LOCATION" />
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY" />
+      <element name="ORIGIN_STATE" value="ORIGIN_STATE" />
+      <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION" />
+      <element name="DESTINATION_CITY" value="DESTINATION_CITY" />
+      <element name="DESTINATION_STATE" value="DESTINATION_STATE" />
+      <element name="PICKUP_DATE" value="PICKUP_DATE" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE"></element>
+      <element name="MILEAGE" value="MILEAGE"></element>
+      <element name="FREIGHT_COST" value="FREIGHT_COST"></element>
+      <element name="FUEL_COST" value="FUEL_COST"></element>
+      <element name="TOTAL_COST" value="TOTAL_COST"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

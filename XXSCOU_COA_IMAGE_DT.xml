@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="XXSCOU_COA_IMAGE_DT" description="Image COA" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters>
+    <parameter name="P_SHIPMENT_GID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_SHIP"><![CDATA[SELECT i.item_xid item,i.description item_xid,glogowner.XXSCOU_UTILITY_PKG.xxscou_get_ship_ref_num_fcn(sh.shipment_gid,'CUSTOMER PO RELEASE NUMBER') po_number,
+       shipment_xid,
+       TO_CHAR(sh.end_time,'MM/DD/YYYY') delivery_date,
+       glogowner.XXSCOU_UTILITY_PKG.xxscou_get_item_rem_txt_fcn(i.item_gid,'NAP COA ADDITIONAL NOTES') additional_notes
+  FROM shipment sh,
+       shipment_stop_d ssd,
+       s_ship_unit_line ssul,
+       packaged_item pki,
+       item i
+    WHERE     1 = 1
+       AND sh.shipment_gid = ssd.shipment_gid
+       AND ssd.stop_num = 1
+       AND ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+       AND ssul.packaged_item_gid = pki.packaged_item_gid
+       AND pki.item_gid = i.item_gid
+        AND sh.shipment_gid = :P_SHIPMENT_GID
+]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT COUNT(*) Total
+  FROM document doc, document_content doc_con
+ WHERE doc.document_gid = doc_con.document_content_gid
+       AND document_xid = :item||'_COA'
+]]></sqlStatement>
+    <sqlStatement name="Q_IMAGE"><![CDATA[SELECT blob_content image1
+  FROM document doc, document_content doc_con
+ WHERE doc.document_gid = doc_con.document_content_gid
+       AND document_xid = :item||'_COA'
+]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay,Month DD, yyyy ')) CURR_DATE from dual
+]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_SHIP" source="Q_SHIP">
+      <element name="ITEM_XID" value="ITEM_XID" />
+      <element name="PO_NUMBER" value="PO_NUMBER" />
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE" />
+      <element name="ADDITIONAL_NOTES" value="ADDITIONAL_NOTES" />
+      <group name="G_TOTAL" source="Q_TOTAL">
+        <element name="TOTAL" value="TOTAL" />
+        <group name="G_IMAGE" source="Q_IMAGE">
+          <element name="IMAGE1" value="IMAGE1" />
+        </group>
+      </group>
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>
