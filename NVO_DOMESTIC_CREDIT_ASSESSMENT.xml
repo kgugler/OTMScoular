@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_DOMESTIC_CREDIT_ASSESSMENT" description="NVO Domestic Customer Credit Line Assessment" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_NVO_CREDIT_ASSESSMENT" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="CUSTOMER_ID" dataType="character" />
+    <parameter name="CUSTOMER_COUNTRY" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  s1.start_time,
+  sref.shipment_refnum_value
+  loc_code,
+  j.job_xid
+  load_num,
+  s1.shipment_xid
+  buy_ship_id,
+  s2.shipment_xid 
+  sell_ship_id,
+  loc.location_xid 
+  cust_id,
+  loc.location_name 
+  cust_name,
+  loc.country_code3_gid 
+  cust_country,
+  TO_CHAR(s1.start_time,'MM/DD/YYYY') 
+  ship_date,
+  TO_CHAR(s1.end_time,'MM/DD/YYYY') 
+  delivery_date,  
+  ssur.refnum_value
+  container_id,
+  TO_CHAR((SELECT MAX(xapr.payment_date)
+  FROM xxscou_as400_payment_receipts xapr 
+  WHERE xapr.shipment_id = LTRIM(SUBSTR(s2.shipment_xid, LENGTH(s2.shipment_xid) - 5,6),0)),'MM/DD/YYYY')
+  payment_date,
+  TRIM(TO_CHAR(ROUND(s2.total_actual_cost_base,2),'999,999,990.00')) 
+  total_cost
+FROM
+	job j
+INNER JOIN
+	job_order_release_join jorj1 ON j.job_gid = jorj1.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+INNER JOIN
+  shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+AND
+	s1.shipment_type_gid = 'TRANSPORT'
+AND
+	s1.is_primary = 'Y'
+AND
+	s1.perspective = 'B'
+INNER JOIN
+	job_order_release_join jorj2 ON j.job_gid = jorj2.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s2 ON ssej2.shipment_gid = s2.shipment_gid
+AND
+	s2.shipment_type_gid = 'TRANSPORT'
+AND
+	s2.is_primary = 'Y'
+AND
+	s2.perspective = 'S'  
+LEFT OUTER JOIN
+  shipment_stop_d ssd ON s1.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+LEFT OUTER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/NVODOM.CONTAINER ID'
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s2.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'BILL-TO'  
+LEFT OUTER JOIN
+  location loc ON sip.involved_party_contact_gid = loc.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON s1.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+WHERE
+  j.domain_name = 'SCOULAR/NVODOM'
+AND (NOT
+  loc.country_code3_gid = 'USA'
+AND NOT
+  loc.country_code3_gid = 'CAN')
+AND
+  (TO_DATE(s1.start_time,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s1.start_time,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:CUSTOMER_ID IS NULL OR (NOT :CUSTOMER_ID IS NULL AND
+  sip.involved_party_contact_gid
+          IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+          FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))   
+AND
+  (:CUSTOMER_COUNTRY IS NULL OR (NOT :CUSTOMER_COUNTRY IS NULL AND
+  loc.country_code3_gid
+          IN (SELECT REGEXP_SUBSTR(:CUSTOMER_COUNTRY,'[^,]+', 1, LEVEL) items
+          FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_COUNTRY, '[^,]+', 1, LEVEL) IS NOT NULL)))
+ORDER BY
+  loc.location_xid, s1.start_time]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_NVO_CREDIT_ASSESSMENT.GET_AS400_CR_RECORDS_NVO" />
+</dataTemplate>

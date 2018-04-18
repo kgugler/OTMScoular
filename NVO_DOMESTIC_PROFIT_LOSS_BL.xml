@@ -12,7 +12,7 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
 :OP_START_DATE bl_start_date,
 :OP_END_DATE bl_end_date,
 REPLACE(:INV_PARTY_ID,'SCOULAR.','') bill_to_cust,
@@ -464,7 +464,7 @@ AND
   NOT s3.shipment_gid IS NULL) b) c]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="BL_START_DATE" value="BL_START_DATE" />
       <element name="BL_END_DATE" value="BL_END_DATE" />
       <element name="BILL_TO_CUST" value="BILL_TO_CUST"></element>

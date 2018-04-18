@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_EDI_BOOKINGS_ANALYSIS" description="NVO EDI Bookings Analysis" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+    <parameter name="CARRIER_ID" dataType="character"></parameter>
+    <parameter name="USER_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'MM/DD/YYYY')
+  start_dt,
+  TO_CHAR(TO_DATE(:END_DATE,'YYYY-MM-DD'),'MM/DD/YYYY')
+  end_dt,
+  NVL(glog_util.remove_domain(:CARRIER_ID),'ALL')
+  carrier_num,
+  NVL(glog_util.remove_domain(:USER_ID),'ALL')
+  req_cre_user
+FROM
+  DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  cv.charter_voyage_xid
+  booking_no,
+  glog_util.remove_domain(cv.servprov_gid)
+  carrier,
+  loc1.location_xid
+  source_loc,
+  loc2.location_xid
+  dest_loc,
+  TO_CHAR(cv.insert_date,'MM/DD/YYYY')
+  create_date,
+  glog_util.remove_domain(cv.insert_user)
+  create_user,
+  glog_util.remove_domain(ship.insert_user)
+  request_user,
+  TO_CHAR(cv.departure_date,'MM/DD/YYYY')
+  etd,
+  TO_CHAR(cv.arrival_date,'MM/DD/YYYY')
+  eta,
+  cv.is_cancelled
+  cancelled
+FROM 	
+	charter_voyage cv
+LEFT OUTER JOIN
+  location loc1 ON cv.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON cv.dest_location_gid = loc2.location_gid 
+LEFT OUTER JOIN
+  charter_voyage_refnum cvref ON cv.charter_voyage_gid = cvref.charter_voyage_gid
+AND
+  cvref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_BOOKING REQUEST NUMBER'
+LEFT OUTER JOIN
+  shipment ship ON cvref.charter_voyage_refnum_value = ship.shipment_xid
+WHERE
+  cv.domain_name = 'SCOULAR/NVO'
+AND
+  (TO_DATE(cv.insert_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.insert_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:CARRIER_ID IS NULL
+OR
+  (NOT :CARRIER_ID IS NULL
+AND
+  cv.servprov_gid = :CARRIER_ID))
+AND
+  (:USER_ID IS NULL
+OR
+  (NOT :USER_ID IS NULL
+AND
+  (cv.insert_user = :USER_ID
+OR
+  ship.insert_user = :USER_ID)))
+ORDER BY
+  cv.charter_voyage_xid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

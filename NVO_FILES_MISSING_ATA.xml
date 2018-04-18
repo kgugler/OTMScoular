@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_FILES_MISSING_ATA" description="NVO Files Missing ATA" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="REPORT_TYPE" dataType="character"></parameter>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+    <parameter name="SHIPMENT_TYPE" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :REPORT_TYPE eta_etd,
+  :START_DATE start_dt,
+  :END_DATE end_dt,
+  REPLACE(:SHIPMENT_TYPE,'BOTH','ALL') export_import
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  cv.departure_date,
+  j.job_xid
+  job_id,
+  cv.charter_voyage_xid
+  booking_id,
+  j.attribute4
+  loc,
+  sref.shipment_refnum_value
+  ship_type,
+  loc1.location_name
+  shipper,
+  TO_CHAR(cv.departure_date,'MM/DD/YYYY')
+  etd,
+  TO_CHAR(cv.actual_departure_date,'MM/DD/YYYY')
+  atd,  
+  TO_CHAR(cv.arrival_date,'MM/DD/YYYY')
+  eta,
+  loc2.location_name
+  carrier,
+  (CASE WHEN loc4.location_name IS NULL THEN
+    loc3.location_name
+  ELSE
+    loc4.location_name
+  END)
+  load_port,
+  loc5.location_name
+  discharge_port,
+  loc6.location_name
+  place_of_delivery,
+  s.total_ship_unit_count || ' X ' ||
+  (CASE WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '20FT_22GP' THEN '20'''
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '20FT_22RE' THEN '20''''RF'
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '20FT_22TG' THEN '20''''ISO'
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '40FT_42GP' THEN '40'''
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '40FT_45GP' THEN '40HC'
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '45FT_L5GP' THEN '45'''
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = '40FT_45RE' THEN '40''''HCRF'
+  WHEN glog_util.remove_domain(s.first_equipment_group_gid) = 'RO RO' THEN 'RORO'
+  ELSE glog_util.remove_domain(s.first_equipment_group_gid)
+  END)
+  containers,
+  TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value)
+  vessel_voyage,
+  glog_util.remove_domain(sip2.involved_party_contact_gid)
+  ops_manager
+FROM 
+  job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'
+INNER JOIN
+	shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+	sref.shipment_refnum_qual_gid = 'SCOULAR/NVO.SHIPTYPE'		    
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_LOCATION_ID' 
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VIA_PORT_OF_DISCHARGE'   
+LEFT OUTER JOIN
+  shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+  sip1.involved_party_qual_gid = 'SHIPPER'
+LEFT OUTER JOIN
+  shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+  sip2.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'  
+LEFT OUTER JOIN
+  location loc1 ON sip1.involved_party_contact_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.servprov_gid = loc2.location_gid 
+LEFT OUTER JOIN
+  location loc3 ON cv.source_location_gid = loc3.location_gid 
+LEFT OUTER JOIN
+  location loc4 ON cvr2.charter_voyage_refnum_value = loc4.location_xid 
+LEFT OUTER JOIN
+  location loc5 ON cv.dest_location_gid = loc5.location_gid 
+LEFT OUTER JOIN
+  location loc6 ON cvr3.charter_voyage_refnum_value = loc6.location_xid   
+WHERE
+  j.domain_name = 'SCOULAR/NVO'  
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status js
+  WHERE js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND js.job_gid = j.job_gid)
+AND NOT
+  cv.actual_departure_date IS NULL
+AND
+  cv.actual_arrival_date IS NULL
+AND
+  ((:SHIPMENT_TYPE = 'BOTH') 
+OR
+  (:SHIPMENT_TYPE = 'IMPORT' AND sref.shipment_refnum_value = 'IMPORT')
+OR
+  (:SHIPMENT_TYPE = 'EXPORT' AND sref.shipment_refnum_value = 'EXPORT')) 
+AND
+  ((:REPORT_TYPE = 'ETD'
+AND
+  (TO_DATE(cv.departure_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD')))
+OR
+  (:REPORT_TYPE = 'ETA'
+AND
+  (TO_DATE(cv.arrival_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(cv.arrival_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))))
+ORDER BY
+  cv.departure_date, j.job_xid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

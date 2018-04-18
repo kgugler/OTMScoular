@@ -10,7 +10,9 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:P_RUN draft_final 
+FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_MAIN"><![CDATA[SELECT
   glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
   loc_name,
@@ -36,7 +38,6 @@
   ELSE '' END)
   loc_fax, 
   TO_CHAR(SYSDATE, 'fmMM/DD/YYYY') system_date,
-  j.job_xid bill_lading,
   loc1.location_name agent_name,
   glogowner.xxscou_nvo_report_functions.loc_address(s.servprov_gid) 
   agent_address,
@@ -96,8 +97,8 @@
   (SELECT eg.equipment_group_xid 
   FROM equipment_group eg
   INNER JOIN s_equipment seq ON eg.equipment_group_gid = seq.equipment_group_gid
-  INNER JOIN shipment_s_equipment_join ssej ON seq.s_equipment_gid = ssej.s_equipment_gid
-  WHERE ssej.shipment_gid = s.shipment_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON seq.s_equipment_gid = ssej1.s_equipment_gid
+  WHERE ssej1.shipment_gid = s.shipment_gid
   AND ROWNUM = 1) equipment_type,   
   glogowner.xxscou_nvo_report_functions.commodity_cases_dom(s.shipment_gid,'SCOULAR/NVODOM.COMMODITY DESCRIPTION','SCOULAR.COMMODITY')
   descript_of_cargo,
@@ -121,18 +122,14 @@ FROM
 	job j
 LEFT OUTER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
-LEFT OUTER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-LEFT OUTER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -197,7 +194,6 @@ SELECT
   ELSE '' END)
   loc_fax, 
   TO_CHAR(SYSDATE, 'fmMM/DD/YYYY') system_date,
-  NVL(j.job_xid, 'Data Missing in System') bill_lading,
   NVL(loc1.location_name, 'Data Missing in System') agent_name,
   NVL(glogowner.xxscou_nvo_report_functions.loc_address(s.servprov_gid), 'Data Missing in System') 
   agent_address,
@@ -257,8 +253,8 @@ SELECT
   NVL((SELECT eg.equipment_group_xid 
   FROM equipment_group eg
   INNER JOIN s_equipment seq ON eg.equipment_group_gid = seq.equipment_group_gid
-  INNER JOIN shipment_s_equipment_join ssej ON seq.s_equipment_gid = ssej.s_equipment_gid
-  WHERE ssej.shipment_gid = s.shipment_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON seq.s_equipment_gid = ssej1.s_equipment_gid
+  WHERE ssej1.shipment_gid = s.shipment_gid
   AND ROWNUM = 1), 'Data Missing in System') equipment_type,  
   NVL(glogowner.xxscou_nvo_report_functions.commodity_cases_dom(s.shipment_gid,'SCOULAR/NVODOM.COMMODITY DESCRIPTION','SCOULAR/COMMODITY'), 'Data Missing in System')
   descript_of_cargo,
@@ -282,18 +278,14 @@ FROM
 	job j
 LEFT OUTER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
-LEFT OUTER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-LEFT OUTER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -332,6 +324,23 @@ WHERE
 	j.job_gid = :JOB_ID
 AND
 	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_JOB"><![CDATA[SELECT
+  j.job_xid bill_lading
+FROM
+	job j  
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT
+  NVL(j.job_xid, 'Data Missing in System') bill_lading
+FROM
+	job j
+WHERE
+	j.job_gid = :JOB_ID
+AND
+	:P_RUN = 'DRAFT']]></sqlStatement>
     <sqlStatement name="Q_RATES"><![CDATA[SELECT TRIM(a.rates) rates, a.base
 FROM
 (SELECT DISTINCT
@@ -347,18 +356,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -370,7 +375,7 @@ INNER JOIN
 WHERE
   j.job_gid = :JOB_ID
 ORDER BY rates) a]]></sqlStatement>
-    <sqlStatement name="Q_TOTALS"><![CDATA[SELECT TRIM(TO_CHAR(SUM(a.total_cost), '$999,999,990.00')) total_amount
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT TRIM(TO_CHAR(SUM(a.total_cost), '$999,999,990.00')) total_amount
 FROM 
 (SELECT DISTINCT
   sc.shipment_cost_seqno,
@@ -379,18 +384,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -403,7 +404,7 @@ WHERE
   j.job_gid = :JOB_ID) a]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
     </group>
     <group name="G_MAIN" source="Q_MAIN">
@@ -413,7 +414,6 @@ WHERE
       <element name="LOC_PHONE" value="LOC_PHONE"></element>
       <element name="LOC_FAX" value="LOC_FAX"></element>
       <element name="SYSTEM_DATE" value="SYSTEM_DATE"></element>
-      <element name="BILL_LADING" value="BILL_LADING" />
       <element name="AGENT_NAME" value="AGENT_NAME"></element>
       <element name="AGENT_ADDRESS" value="AGENT_ADDRESS"></element>
       <element name="AGENT_CITY_STATE_ZIP" value="AGENT_CITY_STATE_ZIP"></element>
@@ -447,11 +447,14 @@ WHERE
       <element name="OPS_PHONE" value="OPS_PHONE"></element>
       <element name="OPS_EMAIL" value="OPS_EMAIL"></element>
     </group>
+    <group name="G_JOB" source="Q_JOB">
+      <element name="BILL_LADING" value="BILL_LADING" />
+    </group>
     <group name="G_RATES" source="Q_RATES">
       <element name="RATES" value="RATES"></element>
       <element name="BASE" value="BASE"></element>
     </group>
-    <group name="G_TOTALS" source="Q_TOTALS">
+    <group name="G_TOTAL" source="Q_TOTAL">
       <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT"></element>
     </group>
   </dataStructure>

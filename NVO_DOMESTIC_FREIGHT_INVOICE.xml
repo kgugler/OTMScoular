@@ -10,7 +10,7 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_MAIN"><![CDATA[SELECT
   glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SCOULAR/NVODOM.OPS MANAGER')
   loc_name,
@@ -64,25 +64,30 @@
   glogowner.xxscou_nvo_report_functions.loc_city_province(
   (SELECT orel.source_location_gid
   FROM order_release orel
-  WHERE orel.order_release_gid = vsor1.order_release_gid))
+  WHERE orel.order_release_gid = ssul1.order_release_gid))
   source_location,
 	glogowner.xxscou_nvo_report_functions.loc_city_province(
   (SELECT orel.dest_location_gid
   FROM order_release orel
-  WHERE orel.order_release_gid = vsor1.order_release_gid))
+  WHERE orel.order_release_gid = ssul1.order_release_gid))
   destination_location,
-	j.job_xid bill_lading,
+  j.job_xid bill_lading,  
   TO_CHAR(TO_DATE(
-  (SELECT MIN(ship3.attribute_date2)
+  (SELECT MIN(ship2.attribute_date2)
   FROM shipment ship1
-  INNER JOIN view_shipment_order_release vsor1 ON ship1.shipment_gid = vsor1.shipment_gid
-  LEFT OUTER JOIN job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
-  LEFT OUTER JOIN view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
-  AND vsor2.shipment_gid IN (SELECT ship2.shipment_gid FROM shipment ship2 WHERE vsor2.shipment_gid = ship2.shipment_gid
-  AND ship2.perspective = 'B')  
-  LEFT OUTER JOIN shipment ship3 ON vsor2.shipment_gid = ship3.shipment_gid
-  AND ship3.perspective = 'B' 
-  WHERE ship1.shipment_gid = :SHIPMENT_ID),'dd-mm-rr'), 'fmMM/DD/YY') 
+  INNER JOIN shipment_s_equipment_join ssej3 ON ship1.shipment_gid = ssej3.shipment_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj3 ON ssej3.s_equipment_gid = sessuj3.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul3 ON sessuj3.s_ship_unit_gid = ssul3.s_ship_unit_gid
+  INNER JOIN job_order_release_join jorj3 ON ssul3.order_release_gid = jorj3.order_release_gid
+  INNER JOIN job jb ON jorj3.job_gid = jb.job_gid
+  INNER JOIN job_order_release_join jorj4 ON ssul3.order_release_gid = jorj4.order_release_gid  
+  INNER JOIN s_ship_unit_line ssul4 ON jorj4.order_release_gid = ssul4.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj4 ON ssul4.s_ship_unit_gid = sessuj4.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej4 ON sessuj4.s_equipment_gid = ssej4.s_equipment_gid
+  INNER JOIN shipment ship2 ON ssej4.shipment_gid = ship2.shipment_gid  
+  AND ship2.perspective = 'B' 
+  WHERE ship1.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1),'dd-mm-rr'), 'fmMM/DD/YY') 
   departure_date,
   TRIM((SELECT listagg (ssunit.tag_3, ', ')
   WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
@@ -91,26 +96,26 @@
   WHERE ssd.shipment_gid = s.shipment_gid)) containers  
 FROM
   shipment sh
-LEFT OUTER JOIN
-  view_shipment_order_release vsor1 ON sh.shipment_gid = vsor1.shipment_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj1 ON vsor1.order_release_gid = jorj1.order_release_gid
-LEFT OUTER JOIN
+INNER JOIN
+  shipment_s_equipment_join ssej1 ON sh.shipment_gid = ssej1.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj1 ON ssej1.s_equipment_gid = sessuj1.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN
+  job_order_release_join jorj1 ON ssul1.order_release_gid = jorj1.order_release_gid
+INNER JOIN
 	job j ON jorj1.job_gid = j.job_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
-LEFT OUTER JOIN
-  view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
-AND
-  vsor2.shipment_gid IN (
-  SELECT ship.shipment_gid
-  FROM shipment ship
-  WHERE vsor2.shipment_gid = ship.shipment_gid
-  AND ship.shipment_type_gid = 'TRANSPORT'
-  AND ship.is_primary = 'Y'
-  AND ship.perspective = 'B')  
-LEFT OUTER JOIN
-	shipment s ON vsor2.shipment_gid = s.shipment_gid
+INNER JOIN
+  job_order_release_join jorj2 ON ssul1.order_release_gid = jorj2.order_release_gid  
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej2.shipment_gid = s.shipment_gid
 AND
 	s.perspective = 'B'
 AND
@@ -183,25 +188,30 @@ SELECT
   NVL(glogowner.xxscou_nvo_report_functions.loc_city_province(
   (SELECT orel.source_location_gid
   FROM order_release orel
-  WHERE orel.order_release_gid = vsor1.order_release_gid)), 'Data Missing in System')
+  WHERE orel.order_release_gid = ssul1.order_release_gid)), 'Data Missing in System')
   source_location,
 	NVL(glogowner.xxscou_nvo_report_functions.loc_city_province(
   (SELECT orel.dest_location_gid
   FROM order_release orel
-  WHERE orel.order_release_gid = vsor1.order_release_gid)), 'Data Missing in System')
+  WHERE orel.order_release_gid = ssul1.order_release_gid)), 'Data Missing in System')
   destination_location,
-	NVL(j.job_xid, 'Data Missing in System') bill_lading,
+  j.job_xid bill_lading,  
 	NVL(TO_CHAR(TO_DATE(
-  (SELECT MIN(ship3.attribute_date2)
+  (SELECT MIN(ship2.attribute_date2)
   FROM shipment ship1
-  INNER JOIN view_shipment_order_release vsor1 ON ship1.shipment_gid = vsor1.shipment_gid
-  LEFT OUTER JOIN job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
-  LEFT OUTER JOIN view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
-  AND vsor2.shipment_gid IN (SELECT ship2.shipment_gid FROM shipment ship2 WHERE vsor2.shipment_gid = ship2.shipment_gid
-  AND ship2.perspective = 'B')  
-  LEFT OUTER JOIN shipment ship3 ON vsor2.shipment_gid = ship3.shipment_gid
-  AND ship3.perspective = 'B' 
-  WHERE ship1.shipment_gid = :SHIPMENT_ID),'dd-mm-rr'), 'fmMM/DD/YY'), 'Data Missing in System')
+  INNER JOIN shipment_s_equipment_join ssej3 ON ship1.shipment_gid = ssej3.shipment_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj3 ON ssej3.s_equipment_gid = sessuj3.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul3 ON sessuj3.s_ship_unit_gid = ssul3.s_ship_unit_gid
+  INNER JOIN job_order_release_join jorj3 ON ssul3.order_release_gid = jorj3.order_release_gid
+  INNER JOIN job jb ON jorj3.job_gid = jb.job_gid
+  INNER JOIN job_order_release_join jorj4 ON ssul3.order_release_gid = jorj4.order_release_gid  
+  INNER JOIN s_ship_unit_line ssul4 ON jorj4.order_release_gid = ssul4.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj4 ON ssul4.s_ship_unit_gid = sessuj4.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej4 ON sessuj4.s_equipment_gid = ssej4.s_equipment_gid
+  INNER JOIN shipment ship2 ON ssej4.shipment_gid = ship2.shipment_gid  
+  AND ship2.perspective = 'B' 
+  WHERE ship1.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1),'dd-mm-rr'), 'fmMM/DD/YY'), 'Data Missing in System')
   departure_date,
   NVL(TRIM((SELECT listagg (ssunit.tag_3, ', ')
   WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
@@ -210,26 +220,26 @@ SELECT
   WHERE ssd.shipment_gid = s.shipment_gid)),'Data Missing in System') containers   
 FROM
   shipment sh
-LEFT OUTER JOIN
-  view_shipment_order_release vsor1 ON sh.shipment_gid = vsor1.shipment_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj1 ON vsor1.order_release_gid = jorj1.order_release_gid
-LEFT OUTER JOIN
+INNER JOIN
+  shipment_s_equipment_join ssej1 ON sh.shipment_gid = ssej1.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj1 ON ssej1.s_equipment_gid = sessuj1.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN
+  job_order_release_join jorj1 ON ssul1.order_release_gid = jorj1.order_release_gid
+INNER JOIN
 	job j ON jorj1.job_gid = j.job_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
-LEFT OUTER JOIN
-  view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
-AND
-  vsor2.shipment_gid IN (
-  SELECT ship.shipment_gid
-  FROM shipment ship
-  WHERE vsor2.shipment_gid = ship.shipment_gid
-  AND ship.shipment_type_gid = 'TRANSPORT'
-  AND ship.is_primary = 'Y'
-  AND ship.perspective = 'B')  
-LEFT OUTER JOIN
-	shipment s ON vsor2.shipment_gid = s.shipment_gid
+INNER JOIN
+  job_order_release_join jorj2 ON ssul1.order_release_gid = jorj2.order_release_gid  
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej2.shipment_gid = s.shipment_gid
 AND
 	s.perspective = 'B'
 AND
@@ -394,25 +404,25 @@ FROM
 FROM
   shipment sh
 INNER JOIN
-  view_shipment_order_release vsor1 ON sh.shipment_gid = vsor1.shipment_gid
+  shipment_s_equipment_join ssej1 ON sh.shipment_gid = ssej1.shipment_gid
 INNER JOIN
-  job_order_release_join jorj1 ON vsor1.order_release_gid = jorj1.order_release_gid
+  s_equipment_s_ship_unit_join sessuj1 ON ssej1.s_equipment_gid = sessuj1.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul1 ON sessuj1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+INNER JOIN
+  job_order_release_join jorj1 ON ssul1.order_release_gid = jorj1.order_release_gid
 INNER JOIN
 	job j ON jorj1.job_gid = j.job_gid
 INNER JOIN
-  job_order_release_join jorj2 ON vsor1.order_release_gid = jorj2.order_release_gid  
+  job_order_release_join jorj2 ON ssul1.order_release_gid = jorj2.order_release_gid  
+INNER JOIN 
+  s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor2 ON jorj2.order_release_gid = vsor2.order_release_gid
-AND
-  vsor2.shipment_gid IN (
-  SELECT ship.shipment_gid
-  FROM shipment ship
-  WHERE vsor2.shipment_gid = ship.shipment_gid
-  AND ship.shipment_type_gid = 'TRANSPORT'
-  AND ship.is_primary = 'Y'
-  AND ship.perspective = 'B')  
-INNER JOIN
-	shipment s ON vsor2.shipment_gid = s.shipment_gid
+  shipment s ON ssej2.shipment_gid = s.shipment_gid
 AND
 	s.perspective = 'B'
 AND
@@ -438,49 +448,4 @@ WHERE
 GROUP BY
   a.piece_type]]></sqlStatement>
   </dataQuery>
-  <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
-    <group name="G_MAIN" source="Q_MAIN">
-      <element name="LOC_NAME" value="LOC_NAME" />
-      <element name="LOC_ADDRESS" value="LOC_ADDRESS"></element>
-      <element name="LOC_CITY_STATE_ZIP" value="LOC_CITY_STATE_ZIP"></element>
-      <element name="LOC_PHONE" value="LOC_PHONE"></element>
-      <element name="LOC_FAX" value="LOC_FAX"></element>
-      <element name="CUST_REF_NO" value="CUST_REF_NO" />
-      <element name="GROSS_WEIGHT" value="GROSS_WEIGHT"></element>
-      <element name="GROSS_WEIGHT_UOM" value="GROSS_WEIGHT_UOM"></element>
-      <element name="DESCRIPT_OF_CARGO" value="DESCRIPT_OF_CARGO"></element>
-      <element name="SHIPPER_NAME" value="SHIPPER_NAME" />
-      <element name="CONSIGNEE_NAME" value="CONSIGNEE_NAME"></element>
-      <element name="SOURCE_LOCATION" value="SOURCE_LOCATION" />
-      <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION" />
-      <element name="BILL_LADING" value="BILL_LADING" />
-      <element name="DEPARTURE_DATE" value="DEPARTURE_DATE" />
-      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE" />
-      <element name="LOC_ADDRESS" value="LOC_ADDRESS" />
-      <element name="LOC_CITY_STATE_ZIP" value="LOC_CITY_STATE_ZIP"></element>
-      <element name="CONTAINERS" value="CONTAINERS" />
-    </group>
-    <group name="G_INVOICE" source="Q_INVOICE">
-      <element name="INVOICE_XID" value="INVOICE_XID" />
-      <element name="INVOICE_DATE" value="INVOICE_DATE" />
-      <element name="INVOICE_TERMS" value="INVOICE_TERMS" />
-      <element name="INVOICE_DUE_DATE" value="INVOICE_DUE_DATE" />
-      <element name="REMARK_TEXT" value="REMARK_TEXT" />
-      <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT" />
-      <element name="EXPORTER_NAME" value="EXPORTER_NAME"></element>
-      <element name="EXPORTER_ADDRESS" value="EXPORTER_ADDRESS" />
-      <element name="EXPORTER_CITY_STATE_ZIP" value="EXPORTER_CITY_STATE_ZIP" />
-    </group>
-    <group name="G_COSTS" source="Q_COSTS">
-      <element name="COST_TYPE" value="COST_TYPE" />
-      <element name="COST_TOTAL" value="COST_TOTAL" />
-    </group>
-    <group name="G_PCS" source="Q_PCS">
-      <element name="NUM_PIECES" value="NUM_PIECES" />
-      <element name="PIECE_TYPE" value="PIECE_TYPE" />
-    </group>
-  </dataStructure>
 </dataTemplate>

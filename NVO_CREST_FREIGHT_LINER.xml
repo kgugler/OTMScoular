@@ -2,7 +2,6 @@
 <dataTemplate name="NVO_CREST_FREIGHT_LINER" description="NVO Crest Freight Liner" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_NVO_REPORT_AUDIT" version="1.0">
   <parameters>
     <parameter name="JOB_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
     <parameter name="P_REPORT_GID" dataType="character" />
     <parameter name="P_DISPLAY_NAME" dataType="character" />
     <parameter name="P_DOMAIN" dataType="character" />
@@ -10,15 +9,11 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
   (SELECT inv.invoice_xid
   FROM invoice inv
   INNER JOIN invoice_shipment invship ON inv.invoice_gid = invship.invoice_gid
   WHERE invship.shipment_gid = s.shipment_gid) invoice_num,
-  TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'),'fmDD/MM/YYYY') invoice_date,
-  'DN' || j.job_xid bl_num,
-  j.attribute5 mbl_num,
   TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'),'fmDD/MM/YYYY') sail_date,  
   glogowner.xxscou_nvo_report_functions.loc_city_country(
   (SELECT orel.source_location_gid
@@ -86,92 +81,15 @@ LEFT OUTER JOIN
 AND
   sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.SERVICE TYPE'
 WHERE
-	j.job_gid = :JOB_ID
-AND
-  :P_RUN = 'FINAL'
-AND NOT
-  s.shipment_gid IS NULL
-UNION
-SELECT
-  NVL((SELECT inv.invoice_xid
-  FROM invoice inv
-  INNER JOIN invoice_shipment invship ON inv.invoice_gid = invship.invoice_gid
-  WHERE invship.shipment_gid = s.shipment_gid),'Data Missing in System') invoice_num,
+	j.job_gid = :JOB_ID]]></sqlStatement>
+    <sqlStatement name="Q_JOB"><![CDATA[SELECT
   TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'),'fmDD/MM/YYYY') invoice_date,
-  'DN' || NVL(j.job_xid,' Data Missing in System') bl_num,
-  NVL(j.attribute5,'Data Missing in System') mbl_num,
-  NVL(TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'),'fmDD/MM/YYYY'),'Data Missing in System') sail_date,  
-  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(
-  (SELECT orel.source_location_gid
-  FROM order_release orel
-  WHERE ssul.order_release_gid = orel.order_release_gid
-  AND ROWNUM = 1)),'Data Missing in System')
-  ship_from,
-  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(
-  (SELECT orel.dest_location_gid
-  FROM order_release orel
-  WHERE ssul.order_release_gid = orel.order_release_gid
-  AND ROWNUM = 1)),'Data Missing in System')
-  ship_to,  
-	NVL(glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER'),'Data Missing in System')
-  shipper_name,
-  NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'),'Data Missing in System')
-  consignee_name,
-  NVL(sref1.shipment_refnum_value,'Data Missing in System') service_type,
-  NVL(TRIM(TO_CHAR((SELECT SUM(TO_NUMBER(cvr1.charter_voyage_refnum_value))
-  FROM charter_voyage_refnum cvr1
-  WHERE cvr1.charter_voyage_gid = cv.charter_voyage_gid
-  AND (cvr1.charter_voyage_refnum_qual_gid LIKE ('%TEU%COUNT%') OR cvr1.charter_voyage_refnum_qual_gid LIKE ('%20%COUNT%') OR cvr1.charter_voyage_refnum_qual_gid LIKE ('%40%COUNT%') OR cvr1.charter_voyage_refnum_qual_gid LIKE ('%45%COUNT%'))),'999,999,990')),'Data Missing in System')
-  container_count,    
-  NVL(TRIM((SELECT listagg (ssunit.tag_3, ', ')
-  WITHIN GROUP (ORDER BY ssunit.tag_3) FROM s_ship_unit ssunit
-  INNER JOIN shipment_stop_d sstopd ON ssunit.s_ship_unit_gid = sstopd.s_ship_unit_gid
-  AND sstopd.stop_num = 1
-  WHERE s.shipment_gid = sstopd.shipment_gid)),'Data Missing in System') containers,
-  NVL((SELECT TO_CHAR(ishipstat.eventdate,'fmDD/MM/YYYY')
-  FROM ie_shipmentstatus ishipstat
-  WHERE ishipstat.shipment_gid = s.shipment_gid
-  AND ishipstat.status_code_gid IN ('I','I1')
-  AND ROWNUM = 1),'Data Missing in System') gated_date,  
-  NVL(loc1.location_name,'Data Missing in System') carrier 
+  'DN' || j.job_xid bl_num,
+  j.attribute5 mbl_num
 FROM
 	job j
-INNER JOIN
-  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
-INNER JOIN 
-  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
-INNER JOIN 
-  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
-INNER JOIN 
-  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
-INNER JOIN
-  shipment s ON ssej.shipment_gid = s.shipment_gid
-AND
-	s.perspective = 'B'
-AND
-	s.shipment_type_gid = 'TRANSPORT'
-AND
-	s.transport_mode_gid = 'VESSEL-CO'
-AND
-	s.is_primary = 'Y'  
-LEFT OUTER JOIN
-	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
-AND
-	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
-LEFT OUTER JOIN
-	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
-LEFT OUTER JOIN
-  location loc1 ON cv.servprov_gid = loc1.location_gid
-LEFT OUTER JOIN
-  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
-AND
-  sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.SERVICE TYPE'  
 WHERE
-	j.job_gid = :JOB_ID
-AND
-  :P_RUN = 'DRAFT'
-AND NOT
-  s.shipment_gid IS NULL]]></sqlStatement>
+	j.job_gid = :JOB_ID]]></sqlStatement>
     <sqlStatement name="Q_SELL"><![CDATA[SELECT
   a.shipment_cost_seqno,
   a.sell_cost_type,
@@ -573,14 +491,8 @@ FROM DUAL) b]]></sqlStatement>
   </dataQuery>
   <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_NVO_REPORT_AUDIT.before_report" />
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="INVOICE_NUM" value="INVOICE_NUM" />
-      <element name="INVOICE_DATE" value="INVOICE_DATE"></element>
-      <element name="BL_NUM" value="BL_NUM"></element>
-      <element name="MBL_NUM" value="MBL_NUM" />
       <element name="SAIL_DATE" value="SAIL_DATE" />
       <element name="SHIP_FROM" value="SHIP_FROM" />
       <element name="SHIP_TO" value="SHIP_TO" />
@@ -591,6 +503,11 @@ FROM DUAL) b]]></sqlStatement>
       <element name="CONTAINERS" value="CONTAINERS" />
       <element name="GATED_DATE" value="GATED_DATE" />
       <element name="CARRIER" value="CARRIER"></element>
+    </group>
+    <group name="G_JOB" source="Q_JOB">
+      <element name="INVOICE_DATE" value="INVOICE_DATE"></element>
+      <element name="BL_NUM" value="BL_NUM"></element>
+      <element name="MBL_NUM" value="MBL_NUM" />
     </group>
     <group name="G_SELL" source="Q_SELL">
       <element name="SELL_COST_TYPE" value="SELL_COST_TYPE" />

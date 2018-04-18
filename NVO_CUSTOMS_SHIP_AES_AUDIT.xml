@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_CUSTOMS_SHIP_AES_AUDIT" description="NVO Customs Shipment for AES Audit" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="PERCENT" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'MM/DD/YYYY') start_dt,
+TO_CHAR(TO_DATE(:END_DATE,'YYYY-MM-DD'),'MM/DD/YYYY') end_dt,
+:PERCENT percentage
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  sref.shipment_refnum_value
+  job_id,
+  (SELECT oref.order_release_refnum_value
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid  
+  INNER JOIN order_release_refnum oref ON ssul.order_release_gid = oref.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+  WHERE ssej.shipment_gid = ship.shipment_gid
+  AND ROWNUM = 1)
+  loc,
+  gtr.gtm_transaction_xid
+  customs_ship_no,
+  TO_CHAR(gtr.insert_date,'MM/DD/YYYY')
+  shipment_create_date,
+  (SELECT gtip.involved_party_contact_gid
+  FROM gtm_transaction_involved_party gtip
+  WHERE gtip.gtm_transaction_gid = gtr.gtm_transaction_gid
+  AND gtip.involved_party_qual_gid = 'USPPI'
+  AND ROWNUM = 1)
+  usppi_code,
+  (SELECT gtip.involved_party_contact_gid
+  FROM gtm_transaction_involved_party gtip
+  WHERE gtip.gtm_transaction_gid = gtr.gtm_transaction_gid
+  AND gtip.involved_party_qual_gid = 'SHIP_FROM'
+  AND ROWNUM = 1)
+  ship_from_code,
+  loc.location_name
+  shipper_name,
+  glog_util.remove_domain(sip2.involved_party_contact_gid)
+  ops_manager
+FROM
+(SELECT DISTINCT
+  doc.owner_object_gid
+FROM
+  document doc 
+WHERE
+  doc.domain_name = 'SCOULAR/NVO'
+AND
+  doc.document_def_gid = 'AES_FILING' 
+AND 
+  doc.report_gid = 'AES_FILING' 
+AND
+  (from_tz(CAST(doc.generated_at AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central'
+  >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  from_tz(CAST(doc.generated_at AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central'
+  <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+ORDER BY
+  sys.dbms_random.value) a
+INNER JOIN
+  gtm_transaction gtr ON a.owner_object_gid = gtr.gtm_transaction_gid
+INNER JOIN
+  gtm_trans_refnum gtref ON gtr.gtm_transaction_gid = gtref.gtm_transaction_gid
+AND
+  gtref.gtm_trans_refnum_qual_gid = 'SHIPMENT REFERENCE NUMBER'
+INNER JOIN
+  shipment ship ON 'SCOULAR/NVO.' || gtref.refnum_value = ship.shipment_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON ship.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.JOB_ID'
+LEFT OUTER JOIN
+  shipment_involved_party sip1 ON ship.shipment_gid = sip1.shipment_gid
+AND
+  sip1.involved_party_qual_gid = 'SHIPPER'
+LEFT OUTER JOIN
+  shipment_involved_party sip2 ON ship.shipment_gid = sip2.shipment_gid
+AND
+  sip2.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
+LEFT OUTER JOIN
+  location loc ON sip1.involved_party_contact_gid = loc.location_gid
+WHERE 
+  ROWNUM < (
+    SELECT DISTINCT COUNT(doc.owner_object_gid)
+    FROM
+      document doc 
+    WHERE
+      doc.domain_name = 'SCOULAR/NVO'
+    AND
+      doc.document_def_gid = 'AES_FILING' 
+    AND 
+      doc.report_gid = 'AES_FILING' 
+    AND
+      (from_tz(CAST(doc.generated_at AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central'
+      >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+    AND
+      from_tz(CAST(doc.generated_at AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central'
+      <= TO_DATE(:END_DATE,'YYYY-MM-DD'))) * (:PERCENT / 100)]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

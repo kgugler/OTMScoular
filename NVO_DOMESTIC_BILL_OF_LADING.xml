@@ -10,9 +10,10 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
-  j.job_xid pro_no,
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:P_RUN draft_final 
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
   s.attribute2 bl_num,
   REPLACE(s.attribute1,'SCOULAR/NVO.','') po_no,
   loc1.location_name carrier_name,
@@ -41,7 +42,6 @@
   consignee_state,
   glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE')
   consignee_zip,
-  j.attribute5 containers,  
   srem.remark_text additional_notes,
   (SELECT it.description
   FROM shipment_stop_d ssd
@@ -75,12 +75,6 @@
 FROM
   shipment s
 LEFT OUTER JOIN
-  view_shipment_order_release vsor ON s.shipment_gid = vsor.shipment_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj ON vsor.order_release_gid = jorj.order_release_gid
-LEFT OUTER JOIN
-	job j ON jorj.job_gid = j.job_gid
-LEFT OUTER JOIN
 	shipment_remark srem ON s.shipment_gid = srem.shipment_gid
 AND
 	srem.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES'	
@@ -91,8 +85,7 @@ WHERE
 AND
 	:P_RUN = 'FINAL'
 UNION
-SELECT
-  NVL(j.job_xid, 'Data Missing in System') pro_no,
+SELECT DISTINCT
   NVL(s.attribute2, 'Data Missing in System') bl_num,
   NVL(REPLACE(s.attribute1,'SCOULAR/NVO.',''), 'Data Missing in System') po_no,
   NVL(loc1.location_name, 'Data Missing in System') carrier_name,
@@ -121,7 +114,6 @@ SELECT
   consignee_state,
   NVL(glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE'), 'Data Missing in System')
   consignee_zip,
-  NVL(j.attribute5, 'Data Missing in System') containers,  
   NVL(srem.remark_text, 'Data Missing in System') additional_notes,
   NVL((SELECT it.description
   FROM shipment_stop_d ssd
@@ -155,12 +147,6 @@ SELECT
 FROM
   shipment s
 LEFT OUTER JOIN
-  view_shipment_order_release vsor ON s.shipment_gid = vsor.shipment_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj ON vsor.order_release_gid = jorj.order_release_gid
-LEFT OUTER JOIN
-	job j ON jorj.job_gid = j.job_gid
-LEFT OUTER JOIN
 	shipment_remark srem ON s.shipment_gid = srem.shipment_gid
 AND
 	srem.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES'	
@@ -170,13 +156,51 @@ WHERE
 	s.shipment_gid = :SHIPMENT_ID
 AND
 	:P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_JOB"><![CDATA[SELECT DISTINCT
+  j.job_xid pro_no,
+  j.attribute5 containers
+FROM
+  shipment s
+LEFT OUTER JOIN
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj ON ssul.order_release_gid = jorj.order_release_gid
+LEFT OUTER JOIN
+	job j ON jorj.job_gid = j.job_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'FINAL'
+UNION
+SELECT DISTINCT
+  NVL(j.job_xid, 'Data Missing in System') pro_no, 
+  NVL(j.attribute5, 'Data Missing in System') containers
+FROM
+  shipment s
+LEFT OUTER JOIN
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+LEFT OUTER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+  job_order_release_join jorj ON ssul.order_release_gid = jorj.order_release_gid
+LEFT OUTER JOIN
+	job j ON jorj.job_gid = j.job_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+AND
+	:P_RUN = 'DRAFT' ]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
     </group>
     <group name="G_MAIN" source="Q_MAIN">
-      <element name="PRO_NO" value="PRO_NO" />
       <element name="BL_NUM" value="BL_NUM" />
       <element name="PO_NO" value="PO_NO" />
       <element name="CARRIER_NAME" value="CARRIER_NAME" />
@@ -191,7 +215,6 @@ AND
       <element name="CONSIGNEE_CITY" value="CONSIGNEE_CITY" />
       <element name="CONSIGNEE_STATE" value="CONSIGNEE_STATE" />
       <element name="CONSIGNEE_ZIP" value="CONSIGNEE_ZIP" />
-      <element name="CONTAINERS" value="CONTAINERS" />
       <element name="ADDITIONAL_NOTES" value="ADDITIONAL_NOTES" />
       <element name="DESCRIPT_OF_CARGO" value="DESCRIPT_OF_CARGO" />
       <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
@@ -203,6 +226,10 @@ AND
       <element name="MANAGER_CITY" value="MANAGER_CITY"></element>
       <element name="MANAGER_STATE" value="MANAGER_STATE"></element>
       <element name="MANAGER_ZIP" value="MANAGER_ZIP"></element>
+    </group>
+    <group name="G_JOB" source="Q_JOB">
+      <element name="PRO_NO" value="PRO_NO" />
+      <element name="CONTAINERS" value="CONTAINERS" />
     </group>
   </dataStructure>
 </dataTemplate>

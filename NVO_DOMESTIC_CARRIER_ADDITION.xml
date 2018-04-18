@@ -11,40 +11,22 @@
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
   servprov_gid carrier,
   REPLACE(insert_user,'SCOULAR/NVODOM.','') insert_user,
-  TO_CHAR(to_date(insert_date,'rrrr-mm-dd'),'MM/DD/YYYY') insert_date
+  TO_CHAR(TO_DATE(insert_date,'rrrr-mm-dd'),'MM/DD/YYYY') insert_date
 FROM 
   servprov 
 WHERE
   domain_name = 'SCOULAR/NVODOM' 
 AND
-  TO_CHAR(to_date(insert_date,'rrrr-mm-dd'),'YYYY-MM-DD') =  TO_CHAR(to_date(SYSDATE,'rrrr-mm-dd'),'YYYY-MM-DD') 
+  TO_CHAR(TO_DATE(insert_date,'rrrr-mm-dd'),'YYYY-MM-DD') =  TO_CHAR(TO_DATE(SYSDATE,'rrrr-mm-dd'),'YYYY-MM-DD') 
 AND
   insert_user <> 'SCOULAR.INTEGRATION'
-ORDER BY to_date(insert_date,'rrrr-mm-dd')]]></sqlStatement>
-    <sqlStatement name="Q_ROWCOUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (
-SELECT 
-  servprov_gid carrier,
-  REPLACE(insert_user,'SCOULAR/NVODOM.','') insert_user,
-  TO_CHAR(to_date(insert_date,'rrrr-mm-dd'),'MM/DD/YYYY') insert_date
-FROM 
-  servprov 
-WHERE
-  domain_name = 'SCOULAR/NVODOM' 
-AND
-  TO_CHAR(to_date(insert_date,'rrrr-mm-dd'),'YYYY-MM-DD') =  TO_CHAR(to_date(SYSDATE,'rrrr-mm-dd'),'YYYY-MM-DD') 
-AND
-  insert_user <> 'SCOULAR.INTEGRATION'
-ORDER BY to_date(insert_date,'rrrr-mm-dd')
-)]]></sqlStatement>
+ORDER BY TO_DATE(insert_date,'rrrr-mm-dd')]]></sqlStatement>
   </dataQuery>
   <dataStructure>
     <group name="G_ROWS" source="Q_ROWS">
       <element name="CARRIER" value="CARRIER" />
       <element name="INSERT_USER" value="INSERT_USER" />
       <element name="INSERT_DATE" value="INSERT_DATE" />
-    </group>
-    <group name="G_ROWCOUNT" source="Q_ROWCOUNT">
-      <element name="ROW_COUNT" value="ROW_COUNT" />
     </group>
   </dataStructure>
 </dataTemplate>

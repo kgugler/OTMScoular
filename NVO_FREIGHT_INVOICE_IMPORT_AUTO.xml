@@ -2,14 +2,10 @@
 <dataTemplate name="NVO_FREIGHT_INVOICE_IMPORT_AUTO" description="NVO Freight Invoice (Import) - Auto" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
 	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','1') || ' ' ||
   glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','2') || ' ' ||
   glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER','3'))
@@ -39,6 +35,7 @@
 	glogowner.xxscou_nvo_report_functions.entity_fax_with_label(sh.shipment_gid,'XXX','BILL-TO','FAX:') 
   bill_fax,
 	'TSFE' || j.job_xid bill_lading,
+  j.attribute5 mbl_number,
   gpr.refnum_value invoice_terms,
 	j.attribute3 customer_references,
 	(CASE WHEN sref3.shipment_refnum_value IS NULL THEN
@@ -80,28 +77,6 @@
   AND ssd.stop_num = 1
   GROUP BY ssu.received_ship_unit_count)
   container_count,  
---  (SELECT LISTAGG(TRIM(TO_CHAR(COUNT(se.s_equipment_gid),'99990')) || ' X ' || 
---  (CASE WHEN eg.equipment_group_xid = '20FT_22GP' THEN '20FT'
---  WHEN eg.equipment_group_xid = '20FT_22PL' THEN '20FT FLATRACK'
---  WHEN eg.equipment_group_xid = '20FT_22RE' THEN '20FT RF'
---  WHEN eg.equipment_group_xid = '20FT_22TG' THEN '20FT ISO TANK'
---  WHEN eg.equipment_group_xid = '20FT_22UT' THEN '20FT OPEN TOP'
---  WHEN eg.equipment_group_xid = '20FT_29PO' THEN '20FT PLATFORM'
---  WHEN eg.equipment_group_xid = '40FT_42GP' THEN '40FT'
---  WHEN eg.equipment_group_xid = '40FT_42PL' THEN '40FT FLATRACK'
---  WHEN eg.equipment_group_xid = '40FT_42UT' THEN '40FT OPEN TOP'
---  WHEN eg.equipment_group_xid = '40FT_45GP' THEN '40FT HC'
---  WHEN eg.equipment_group_xid = '40FT_45RE' THEN '40FT HCRF'
---  WHEN eg.equipment_group_xid = '45FT_L5GP' THEN '45FT HC'  
---  WHEN eg.equipment_group_xid LIKE '%RO RO%' THEN 'RORO'
---  ELSE eg.equipment_group_xid
---  END), ',') 
---  WITHIN GROUP (ORDER BY eg.equipment_group_xid) 
---  FROM shipment_s_equipment_join ssej
---  INNER JOIN s_equipment se ON ssej.s_equipment_gid  = se.s_equipment_gid
---  INNER JOIN equipment_group eg ON se.equipment_group_gid = eg.equipment_group_gid
---  WHERE ssej.shipment_gid = s.shipment_gid
---  GROUP BY eg.equipment_group_xid) container_count,  
   REPLACE(srem1.remark_text,'|',CHR(13))
   descript_of_cargo,   
   (CASE WHEN 
@@ -185,7 +160,7 @@ LEFT OUTER JOIN
 AND
 	gpr.gtm_party_refnum_qual_gid = 'SCOULAR.PAYMENT TERMS' 
 WHERE
-	sh.shipment_gid = :SHIPMENT_ID ]]></sqlStatement>
+	sh.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
     <sqlStatement name="Q_INVOICE"><![CDATA[SELECT
 	inv.invoice_xid,
 	TO_CHAR(TO_DATE(inv.invoice_date,'dd-mm-rr'), 'fmMM/DD/YY') invoice_date,
@@ -287,75 +262,11 @@ WHERE
 AND
 	ssd.stop_num = 1) a
 ORDER BY a.s_ship_unit_gid ASC ]]></sqlStatement>
-    <sqlStatement name="Q_PCS"><![CDATA[SELECT LISTAGG(
-  (CASE WHEN :SUM_PIECES = 'YES' THEN
-    TRIM(TO_CHAR(SUM(a.counter), '999,999,990') || ' ' ||
-    (CASE WHEN SUM(a.counter) > 1 THEN
-      (SELECT pt.plural_text
-      FROM glogowner.xxscou_piece_type pt
-      WHERE pt.code = a.p_type)
-    ELSE
-      (SELECT pt.singular_text
-      FROM glogowner.xxscou_piece_type pt
-      WHERE pt.code = a.p_type)
-    END))    
-  ELSE
-    ''
-  END),', ')
-  WITHIN GROUP (ORDER BY a.p_type)
+    <sqlStatement name="Q_PCS"><![CDATA[SELECT 
+  glogowner.xxscou_nvo_report_functions.count_of_pieces_shipment('YES',:SHIPMENT_ID)
   piece_count
 FROM 
-(SELECT DISTINCT
-  ssu.s_ship_unit_gid,
-  TO_NUMBER(regexp_replace(ssur1.refnum_value,'^.*?(\d+)\.doc$','\1')) counter,
-  TRIM(ssur2.refnum_value) p_type
-FROM
-  shipment sh
-INNER JOIN 
-  shipment_s_equipment_join ssej1 ON sh.shipment_gid = ssej1.shipment_gid
-INNER JOIN 
-  s_equipment_s_ship_unit_join sessuj1 ON ssej1.s_equipment_gid = sessuj1.s_equipment_gid
-INNER JOIN 
-  s_ship_unit_line ssul1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
-INNER JOIN
-  job_order_release_join jorj1 ON ssul1.order_release_gid = jorj1.order_release_gid
-INNER JOIN
-	job j ON jorj1.job_gid = j.job_gid
-INNER JOIN
-  job_order_release_join jorj2 ON j.job_gid = jorj2.job_gid
-INNER JOIN 
-  s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
-INNER JOIN 
-  s_equipment_s_ship_unit_join sessuj2 ON sessuj2.s_ship_unit_gid = ssul2.s_ship_unit_gid
-INNER JOIN 
-  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
-INNER JOIN
-	shipment s ON ssej2.shipment_gid = s.shipment_gid
-AND
-  s.shipment_type_gid = 'TRANSPORT'
-AND
-  s.transport_mode_gid = 'VESSEL-CO'
-AND
-  s.is_primary = 'Y'
-AND
-  s.perspective = 'B'
-INNER JOIN
-  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
-AND
-  ssd.stop_num = 1
-INNER JOIN
-  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
-INNER JOIN
-  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
-AND
-  ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
-INNER JOIN
-  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
-AND
-  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE TYPE'    
-WHERE
-  sh.shipment_gid = :SHIPMENT_ID) a
-GROUP BY a.p_type]]></sqlStatement>
+  DUAL]]></sqlStatement>
     <sqlStatement name="Q_WT_TOT"><![CDATA[SELECT
   (CASE WHEN (a.weight1 IS NULL AND a.weight2 IS NULL AND a.weight3 IS NULL) THEN
     TRIM(TO_CHAR(ROUND(SUM(a.received_weight),3),'999,999,990.000')) || ' ' || a.received_weight_uom
@@ -463,6 +374,7 @@ GROUP BY a.received_weight_uom, a.unit_net_weight_uom_code, a.received_volume_uo
     <sqlStatement name="Q_RATES"><![CDATA[ SELECT
   a.sort_order,
   a.rates,
+  a.notes,
   (CASE WHEN a.cost_type = 'B' OR ((NOT UPPER(a.detail) LIKE '%BOL%' OR NOT a.remark_text = 'YES')
    OR (a.detail IS NULL AND a.remark_text IS NULL)) THEN  
     (CASE WHEN (SELECT COUNT(scost.shipment_cost_seqno) 
@@ -533,7 +445,9 @@ FROM
   sc.cost_type,
   sc.cost,
   scd.detail,
-  scr.remark_text,    
+  scr1.remark_text,
+  scr2.remark_text
+  notes,
   (SELECT COUNT(ssu.s_ship_unit_gid)
   FROM shipment_stop_d ssd
   INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
@@ -570,9 +484,13 @@ INNER JOIN
 LEFT OUTER JOIN
   shipment_cost_detail scd ON sc.shipment_cost_seqno = scd.shipment_cost_seqno  
 LEFT OUTER JOIN
-  shipment_cost_remark scr ON sc.shipment_cost_seqno = scr.shipment_cost_seqno     
+  shipment_cost_remark scr1 ON sc.shipment_cost_seqno = scr1.shipment_cost_seqno     
 AND
-  scr.remark_qual_gid = 'SCOULAR/NVO.IS_COST_PER_BOL'    
+  scr1.remark_qual_gid = 'SCOULAR/NVO.IS_COST_PER_BOL'
+LEFT OUTER JOIN
+  shipment_cost_remark scr2 ON sc.shipment_cost_seqno = scr2.shipment_cost_seqno   
+AND
+  scr2.remark_qual_gid = 'SCOULAR/NVO.FREIGHT INVOICE REMARKS'
 WHERE
   sc.shipment_gid = :SHIPMENT_ID
 AND 
@@ -611,6 +529,7 @@ WHERE
       <element name="BILL_PHONE" value="BILL_PHONE" />
       <element name="BILL_FAX" value="BILL_FAX" />
       <element name="BILL_LADING" value="BILL_LADING" />
+      <element name="MBL_NUMBER" value="MBL_NUMBER"></element>
       <element name="INVOICE_TERMS" value="INVOICE_TERMS" />
       <element name="CUSTOMER_REFERENCES" value="CUSTOMER_REFERENCES"></element>
       <element name="VOYAGE_NAME" value="VOYAGE_NAME" />
