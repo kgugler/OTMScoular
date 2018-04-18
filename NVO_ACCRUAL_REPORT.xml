@@ -14,7 +14,7 @@
     'YES'
   END) run_report
 FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
   TO_CHAR(acr.fiscal_period_start, 'MM/DD/YYYY') start_dt,
   TO_CHAR(acr.fiscal_period_end, 'MM/DD/YYYY') end_dt,
   TO_CHAR(SYSDATE,'MM/DD/YYYY HH24:MI:SS') run_dt
@@ -35,7 +35,7 @@ AND
   acr.perspective expense_income1,
   glog_util.remove_domain(acr.shipment_gid) shipment_no1,
   TO_CHAR(acr.job_billed_date,'MM/DD/YYYY') job_bill_date1,
-  TO_CHAR(acr.bl_date,'MM/DD/YYYY') bl_date1,
+  TO_CHAR(acr.acc_date,'MM/DD/YYYY') bl_date1,
   glog_util.remove_domain(acr.source_location_gid) origin1,
   glog_util.remove_domain(acr.dest_location_gid) destination1,
   glog_util.remove_domain(acr.servprov_gid) carrier1,
@@ -110,7 +110,7 @@ GROUP BY
   acr.perspective expense_income2,
   glog_util.remove_domain(acr.shipment_gid) shipment_no2,
   TO_CHAR(acr.job_billed_date,'MM/DD/YYYY') job_bill_date2,
-  TO_CHAR(acr.bl_date,'MM/DD/YYYY') bl_date2,
+  TO_CHAR(acr.acc_date,'MM/DD/YYYY') bl_date2,
   glog_util.remove_domain(acr.source_location_gid) origin2,
   glog_util.remove_domain(acr.dest_location_gid) destination2,
   glog_util.remove_domain(acr.servprov_gid) carrier2,
@@ -194,7 +194,7 @@ GROUP BY
   acr.perspective expense_income3,
   glog_util.remove_domain(acr.shipment_gid) shipment_no3,
   TO_CHAR(acr.job_billed_date,'MM/DD/YYYY') job_bill_date3,
-  TO_CHAR(acr.bl_date,'MM/DD/YYYY') bl_date3,
+  TO_CHAR(acr.acc_date,'MM/DD/YYYY') bl_date3,
   glog_util.remove_domain(acr.source_location_gid) origin3,
   glog_util.remove_domain(acr.dest_location_gid) destination3,
   glog_util.remove_domain(acr.servprov_gid) carrier3,
@@ -272,12 +272,21 @@ AND
 GROUP BY
   acr.perspective) a]]></sqlStatement>
     <sqlStatement name="Q_SEC123INC"><![CDATA[SELECT
-  acr.loc_code loc_code_inc123,
-  SUM(-acr.last_accrual_cost) last_accrual_inc123,  
-  SUM(-acr.cost_change) cost_change_inc123,
-  SUM(-acr.inv_appr_cost_otm) otm_actual_inc123,
-  SUM(-acr.inv_appr_cost_as400) as400_actual_inc123,  
-  SUM(-acr.accrued_cost) period_accrual_inc123
+  a.loc_code loc_code_inc123,
+  SUM(a.last_accrual_cost) last_accrual_inc123,  
+  SUM(a.cost_change) cost_change_inc123,
+  SUM(a.inv_appr_cost_otm) otm_actual_inc123,
+  SUM(a.inv_appr_cost_as400) as400_actual_inc123,  
+  SUM(a.accrued_cost) period_accrual_inc123
+FROM
+(SELECT
+  acr.loc_code,
+  acr.shipment_gid,
+  -acr.last_accrual_cost last_accrual_cost,  
+  -acr.cost_change cost_change,
+  -acr.inv_appr_cost_otm inv_appr_cost_otm,
+  -acr.inv_appr_cost_as400 inv_appr_cost_as400,  
+  -acr.accrued_cost accrued_cost
 FROM
   glogowner.xxscou_accrual_rpt acr
 WHERE
@@ -290,16 +299,45 @@ AND
   acr.section_number IN (1,2,3)
 AND
   acr.perspective = 'S'
+UNION ALL
+SELECT
+  acr.loc_code,
+  acr.shipment_gid,
+  -acr.last_accrual_cost last_accrual_cost,  
+  0 cost_change,
+  0 inv_appr_cost_otm,
+  0 inv_appr_cost_as400,  
+  0 accrued_cost
+FROM
+  glogowner.xxscou_accrual_rpt acr
+WHERE
+  acr.fiscal_year = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),0,4))
+AND
+  acr.fiscal_period_number = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),INSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),'x',1,1)+1,100))
+AND
+  acr.domain_name = 'SCOULAR/NVO'
+AND
+  acr.section_number IN (5,6)
+AND
+  acr.perspective = 'S') a
 GROUP BY
-  acr.loc_code
+  a.loc_code
 ORDER BY 
-  acr.loc_code]]></sqlStatement>
+  a.loc_code]]></sqlStatement>
     <sqlStatement name="Q_SEC123INCTOT"><![CDATA[SELECT
-  NVL(SUM(-acr.last_accrual_cost),0) last_accrual_inc123t,  
-  NVL(SUM(-acr.cost_change),0) cost_change_inc123t,
-  NVL(SUM(-acr.inv_appr_cost_otm),0) otm_actual_inc123t,
-  NVL(SUM(-acr.inv_appr_cost_as400),0) as400_actual_inc123t,  
-  NVL(SUM(-acr.accrued_cost),0) period_accrual_inc123t
+  NVL(SUM(a.last_accrual_cost),0) last_accrual_inc123t,  
+  NVL(SUM(a.cost_change),0) cost_change_inc123t,
+  NVL(SUM(a.inv_appr_cost_otm),0) otm_actual_inc123t,
+  NVL(SUM(a.inv_appr_cost_as400),0) as400_actual_inc123t,  
+  NVL(SUM(a.accrued_cost),0) period_accrual_inc123t
+FROM
+(SELECT
+  acr.shipment_gid,
+  -acr.last_accrual_cost last_accrual_cost,  
+  -acr.cost_change cost_change,
+  -acr.inv_appr_cost_otm inv_appr_cost_otm,
+  -acr.inv_appr_cost_as400 inv_appr_cost_as400,  
+  -acr.accrued_cost accrued_cost
 FROM
   glogowner.xxscou_accrual_rpt acr
 WHERE
@@ -311,14 +349,43 @@ AND
 AND
   acr.section_number IN (1,2,3)
 AND
-  acr.perspective = 'S']]></sqlStatement>
+  acr.perspective = 'S'  
+UNION ALL
+SELECT
+  acr.shipment_gid,
+  -acr.last_accrual_cost last_accrual_cost,  
+  0 cost_change,
+  0 inv_appr_cost_otm,
+  0 inv_appr_cost_as400,  
+  0 accrued_cost
+FROM
+  glogowner.xxscou_accrual_rpt acr
+WHERE
+  acr.fiscal_year = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),0,4))
+AND
+  acr.fiscal_period_number = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),INSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),'x',1,1)+1,100))
+AND
+  acr.domain_name = 'SCOULAR/NVO'
+AND
+  acr.section_number IN (5,6)  
+AND
+  acr.perspective = 'S') a]]></sqlStatement>
     <sqlStatement name="Q_SEC123EXP"><![CDATA[SELECT
-  acr.loc_code loc_code_exp123,
-  SUM(acr.last_accrual_cost) last_accrual_exp123,  
-  SUM(acr.cost_change) cost_change_exp123,
-  SUM(acr.inv_appr_cost_otm) otm_actual_exp123,
-  SUM(acr.inv_appr_cost_as400) as400_actual_exp123,  
-  SUM(acr.accrued_cost) period_accrual_exp123
+  a.loc_code loc_code_exp123,
+  SUM(a.last_accrual_cost) last_accrual_exp123,  
+  SUM(a.cost_change) cost_change_exp123,
+  SUM(a.inv_appr_cost_otm) otm_actual_exp123,
+  SUM(a.inv_appr_cost_as400) as400_actual_exp123,  
+  SUM(a.accrued_cost) period_accrual_exp123
+FROM
+(SELECT
+  acr.loc_code,
+  acr.shipment_gid,
+  acr.last_accrual_cost,  
+  acr.cost_change,
+  acr.inv_appr_cost_otm,
+  acr.inv_appr_cost_as400,  
+  acr.accrued_cost
 FROM
   glogowner.xxscou_accrual_rpt acr
 WHERE
@@ -331,16 +398,44 @@ AND
   acr.section_number IN (1,2,3)
 AND
   acr.perspective = 'B'
+UNION ALL
+SELECT
+  acr.loc_code,
+  acr.shipment_gid,
+  acr.last_accrual_cost,  
+  0 cost_change,
+  0 inv_appr_cost_otm,
+  0 inv_appr_cost_as400,  
+  0 accrued_cost
+FROM
+  glogowner.xxscou_accrual_rpt acr
+WHERE
+  acr.fiscal_year = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),0,4))
+AND
+  acr.fiscal_period_number = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),INSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),'x',1,1)+1,100))
+AND
+  acr.domain_name = 'SCOULAR/NVO'
+AND
+  acr.section_number IN (5,6)
+AND
+  acr.perspective = 'B') a
 GROUP BY
-  acr.loc_code
+  a.loc_code
 ORDER BY 
-  acr.loc_code]]></sqlStatement>
+  a.loc_code]]></sqlStatement>
     <sqlStatement name="Q_SEC123EXPTOT"><![CDATA[SELECT
-  NVL(SUM(acr.last_accrual_cost),0) last_accrual_exp123t,  
-  NVL(SUM(acr.cost_change),0) cost_change_exp123t,
-  NVL(SUM(acr.inv_appr_cost_otm),0) otm_actual_exp123t,
-  NVL(SUM(acr.inv_appr_cost_as400),0) as400_actual_exp123t,  
-  NVL(SUM(acr.accrued_cost),0) period_accrual_exp123t
+  NVL(SUM(a.last_accrual_cost),0) last_accrual_exp123t,  
+  NVL(SUM(a.cost_change),0) cost_change_exp123t,
+  NVL(SUM(a.inv_appr_cost_otm),0) otm_actual_exp123t,
+  NVL(SUM(a.inv_appr_cost_as400),0) as400_actual_exp123t,  
+  NVL(SUM(a.accrued_cost),0) period_accrual_exp123t
+FROM
+(SELECT
+  acr.last_accrual_cost,  
+  acr.cost_change,
+  acr.inv_appr_cost_otm,
+  acr.inv_appr_cost_as400,  
+  acr.accrued_cost
 FROM
   glogowner.xxscou_accrual_rpt acr
 WHERE
@@ -352,7 +447,26 @@ AND
 AND
   acr.section_number IN (1,2,3)
 AND
-  acr.perspective = 'B']]></sqlStatement>
+  acr.perspective = 'B'
+UNION ALL
+SELECT
+  acr.last_accrual_cost,  
+  0 cost_change,
+  0 inv_appr_cost_otm,
+  0 inv_appr_cost_as400,  
+  0 accrued_cost
+FROM
+  glogowner.xxscou_accrual_rpt acr
+WHERE
+  acr.fiscal_year = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),0,4))
+AND
+  acr.fiscal_period_number = TO_NUMBER(SUBSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),INSTR(glog_util.remove_domain(TRIM(:P_PERIOD)),'x',1,1)+1,100))
+AND
+  acr.domain_name = 'SCOULAR/NVO'
+AND
+  acr.section_number IN (5,6)
+AND
+  acr.perspective = 'B') a]]></sqlStatement>
     <sqlStatement name="Q_SEC4"><![CDATA[SELECT
   glog_util.remove_domain(acr.job_gid) file_no4,
   acr.move_perspective_gid job_type4,
@@ -360,7 +474,7 @@ AND
   acr.perspective expense_income4,
   glog_util.remove_domain(acr.shipment_gid) shipment_no4,
   TO_CHAR(acr.job_billed_date,'MM/DD/YYYY') job_bill_date4,
-  TO_CHAR(acr.bl_date,'MM/DD/YYYY') bl_date4,
+  TO_CHAR(acr.acc_date,'MM/DD/YYYY') bl_date4,
   glog_util.remove_domain(acr.source_location_gid) origin4,
   glog_util.remove_domain(acr.dest_location_gid) destination4,
   glog_util.remove_domain(acr.servprov_gid) carrier4,
@@ -435,7 +549,7 @@ GROUP BY
   acr.perspective expense_income5,
   glog_util.remove_domain(acr.shipment_gid) shipment_no5,
   TO_CHAR(acr.job_billed_date,'MM/DD/YYYY') job_bill_date5,
-  TO_CHAR(acr.bl_date,'MM/DD/YYYY') bl_date5,
+  TO_CHAR(acr.acc_date,'MM/DD/YYYY') bl_date5,
   glog_util.remove_domain(acr.source_location_gid) origin5,
   glog_util.remove_domain(acr.dest_location_gid) destination5,
   glog_util.remove_domain(acr.servprov_gid) carrier5,
@@ -519,7 +633,7 @@ GROUP BY
   acr.perspective expense_income6,
   glog_util.remove_domain(acr.shipment_gid) shipment_no6,
   TO_CHAR(acr.job_billed_date,'MM/DD/YYYY') job_bill_date6,
-  TO_CHAR(acr.bl_date,'MM/DD/YYYY') bl_date6,
+  TO_CHAR(acr.acc_date,'MM/DD/YYYY') bl_date6,
   glog_util.remove_domain(acr.source_location_gid) origin6,
   glog_util.remove_domain(acr.dest_location_gid) destination6,
   glog_util.remove_domain(acr.servprov_gid) carrier6,
@@ -601,7 +715,7 @@ GROUP BY
     <group name="G_ERROR" source="Q_ERROR">
       <element name="RUN_REPORT" value="RUN_REPORT" />
     </group>
-    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="START_DT" value="START_DT" />
       <element name="END_DT" value="END_DT"></element>
       <element name="RUN_DT" value="RUN_DT"></element>
@@ -669,7 +783,7 @@ GROUP BY
       <element name="LOC_CODE3" value="LOC_CODE3" />
       <element name="EXPENSE_INCOME3" value="EXPENSE_INCOME3" />
       <element name="SHIPMENT_NO3" value="SHIPMENT_NO3" />
-      <element name="JOB_BILL_DATE3" value="JOB_BILL_DATE2" />
+      <element name="JOB_BILL_DATE3" value="JOB_BILL_DATE3" />
       <element name="BL_DATE3" value="BL_DATE3" />
       <element name="ORIGIN3" value="ORIGIN3" />
       <element name="DESTINATION3" value="DESTINATION3" />

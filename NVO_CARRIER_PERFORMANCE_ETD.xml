@@ -3,6 +3,7 @@
   <parameters>
     <parameter name="OP_START_DATE" dataType="character"></parameter>
     <parameter name="OP_END_DATE" dataType="character" />
+    <parameter name="P_IMPORT_EXPORT" dataType="character"></parameter>
     <parameter name="JOB_ID" dataType="character"></parameter>
     <parameter name="ACCOUNT_ID" dataType="character"></parameter>
     <parameter name="SHIPPER_ID" dataType="character"></parameter>
@@ -14,20 +15,108 @@
     <parameter name="CONSIGNEE_ID" dataType="character"></parameter>
     <parameter name="PRIMARY_IND" dataType="character"></parameter>
     <parameter name="LOC" dataType="character"></parameter>
+    <parameter name="SHOW_ACCT_ID" dataType="character"></parameter>
+    <parameter name="SHOW_ACCT_NAME" dataType="character"></parameter>
+    <parameter name="SHOW_SHIPPER_ID" dataType="character"></parameter>
+    <parameter name="SHOW_SHIPPER_NAME" dataType="character"></parameter>
+    <parameter name="SHOW_COMMODITY" dataType="character"></parameter>
+    <parameter name="SHOW_OPS_DATE" dataType="character"></parameter>
+    <parameter name="SHOW_ETD" dataType="character"></parameter>
+    <parameter name="SHOW_ETA" dataType="character"></parameter>
+    <parameter name="SHOW_CARRIER" dataType="character"></parameter>
+    <parameter name="SHOW_PPD_COL" dataType="character"></parameter>
+    <parameter name="SHOW_PORT_LOAD" dataType="character"></parameter>
+    <parameter name="SHOW_PORT_DISCH" dataType="character"></parameter>
+    <parameter name="SHOW_PLACE_RCPT" dataType="character"></parameter>
+    <parameter name="SHOW_CONSIGNEE" dataType="character"></parameter>
+    <parameter name="SHOW_CONSIGNEE_NAME" dataType="character"></parameter>
+    <parameter name="SHOW_TYPE_MOVE" dataType="character"></parameter>
+    <parameter name="SHOW_COST_INFO" dataType="character"></parameter>
+    <parameter name="SHOW_LOC" dataType="character"></parameter>
+    <parameter name="SHOW_DEST_INFO" dataType="character"></parameter>
+    <parameter name="SHOW_ORIG_INFO" dataType="character"></parameter>
+    <parameter name="SHOW_FINAL_DEST" dataType="character"></parameter>
+    <parameter name="SHOW_CBM" dataType="character"></parameter>
+    <parameter name="SHOW_SALES_REP" dataType="character"></parameter>
+    <parameter name="SHOW_CONT_INFO" dataType="character"></parameter>
+    <parameter name="SHOW_JOB_STATUS" dataType="character"></parameter>
+    <parameter name="SHOW_FILE_OPEN" dataType="character"></parameter>
+    <parameter name="SHOW_FILE_CLOSE" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
     <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
 :OP_START_DATE op_start,
 :OP_END_DATE op_end,
-:LOC loc_string
+:LOC loc_string,
+:P_IMPORT_EXPORT jobtype,
+:PRIMARY_IND show_primary_y_n,
+:SHOW_ACCT_ID acct_id_y_n,
+:SHOW_ACCT_NAME acct_name_y_n,
+:SHOW_SHIPPER_ID ship_id_y_n,
+:SHOW_SHIPPER_NAME ship_name_y_n,
+:SHOW_COMMODITY commod_y_n,
+:SHOW_OPS_DATE ops_dt_y_n,
+:SHOW_ETD etd_y_n,
+:SHOW_ETA eta_y_n,
+:SHOW_CARRIER carr_y_n,
+:SHOW_PPD_COL ppd_col_y_n,
+:SHOW_PORT_LOAD port_load_y_n,
+:SHOW_PORT_DISCH port_disch_y_n,
+:SHOW_PLACE_RCPT place_rec_y_n,
+:SHOW_CONSIGNEE cons_id_y_n,
+:SHOW_CONSIGNEE_NAME cons_name_y_n,
+:SHOW_TYPE_MOVE type_move_y_n,
+:SHOW_COST_INFO cost_info_y_n,
+:SHOW_LOC loc_y_n,
+:SHOW_DEST_INFO dest_info_y_n,
+:SHOW_ORIG_INFO orig_info_y_n,
+:SHOW_FINAL_DEST final_dest_y_n,
+:SHOW_CBM cbm_y_n,
+:SHOW_SALES_REP sales_rep_y_n,
+:SHOW_CONT_INFO cont_info_y_n,
+:SHOW_JOB_STATUS job_status_y_n,
+:SHOW_FILE_OPEN file_open_y_n,
+:SHOW_FILE_CLOSE file_close_y_n
 FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  d.*,
+  :SHOW_ACCT_ID acct_id_yn,
+  :SHOW_ACCT_NAME acct_name_yn,
+  :SHOW_SHIPPER_ID ship_id_yn,
+  :SHOW_SHIPPER_NAME ship_name_yn,
+  :SHOW_COMMODITY commod_yn,
+  :SHOW_OPS_DATE ops_dt_yn,
+  :SHOW_ETD etd_yn,
+  :SHOW_ETA eta_yn,
+  :SHOW_CARRIER carr_yn,
+  :SHOW_PPD_COL ppd_col_yn,
+  :SHOW_PORT_LOAD port_load_yn,
+  :SHOW_PORT_DISCH port_disch_yn,
+  :SHOW_PLACE_RCPT place_rec_yn,
+  :SHOW_CONSIGNEE cons_id_yn,
+  :SHOW_CONSIGNEE_NAME cons_name_yn,
+  :SHOW_TYPE_MOVE type_move_yn,
+  :SHOW_COST_INFO cost_info_yn,
+  :PRIMARY_IND show_primary_yn,
+  :SHOW_LOC loc_yn,
+  :SHOW_DEST_INFO dest_info_yn,
+  :SHOW_ORIG_INFO orig_info_yn,
+  :SHOW_FINAL_DEST final_dest_yn,
+  :SHOW_CBM cbm_yn,
+  :SHOW_SALES_REP sales_rep_yn,
+  :SHOW_CONT_INFO cont_info_yn,
+  :SHOW_JOB_STATUS job_status_yn,
+  :SHOW_FILE_OPEN file_open_yn,
+  :SHOW_FILE_CLOSE file_close_yn  
+FROM
+(SELECT
   c.file_number,
   c.account_no,
   c.account_name,
   c.shipper,
   c.shipper_name,
+  c.commodity,
   c.ops_date,
   c.etd,
   c.eta,
@@ -136,7 +225,14 @@ FROM
   loc1.location_xid account_no,
  	con1.company_name account_name, 
   con2.contact_xid shipper,
-	con2.company_name shipper_name,  
+	con2.company_name shipper_name,
+  (SELECT qref.quote_refnum_value
+  FROM order_release orel
+  INNER JOIN quote_refnum qref ON orel.quote_gid = qref.quote_gid
+  AND qref.quote_refnum_qual_gid = 'SCOULAR/NVO.GENERIC COMMODITY'
+  WHERE orel.order_release_gid = jorj.order_release_gid
+  AND ROWNUM = 1)
+  commodity,  
   TO_CHAR(TO_DATE(j.insert_date,'dd-mm-rr'),'fmMM/DD/YYYY') ops_date,  
   TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'),'fmMM/DD/YYYY') etd,
   TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'),'fmMM/DD/YYYY') eta,
@@ -300,6 +396,12 @@ AND
   (:OP_END_DATE IS NULL OR (NOT :OP_END_DATE IS NULL AND
   TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD')))) 
 AND
+  ((:P_IMPORT_EXPORT = 'BOTH') 
+OR
+  (:P_IMPORT_EXPORT = 'IMPORT' AND j.move_perspective_gid = 'IMPORT')
+OR
+  (:P_IMPORT_EXPORT = 'EXPORT' AND j.move_perspective_gid = 'EXPORT'))     
+AND
   (:JOB_ID IS NULL OR (NOT :JOB_ID IS NULL AND
   j.job_gid = :JOB_ID)) 
 AND
@@ -347,9 +449,16 @@ SELECT DISTINCT
   ship.perspective,   
   j.job_xid file_number,
   loc1.location_xid account_no,
- 	con1.company_name account_name, 
+ 	con1.company_name account_name,
   con2.contact_xid shipper,
-	con2.company_name shipper_name,  
+	con2.company_name shipper_name,
+  (SELECT qref.quote_refnum_value
+  FROM order_release orel
+  INNER JOIN quote_refnum qref ON orel.quote_gid = qref.quote_gid
+  AND qref.quote_refnum_qual_gid = 'SCOULAR/NVO.GENERIC COMMODITY'
+  WHERE orel.order_release_gid = jorj.order_release_gid
+  AND ROWNUM = 1)
+  commodity,  
   TO_CHAR(TO_DATE(j.insert_date,'dd-mm-rr'),'fmMM/DD/YYYY') ops_date,  
   TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'),'fmMM/DD/YYYY') etd,
   TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'),'fmMM/DD/YYYY') eta,
@@ -509,6 +618,12 @@ AND
   (:OP_END_DATE IS NULL OR (NOT :OP_END_DATE IS NULL AND
   TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD')))) 
 AND
+  ((:P_IMPORT_EXPORT = 'BOTH') 
+OR
+  (:P_IMPORT_EXPORT = 'IMPORT' AND j.move_perspective_gid = 'IMPORT')
+OR
+  (:P_IMPORT_EXPORT = 'EXPORT' AND j.move_perspective_gid = 'EXPORT'))     
+AND
   (:JOB_ID IS NULL OR (NOT :JOB_ID IS NULL AND
   j.job_gid = :JOB_ID))
 AND
@@ -570,6 +685,7 @@ GROUP BY
   c.account_name,
   c.shipper,
   c.shipper_name,
+  c.commodity,  
   c.ops_date,
   c.etd,
   c.eta,
@@ -601,7 +717,8 @@ GROUP BY
   c.forty_five_foot,
   c.lcl,
   c.j_status,
-  c.file_open_date
-ORDER BY c.file_number]]></sqlStatement>
+  c.file_open_date) d
+ORDER BY 
+  d.file_number]]></sqlStatement>
   </dataQuery>
 </dataTemplate>

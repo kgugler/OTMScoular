@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="HOPPER_REPORT" description="Hopper Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  loc1.city origin_city,
+  loc1.province_code origin_st,
+  loc2.city dest_city,
+  loc2.province_code dest_st,  
+  sh.shipment_xid ship_no,
+  sref.shipment_refnum_value comm_cd,
+  TO_CHAR(sh.start_time, 'MM/DD/YYYY') pickup_date,
+  TO_CHAR(sh.end_time, 'MM/DD/YYYY') delivery_date,
+  TO_CHAR(sh.total_net_weight_base) || ' LBs' tot_actual_wt,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') planner
+FROM 
+  shipment sh 
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN 
+  s_equipment seq ON ssej.s_equipment_gid = seq.s_equipment_gid
+AND 
+  seq.equipment_group_gid LIKE '%FT HOPPER%'
+LEFT OUTER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT' 
+AND 
+  sh.start_time >= SYSDATE + 2
+AND NOT EXISTS
+  (SELECT ss.status_value_gid
+  FROM shipment_status ss
+  WHERE ss.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND ss.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES'
+  AND ss.shipment_gid = sh.shipment_gid)]]></sqlStatement>
+    <sqlStatement name="Q_ROWCNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (
+SELECT 
+  loc1.city origin_city,
+  loc1.province_code origin_st,
+  loc2.city dest_city,
+  loc2.province_code dest_st,  
+  sh.shipment_xid ship_no,
+  sref.shipment_refnum_value comm_cd,
+  TO_CHAR(sh.start_time, 'MM/DD/YYYY') pickup_date,
+  TO_CHAR(sh.end_time, 'MM/DD/YYYY') delivery_date,
+  TO_CHAR(sh.total_net_weight_base) || ' LBs' tot_actual_wt,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') planner
+FROM 
+  shipment sh 
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN 
+  s_equipment seq ON ssej.s_equipment_gid = seq.s_equipment_gid
+AND 
+  seq.equipment_group_gid LIKE '%FT HOPPER%'
+LEFT OUTER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+WHERE
+  sh.shipment_type_gid = 'TRANSPORT' 
+AND 
+  sh.start_time >= SYSDATE + 2
+AND NOT EXISTS
+  (SELECT ss.status_value_gid
+  FROM shipment_status ss
+  WHERE ss.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND ss.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES'
+  AND ss.shipment_gid = sh.shipment_gid)
+)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY" />
+      <element name="ORIGIN_ST" value="ORIGIN_ST" />
+      <element name="DEST_CITY" value="DEST_CITY" />
+      <element name="DEST_ST" value="DEST_ST" />
+      <element name="SHIP_NO" value="SHIP_NO" />
+      <element name="COMM_CD" value="COMM_CD" />
+      <element name="PICKUP_DATE" value="PICKUP_DATE" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE"></element>
+      <element name="TOT_ACTUAL_WT" value="TOT_ACTUAL_WT" />
+      <element name="PLANNER" value="PLANNER" />
+    </group>
+    <group name="G_ROWCNT" source="Q_ROWCNT">
+      <element name="ROW_COUNT" value="ROW_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

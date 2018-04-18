@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="LOCATION_WITH_NO_RELEASE_SHEET_SCHEDULE" description="Location With No Release Sheet Schedule Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT l.location_xid location_id, l.location_name, l.city, l.province_code, l.postal_code, l.country_code3_gid country_code
+FROM location l
+CROSS JOIN
+(SELECT DISTINCT(a.source_location_gid) location_id
+FROM shipment a, shipment_status b
+WHERE a.shipment_gid=b.shipment_gid
+AND b.status_type_gid='SCOULAR/FOOD.ENROUTE'
+AND b.status_value_gid!='SCOULAR/FOOD.ENROUTE_COMPLETED'
+AND
+NOT EXISTS(
+SELECT v.process_control_request_id, v.warehouse_id
+FROM process_control_request pr
+CROSS JOIN
+(SELECT pr1.process_control_request_id,
+SUBSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id), 0,
+INSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id),'&')-1) warehouse_id
+FROM process_control_request pr1
+WHERE NOT pr1.next_process_time IS NULL) v
+WHERE pr.process_control_request_id = v.process_control_request_id
+AND NOT v.warehouse_id IS NULL
+AND a.source_location_gid = v.warehouse_id)
+UNION
+SELECT DISTINCT(a.dest_location_gid) location_id
+FROM shipment a, shipment_status b
+WHERE a.shipment_gid=b.shipment_gid
+AND b.status_type_gid='SCOULAR/FOOD.ENROUTE'
+AND b.status_value_gid!='SCOULAR/FOOD.ENROUTE_COMPLETED'
+AND
+NOT EXISTS(
+SELECT v.process_control_request_id, v.warehouse_id
+FROM process_control_request pr
+CROSS JOIN
+(SELECT pr1.process_control_request_id,
+SUBSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id), 0,
+INSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id),'&')-1) warehouse_id
+FROM process_control_request pr1
+WHERE NOT pr1.next_process_time IS NULL) v
+WHERE pr.process_control_request_id = v.process_control_request_id
+AND NOT v.warehouse_id IS NULL
+AND a.dest_location_gid = v.warehouse_id)
+ORDER BY location_id) loc
+WHERE l.location_gid = loc.location_id]]></sqlStatement>
+    <sqlStatement name="Q_ROW_COUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (SELECT l.location_xid location_id, l.location_name, l.city, l.province_code, l.postal_code, l.country_code3_gid country_code
+FROM location l
+CROSS JOIN
+(SELECT DISTINCT(a.source_location_gid) location_id
+FROM shipment a, shipment_status b
+WHERE a.shipment_gid=b.shipment_gid
+AND b.status_type_gid='SCOULAR/FOOD.ENROUTE'
+AND b.status_value_gid!='SCOULAR/FOOD.ENROUTE_COMPLETED'
+AND
+NOT EXISTS(
+SELECT v.process_control_request_id, v.warehouse_id
+FROM process_control_request pr
+CROSS JOIN
+(SELECT pr1.process_control_request_id,
+SUBSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id), 0,
+INSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id),'&')-1) warehouse_id
+FROM process_control_request pr1
+WHERE NOT pr1.next_process_time IS NULL) v
+WHERE pr.process_control_request_id = v.process_control_request_id
+AND NOT v.warehouse_id IS NULL
+AND a.source_location_gid = v.warehouse_id)
+UNION
+SELECT DISTINCT(a.dest_location_gid) location_id
+FROM shipment a, shipment_status b
+WHERE a.shipment_gid=b.shipment_gid
+AND b.status_type_gid='SCOULAR/FOOD.ENROUTE'
+AND b.status_value_gid!='SCOULAR/FOOD.ENROUTE_COMPLETED'
+AND
+NOT EXISTS(
+SELECT v.process_control_request_id, v.warehouse_id
+FROM process_control_request pr
+CROSS JOIN
+(SELECT pr1.process_control_request_id,
+SUBSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id), 0,
+INSTR((SELECT SUBSTR(topic_parameters,
+INSTR(topic_parameters,'P_WAREHOUSE_GID=')+16)
+FROM process_control_request
+WHERE TOPIC_CLASS_NAME='glog.server.workflow.adhoc.ScheduleReportTopic'
+AND process_control_request_id=pr1.process_control_request_id),'&')-1) warehouse_id
+FROM process_control_request pr1
+WHERE NOT pr1.next_process_time IS NULL) v
+WHERE pr.process_control_request_id = v.process_control_request_id
+AND NOT v.warehouse_id IS NULL
+AND a.dest_location_gid = v.warehouse_id)
+ORDER BY location_id) loc
+WHERE l.location_gid = loc.location_id)]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOCATION_ID" value="LOCATION_ID" />
+      <element name="LOCATION_NAME" value="LOCATION_NAME" />
+      <element name="CITY" value="CITY" />
+      <element name="PROVINCE_CODE" value="PROVINCE_CODE" />
+      <element name="POSTAL_CODE" value="POSTAL_CODE" />
+      <element name="COUNTRY_CODE" value="COUNTRY_CODE" />
+    </group>
+    <group name="G_ROW_COUNT" source="Q_ROW_COUNT">
+      <element name="ROW_COUNT" value="ROW_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

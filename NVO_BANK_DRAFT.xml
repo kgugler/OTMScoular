@@ -2,16 +2,17 @@
 <dataTemplate name="NVO_BANK_DRAFT" description="NVO Bank Draft" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_NVO_REPORT_AUDIT" version="1.0">
   <parameters>
     <parameter name="JOB_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+    <sqlStatement name="Q_JOB"><![CDATA[SELECT
+	j.job_xid bill_lading,
+	j.attribute1 draft_bank_name
+FROM
+	job j
+WHERE
+  j.job_gid = :JOB_ID]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
   glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.IB_NAME','XXX')
   issue_bank_name,
   TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.IB_ADD1','XXX','1') || ' ' ||
@@ -44,8 +45,7 @@
   sref1.shipment_refnum_value letter_of_credit,   
 	glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.IB_NAME','XXX') issuing_bank,
   TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'MM/DD/YY') draft_date,
-	j.job_xid bill_lading,
-	TO_CHAR(s.attribute_currency1,'999,999,990.00') total_amount,
+	TRIM(TO_CHAR(s.attribute_currency1,'999,999,990.00')) total_amount,
   glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.DRW_NAME','XXX')
   drawee_name,
   TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.DRW_ADD1','XXX','1') || ' ' ||
@@ -65,8 +65,7 @@
 	glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') 
   ops_phone,
 	glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER') 
-  ops_fax,
-	j.attribute1 draft_bank_name
+  ops_fax
 FROM
 	job j
 INNER JOIN
@@ -98,109 +97,13 @@ LEFT OUTER JOIN
 AND
 	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.LETTER OF CREDIT'	
 WHERE
-	j.job_gid = :JOB_ID  
-AND
-	:P_RUN = 'FINAL'
-AND NOT
-  s.shipment_gid IS NULL  
-UNION
-SELECT
-  NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.IB_NAME','XXX'), 'Data Missing in System')
-  issue_bank_name,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.IB_ADD1','XXX','1') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.IB_ADD2','XXX','2')), 'Data Missing in System')
-  issue_bank_address,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'SCOULAR/NVO.IB_CITY','XXX',',') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'SCOULAR/NVO.IB_PRVNC','XXX') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'SCOULAR/NVO.IB_ZIP','XXX') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'SCOULAR/NVO.IB_CNTRY','XXX')), 'Data Missing in System')
-  issue_bank_city_state_zip,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'SCOULAR/NVO.IB_PHONE','XXX'), 'Data Missing in System')
-  issue_bank_phone,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'SCOULAR/NVO.IB_FAX','XXX'), 'Data Missing in System')
-  issue_bank_fax,
-  NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.CB_NAME','XXX'), 'Data Missing in System')
-  bank_name,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.CB_ADD1','XXX','1') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.CB_ADD2','XXX','2')), 'Data Missing in System')
-  bank_address,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'SCOULAR/NVO.CB_CITY','XXX',',') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'SCOULAR/NVO.CB_PRVNC','XXX') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'SCOULAR/NVO.CB_ZIP','XXX') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'SCOULAR/NVO.CB_CNTRY','XXX')), 'Data Missing in System')
-  bank_city_state_zip,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'SCOULAR/NVO.CB_PHONE','XXX'), 'Data Missing in System') 
-  bank_phone,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'SCOULAR/NVO.CB_FAX','XXX'), 'Data Missing in System')
-  bank_fax,  
-	TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'), 'fmMonth DD, YYYY') system_date,
-  NVL(sref1.shipment_refnum_value, 'Data Missing in System') letter_of_credit, 
-	NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.IB_NAME','XXX'), 'Data Missing in System') issuing_bank,
-  NVL(TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'MM/DD/YY'), 'Data Missing in System') draft_date,
-	NVL(j.job_xid, 'Data Missing in System') bill_lading,
-	NVL(TO_CHAR(s.attribute_currency1,'999,999,990.00'), 'Data Missing in System') total_amount,
-  NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'SCOULAR/NVO.DRW_NAME','XXX'), 'Data Missing in System')
-  drawee_name,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.DRW_ADD1','XXX','1') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'SCOULAR/NVO.DRW_ADD2','XXX','2')), 'Data Missing in System')
-  drawee_address,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'SCOULAR/NVO.DRW_CITY','XXX',',') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'SCOULAR/NVO.DRW_PRVNC','XXX') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'SCOULAR/NVO.DRW_ZIP','XXX') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'SCOULAR/NVO.DRW_CNTRY','XXX')), 'Data Missing in System')
-  drawee_city_state_zip,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'SCOULAR/NVO.DRW_PHONE','XXX'), 'Data Missing in System') 
-  drawee_phone,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'SCOULAR/NVO.DRW_FAX','XXX'), 'Data Missing in System')
-  drawee_fax,  
-  NVL(glogowner.xxscou_nvo_report_functions.entity_fullname(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System') 
-  ops_name,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System') 
-  ops_phone,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_fax(s.shipment_gid,'XXX','SCOULAR/NVO.OPS MANAGER'), 'Data Missing in System') 
-  ops_fax,
-	NVL(j.attribute1, 'Data Missing in System') draft_bank_name
-FROM
-	job j
-INNER JOIN
-  job_order_release_join jorj ON j.job_gid = jorj.job_gid
-INNER JOIN 
-  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
-INNER JOIN 
-  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
-INNER JOIN 
-  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
-INNER JOIN
-  shipment s ON ssej.shipment_gid = s.shipment_gid
-AND
-	s.shipment_type_gid = 'TRANSPORT'
-AND
-	s.transport_mode_gid = 'VESSEL-CO'
-AND
-	s.is_primary = 'Y'
-AND
-  s.perspective = 'B'  
-LEFT OUTER JOIN
-	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
-AND
-	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
-LEFT OUTER JOIN
-	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
-LEFT OUTER JOIN
-	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
-AND
-	sref1.shipment_refnum_qual_gid = 'SCOULAR/NVO.LETTER OF CREDIT'	
-WHERE
-	j.job_gid = :JOB_ID
-AND
-	:P_RUN = 'DRAFT'
-AND NOT
-  s.shipment_gid IS NULL]]></sqlStatement>
+	j.job_gid = :JOB_ID]]></sqlStatement>
   </dataQuery>
   <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_NVO_REPORT_AUDIT.before_report" />
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+    <group name="G_JOB" source="Q_JOB">
+      <element name="BILL_LADING" value="BILL_LADING" />
+      <element name="DRAFT_BANK_NAME" value="DRAFT_BANK_NAME" />
     </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="ISSUE_BANK_NAME" value="ISSUE_BANK_NAME" />
@@ -217,7 +120,6 @@ AND NOT
       <element name="LETTER_OF_CREDIT" value="LETTER_OF_CREDIT" />
       <element name="ISSUING_BANK" value="ISSUING_BANK"></element>
       <element name="DRAFT_DATE" value="DRAFT_DATE" />
-      <element name="BILL_LADING" value="BILL_LADING" />
       <element name="TOTAL_AMOUNT" value="TOTAL_AMOUNT"></element>
       <element name="DRAWEE_NAME" value="DRAWEE_NAME"></element>
       <element name="DRAWEE_ADDRESS" value="DRAWEE_ADDRESS"></element>
@@ -227,7 +129,6 @@ AND NOT
       <element name="OPS_NAME" value="OPS_NAME" />
       <element name="OPS_PHONE" value="OPS_PHONE" />
       <element name="OPS_FAX" value="OPS_FAX" />
-      <element name="DRAFT_BANK_NAME" value="DRAFT_BANK_NAME" />
     </group>
   </dataStructure>
 </dataTemplate>

@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_WEIGHT_BY_COMMODITY" description="Weight By Commodity Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+    <parameter name="LOC" dataType="character"></parameter>
+    <parameter name="COMMOD" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  (CASE WHEN :LOC IS NULL THEN 'All Locs' ELSE :LOC END) locs,
+  (CASE WHEN :COMMOD IS NULL THEN 'All Commodities' ELSE :COMMOD END) commods,
+  :START_DATE start_dt,
+  :END_DATE end_dt
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  sref2.shipment_refnum_value loc_code,
+  pi.packaged_item_xid commodity,
+  TRIM(TO_CHAR(ROUND(SUM(ssu.unit_net_weight_base),0),'99999999990')) weight,
+  TRIM(TO_CHAR(MIN(TRUNC(sh.end_time)),'MM/DD/YYYY')) from_pickup,
+  TRIM(TO_CHAR(MAX(TRUNC(sh.end_time)),'MM/DD/YYYY')) to_pickup
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid  
+INNER JOIN 
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid 
+AND 
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'   
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+LEFT OUTER JOIN
+	packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid      
+WHERE
+  sh.domain_name = 'SCOULAR/FOOD'
+AND
+  sh.shipment_type_gid = 'TRANSPORT'
+AND
+  sref1.shipment_refnum_value = 'L'
+AND NOT EXISTS
+  (SELECT sstat.shipment_gid
+  FROM shipment_status sstat
+  WHERE sstat.shipment_gid = sh.shipment_gid
+  AND sstat.status_type_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED'
+  AND sstat.status_value_gid = 'SCOULAR/FOOD.SHIPMENT_CANCELLED_YES')
+AND 
+  (TO_DATE(TO_CHAR(
+  (CASE WHEN sh.dest_location_gid IS NULL THEN
+    sh.end_time
+  ELSE
+    utc.get_local_date(sh.end_time,sh.dest_location_gid)
+  END), 'MM/DD/YY'),'MM/DD/YY') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(TO_CHAR(
+  (CASE WHEN sh.dest_location_gid IS NULL THEN
+    sh.end_time
+  ELSE
+    utc.get_local_date(sh.end_time,sh.dest_location_gid)
+  END), 'MM/DD/YY'),'MM/DD/YY') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  sref2.shipment_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))
+AND
+  (:COMMOD IS NULL OR (NOT :COMMOD IS NULL AND
+  pi.packaged_item_xid IN (SELECT REGEXP_SUBSTR(:COMMOD, '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR(:COMMOD, ',', 1, LEVEL - 1) > 0)))
+GROUP BY
+  sref2.shipment_refnum_value,
+  pi.packaged_item_xid
+ORDER BY
+  sref2.shipment_refnum_value ASC,
+  pi.packaged_item_xid ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="LOCS" value="LOCS" />
+      <element name="COMMODS" value="COMMODS" />
+      <element name="START_DT" value="START_DT" />
+      <element name="END_DT" value="END_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="COMMODITY" value="COMMODITY"></element>
+      <element name="WEIGHT" value="WEIGHT" />
+      <element name="FROM_PICKUP" value="FROM_PICKUP" />
+      <element name="TO_PICKUP" value="TO_PICKUP" />
+    </group>
+  </dataStructure>
+</dataTemplate>

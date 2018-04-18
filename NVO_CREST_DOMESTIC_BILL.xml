@@ -2,15 +2,9 @@
 <dataTemplate name="NVO_CREST_DOMESTIC_BILL" description="NVO Crest Domestic Bill" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="INVOICE_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
   'TSFEEXP/' || 
   (CASE WHEN EXTRACT(MONTH FROM SYSDATE) < 4 THEN SUBSTR(TRIM(TO_CHAR(EXTRACT(YEAR FROM SYSDATE) - 1,'9999')),3,2) || '-' || SUBSTR(TRIM(TO_CHAR(EXTRACT(YEAR FROM SYSDATE),'9999')),3,2) || '/' || j.job_xid
@@ -18,6 +12,53 @@
   END) bill_no,
   TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'), 'DD/MM/YYYY') system_date,
   invr.invoice_refnum_value job_no,
+  'TSFE' || j.job_xid bl_no,
+  (SELECT iref.invoice_refnum_value
+  FROM invoice_refnum iref
+  WHERE iref.invoice_gid = inv.invoice_gid
+  AND iref.invoice_refnum_qual_gid LIKE '%EXCHANGE RATE PER USD%'
+  AND ROWNUM = 1)
+  exchange_rate,
+  (SELECT LISTAGG(iref.invoice_refnum_value,',')
+  WITHIN GROUP (ORDER BY iref.invoice_refnum_value)
+  FROM invoice_refnum iref
+  WHERE iref.invoice_gid = inv.invoice_gid
+  AND iref.invoice_refnum_qual_gid LIKE '%SHIPPING BILL NUMBER%')
+  sb_no,
+  inv.invoice_number inv_no, 
+  (SELECT DISTINCT s1.payment_method_code_gid
+  FROM invoice inv1
+  INNER JOIN invoice_refnum invr1 ON inv1.invoice_gid = invr1.invoice_gid
+  AND invr1.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
+  INNER JOIN job j1 ON 'SCOULAR/NVO.' || invr1.invoice_refnum_value = j1.job_gid
+  INNER JOIN job_order_release_join jorj1 ON j1.job_gid = jorj1.job_gid
+  INNER JOIN s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid 
+  INNER JOIN shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+  AND s1.perspective = 'S'
+  AND s1.shipment_type_gid = 'TRANSPORT'
+  AND s1.transport_mode_gid = 'VESSEL-CO'
+  AND s1.is_primary = 'Y'
+  WHERE inv1.invoice_gid = inv.invoice_gid)
+  vol_freight,
+  (SELECT iref.invoice_refnum_value
+  FROM invoice_refnum iref
+  WHERE iref.invoice_gid = inv.invoice_gid
+  AND iref.invoice_refnum_qual_gid LIKE '%SHIPPING BILL DATE%'
+  AND ROWNUM = 1)
+  sb_date
+FROM
+  invoice inv
+LEFT OUTER JOIN
+  invoice_refnum invr ON inv.invoice_gid = invr.invoice_gid
+AND
+  invr.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
+LEFT OUTER JOIN
+  job j ON 'SCOULAR/NVO.' || invr.invoice_refnum_value = j.job_gid
+WHERE
+  inv.invoice_gid = :INVOICE_ID]]></sqlStatement>
+    <sqlStatement name="Q_SHIPMENT"><![CDATA[SELECT DISTINCT
   glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'XXX','SHIPPER') 
   shipper_name,
 	TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || ' ' ||
@@ -44,59 +85,29 @@
   inv_city_state_zip,
 	glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','BILL-TO','FAX:') 
   inv_fax,
-  'TSFE' || j.job_xid bl_no,
   glogowner.xxscou_nvo_report_functions.loc_city_country(s.port_of_load_location_gid) load_port,
   glogowner.xxscou_nvo_report_functions.loc_city_province(s.port_of_dis_location_gid) discharge_port,
   (CASE WHEN cv.voyage_name IS NULL
   THEN v.vessel_name
-  ELSE cv.voyage_name END) vessel_name,
-  (SELECT iref.invoice_refnum_value
-  FROM invoice_refnum iref
-  WHERE iref.invoice_gid = inv.invoice_gid
-  AND iref.invoice_refnum_qual_gid LIKE '%EXCHANGE RATE PER USD%'
-  AND ROWNUM = 1)
-  exchange_rate,
-  (SELECT LISTAGG(iref.invoice_refnum_value,',')
-  WITHIN GROUP (ORDER BY iref.invoice_refnum_value)
-  FROM invoice_refnum iref
-  WHERE iref.invoice_gid = inv.invoice_gid
-  AND iref.invoice_refnum_qual_gid LIKE '%SHIPPING BILL NUMBER%')
-  sb_no,
-  inv.invoice_number inv_no, 
-  (SELECT DISTINCT s1.payment_method_code_gid
-  FROM invoice inv1
-  INNER JOIN invoice_refnum invr1 ON inv1.invoice_gid = invr1.invoice_gid
-  AND invr1.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
-  INNER JOIN job j1 ON 'SCOULAR/NVO.' || invr1.invoice_refnum_value = j1.job_gid
-  INNER JOIN job_order_release_join jorj1 ON j1.job_gid = jorj1.job_gid
-  INNER JOIN view_shipment_order_release vsor1 ON jorj1.order_release_gid = vsor1.order_release_gid
-  INNER JOIN shipment s1 ON s1.shipment_gid = vsor1.shipment_gid
-  AND s1.perspective = 'S'
-  AND s1.shipment_type_gid = 'TRANSPORT'
-  AND s1.transport_mode_gid = 'VESSEL-CO'
-  AND s1.is_primary = 'Y'
-  WHERE inv1.invoice_gid = inv.invoice_gid)
-  vol_freight,
-  (SELECT iref.invoice_refnum_value
-  FROM invoice_refnum iref
-  WHERE iref.invoice_gid = inv.invoice_gid
-  AND iref.invoice_refnum_qual_gid LIKE '%SHIPPING BILL DATE%'
-  AND ROWNUM = 1)
-  sb_date
+  ELSE cv.voyage_name END) vessel_name  
 FROM
   invoice inv
-LEFT OUTER JOIN
+INNER JOIN
   invoice_refnum invr ON inv.invoice_gid = invr.invoice_gid
 AND
   invr.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
-LEFT OUTER JOIN
+INNER JOIN
   job j ON 'SCOULAR/NVO.' || invr.invoice_refnum_value = j.job_gid
-LEFT OUTER JOIN
+INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
-LEFT OUTER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-LEFT OUTER JOIN
-  shipment s ON vsor.shipment_gid = s.shipment_gid
+INNER JOIN
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.perspective = 'B'
 AND
@@ -114,126 +125,9 @@ LEFT OUTER JOIN
 LEFT OUTER JOIN
   vessel v ON cv.vessel_gid = v.vessel_gid  
 WHERE
-  inv.invoice_gid = :INVOICE_ID
-AND
-  NOT s.shipment_gid IS NULL
-AND
-  :P_RUN = 'FINAL'
-UNION
-SELECT DISTINCT
-  'TSFEEXP/' || 
-  (CASE WHEN EXTRACT(MONTH FROM SYSDATE) < 4 THEN SUBSTR(TRIM(TO_CHAR(EXTRACT(YEAR FROM SYSDATE) - 1,'9999')),3,2) || '-' || SUBSTR(TRIM(TO_CHAR(EXTRACT(YEAR FROM SYSDATE),'9999')),3,2) || '/' || NVL(j.job_xid,' Data Missing in System')
-  ELSE SUBSTR(TRIM(TO_CHAR(EXTRACT(YEAR FROM SYSDATE),'9999')),3,2) || '-' || SUBSTR(TRIM(TO_CHAR(EXTRACT(YEAR FROM SYSDATE) + 1,'9999')),3,2) || '/' || NVL(j.job_xid,' Data Missing in System')
-  END) bill_no,
-  TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'), 'DD/MM/YYYY') system_date,
-  NVL(invr.invoice_refnum_value,'Data Missing in System') job_no,
-  NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'XXX','SHIPPER'),'Data Missing in System')
-  shipper_name,
-	NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','1') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','2') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','SHIPPER','3')),'Data Missing in System')
-  shipper_address,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','SHIPPER',',') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','SHIPPER') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','SHIPPER')),'Data Missing in System')
-  shipper_city_state_zip,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','SHIPPER','FAX:'),'Data Missing in System') 
-  shipper_fax,
-  NVL(glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'XXX','BILL-TO'),'Data Missing in System') 
-  inv_name,
-	NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','BILL-TO','1') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','BILL-TO','2') || ' ' ||
-  glogowner.xxscou_nvo_report_functions.entity_address(s.shipment_gid,'XXX','BILL-TO','3')),'Data Missing in System')
-  inv_address,
-  NVL(TRIM(glogowner.xxscou_nvo_report_functions.entity_city(s.shipment_gid,'XXX','BILL-TO',',') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_province(s.shipment_gid,'XXX','BILL-TO') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_zip(s.shipment_gid,'XXX','BILL-TO') || ' ' || 
-  glogowner.xxscou_nvo_report_functions.entity_country(s.shipment_gid,'XXX','BILL-TO')),'Data Missing in System')
-  inv_city_state_zip,
-	NVL(glogowner.xxscou_nvo_report_functions.entity_fax_with_label(s.shipment_gid,'XXX','BILL-TO','FAX:'),'Data Missing in System') 
-  inv_fax,
-  'TSFE' || NVL(j.job_xid,'Data Missing in System') 
-  bl_no,
-  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(s.port_of_load_location_gid),'Data Missing in System') 
-  load_port,
-  NVL(glogowner.xxscou_nvo_report_functions.loc_city_province(s.port_of_dis_location_gid),'Data Missing in System') 
-  discharge_port,
-  NVL((CASE WHEN cv.voyage_name IS NULL
-  THEN v.vessel_name
-  ELSE cv.voyage_name END),'Data Missing in System')
-  vessel_name,
-  NVL((SELECT iref.invoice_refnum_value
-  FROM invoice_refnum iref
-  WHERE iref.invoice_gid = inv.invoice_gid
-  AND iref.invoice_refnum_qual_gid LIKE '%EXCHANGE RATE PER USD%'
-  AND ROWNUM = 1),'Data Missing in System')
-  exchange_rate,
-  NVL((SELECT LISTAGG(iref.invoice_refnum_value,',')
-  WITHIN GROUP (ORDER BY iref.invoice_refnum_value)
-  FROM invoice_refnum iref
-  WHERE iref.invoice_gid = inv.invoice_gid
-  AND iref.invoice_refnum_qual_gid LIKE '%SHIPPING BILL NUMBER%'),'Data Missing in System')
-  sb_no,
-  inv.invoice_number inv_no, 
-  NVL((SELECT DISTINCT s1.payment_method_code_gid
-  FROM invoice inv1
-  INNER JOIN invoice_refnum invr1 ON inv1.invoice_gid = invr1.invoice_gid
-  AND invr1.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
-  INNER JOIN job j1 ON 'SCOULAR/NVO.' || invr1.invoice_refnum_value = j1.job_gid
-  INNER JOIN job_order_release_join jorj1 ON j1.job_gid = jorj1.job_gid
-  INNER JOIN view_shipment_order_release vsor1 ON jorj1.order_release_gid = vsor1.order_release_gid
-  INNER JOIN shipment s1 ON s1.shipment_gid = vsor1.shipment_gid
-  AND s1.perspective = 'S'
-  AND s1.shipment_type_gid = 'TRANSPORT'
-  AND s1.transport_mode_gid = 'VESSEL-CO'
-  AND s1.is_primary = 'Y'
-  WHERE inv1.invoice_gid = inv.invoice_gid),'Data Missing in System')
-  vol_freight,
-  NVL((SELECT iref.invoice_refnum_value
-  FROM invoice_refnum iref
-  WHERE iref.invoice_gid = inv.invoice_gid
-  AND iref.invoice_refnum_qual_gid LIKE '%SHIPPING BILL DATE%'
-  AND ROWNUM = 1),'Data Missing in System')
-  sb_date
-FROM
-  invoice inv
-LEFT OUTER JOIN
-  invoice_refnum invr ON inv.invoice_gid = invr.invoice_gid
-AND
-  invr.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
-LEFT OUTER JOIN
-  job j ON 'SCOULAR/NVO.' || invr.invoice_refnum_value = j.job_gid
-LEFT OUTER JOIN
-  job_order_release_join jorj ON j.job_gid = jorj.job_gid
-LEFT OUTER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-LEFT OUTER JOIN
-  shipment s ON vsor.shipment_gid = s.shipment_gid
-AND
-  s.perspective = 'B'
-AND
-	s.shipment_type_gid = 'TRANSPORT'
-AND
-	s.transport_mode_gid = 'VESSEL-CO'
-AND
-	s.is_primary = 'Y' 
-LEFT OUTER JOIN
-	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
-AND
-	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
-LEFT OUTER JOIN
-	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
-LEFT OUTER JOIN
-  vessel v ON cv.vessel_gid = v.vessel_gid  
-WHERE
-  inv.invoice_gid = :INVOICE_ID
-AND
-  NOT s.shipment_gid IS NULL
-AND
-  :P_RUN = 'DRAFT']]></sqlStatement>
+  inv.invoice_gid = :INVOICE_ID]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
-	ROWNUM sr_no,
+  ROWNUM sr_no,
   a.description,
   TRIM(TO_CHAR(a.quantity,'999,999,990')) quantity,
   a.currency,
@@ -245,8 +139,8 @@ AND
   END) total_amount
 FROM
 (SELECT
-  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(ili.accessorial_description,'Data Missing in System')
-  ELSE ili.accessorial_description END) description,
+  ili.accessorial_description
+  description,
   (CASE WHEN
   (SELECT ilir.reference_number
   FROM invoice_lineitem_refnum ilir
@@ -261,8 +155,10 @@ FROM
   AND invr.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
   INNER JOIN job j ON 'SCOULAR/NVO.' || invr.invoice_refnum_value = j.job_gid
   INNER JOIN job_order_release_join jorj ON j.job_gid = jorj.job_gid
-  INNER JOIN view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-  INNER JOIN shipment s ON vsor.shipment_gid = s.shipment_gid
+  INNER JOIN s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  INNER JOIN shipment s ON ssej.shipment_gid = s.shipment_gid
   AND s.perspective = 'B'
   AND s.shipment_type_gid = 'TRANSPORT'
   AND s.transport_mode_gid = 'VESSEL-CO'
@@ -343,8 +239,10 @@ FROM
   AND invr.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
   INNER JOIN job j ON 'SCOULAR/NVO.' || invr.invoice_refnum_value = j.job_gid
   INNER JOIN job_order_release_join jorj ON j.job_gid = jorj.job_gid
-  INNER JOIN view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-  INNER JOIN shipment s ON vsor.shipment_gid = s.shipment_gid
+  INNER JOIN s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  INNER JOIN shipment s ON ssej.shipment_gid = s.shipment_gid
   AND s.perspective = 'B'
   AND s.shipment_type_gid = 'TRANSPORT'
   AND s.transport_mode_gid = 'VESSEL-CO'
@@ -414,13 +312,18 @@ WHERE
 WHERE b.applied = 1]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="BILL_NO" value="BILL_NO" />
       <element name="SYSTEM_DATE" value="SYSTEM_DATE"></element>
       <element name="JOB_NO" value="JOB_NO"></element>
+      <element name="BL_NO" value="BL_NO" />
+      <element name="EXCHANGE_RATE" value="EXCHANGE_RATE" />
+      <element name="SB_NO" value="SB_NO" />
+      <element name="INV_NO" value="INV_NO" />
+      <element name="VOL_FREIGHT" value="VOL_FREIGHT"></element>
+      <element name="SB_DATE" value="SB_DATE" />
+    </group>
+    <group name="G_SHIPMENT" source="Q_SHIPMENT">
       <element name="SHIPPER_NAME" value="SHIPPER_NAME"></element>
       <element name="SHIPPER_ADDRESS" value="SHIPPER_ADDRESS"></element>
       <element name="SHIPPER_CITY_STATE_ZIP" value="SHIPPER_CITY_STATE_ZIP" />
@@ -429,15 +332,9 @@ WHERE b.applied = 1]]></sqlStatement>
       <element name="INV_ADDRESS" value="INV_ADDRESS" />
       <element name="INV_CITY_STATE_ZIP" value="INV_CITY_STATE_ZIP"></element>
       <element name="INV_FAX" value="INV_FAX" />
-      <element name="BL_NO" value="BL_NO" />
       <element name="LOAD_PORT" value="LOAD_PORT" />
       <element name="DISCHARGE_PORT" value="DISCHARGE_PORT"></element>
       <element name="VESSEL_NAME" value="VESSEL_NAME"></element>
-      <element name="EXCHANGE_RATE" value="EXCHANGE_RATE" />
-      <element name="SB_NO" value="SB_NO" />
-      <element name="INV_NO" value="INV_NO" />
-      <element name="VOL_FREIGHT" value="VOL_FREIGHT"></element>
-      <element name="SB_DATE" value="SB_DATE" />
     </group>
     <group name="G_ROWS" source="Q_ROWS">
       <element name="SR_NO" value="SR_NO" />

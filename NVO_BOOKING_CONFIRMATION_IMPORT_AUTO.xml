@@ -10,19 +10,22 @@
   <lexicals></lexicals>
   <dataQuery>
     <sqlStatement name="Q_MAIN1"><![CDATA[SELECT DISTINCT
-	(TO_CHAR(TO_DATE(cv.insert_date,'dd-mm-rr'), 'fmMM/DD/YYYY')) booking_date,
-	cv.charter_voyage_xid booking_number,
+	(TO_CHAR(TO_DATE(cv.insert_date,'dd-mm-rr'), 'fmMM/DD/YYYY')) 
+  booking_date,
+	cvr6.charter_voyage_refnum_value 
+  booking_number,
 	glogowner.xxscou_nvo_report_functions.entity_name(s.shipment_gid,'XXX','SHIPPER')
   shipper_name,
-	loc.location_name shipping_line,
-	con.phone1 contact,
-	j.attribute3 shipper_references,
-	(CASE WHEN sref2.shipment_refnum_value IS NULL THEN
-    sref3.shipment_refnum_value
-  ELSE
-    sref2.shipment_refnum_value
-  END) voyage_name,
-  sref1.shipment_refnum_value place_of_receipt, 
+	loc.location_name 
+  shipping_line,
+	con.phone1 
+  contact,
+	j.attribute3 
+  shipper_references,
+  TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value)
+  voyage_name,
+  sref1.shipment_refnum_value 
+  place_of_receipt, 
   glogowner.xxscou_nvo_report_functions.port_place_loc(s.shipment_gid,cv.charter_voyage_gid,'CHARTER_VOYAGE','SCOULAR/NVO.VIA_LOCATION_ID',cv.source_location_gid) 
   load_port,
   (CASE WHEN glogowner.xxscou_nvo_report_functions.loc_city_country('SCOULAR.'|| REPLACE(cvr2.charter_voyage_refnum_value,'SCOULAR.','')) IS NULL THEN
@@ -35,12 +38,18 @@
   discharge_port,
   glogowner.xxscou_nvo_report_functions.loc_city_country(cv.dest_location_gid)
   place_of_delivery, 
-	cvr3.charter_voyage_refnum_value equipment_available,
-	cvr4.charter_voyage_refnum_value inland_erd,
-	cvr5.charter_voyage_refnum_value port_erd,
-  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'fmMM/DD/YYYY') etd,
-  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') eta,
-  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') delivery_eta,
+	cvr3.charter_voyage_refnum_value 
+  equipment_available,
+	cvr4.charter_voyage_refnum_value 
+  inland_erd,
+	cvr5.charter_voyage_refnum_value 
+  port_erd,
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'fmMM/DD/YYYY') 
+  etd,
+  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') 
+  eta,
+  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') 
+  delivery_eta,
   REPLACE(TRIM((SELECT 
   listagg((CASE WHEN charter_voyage_refnum_qual_gid LIKE('%20%') THEN
   (CASE WHEN charter_voyage_refnum_qual_gid LIKE('%RF%') THEN '20 FT Reefer'
@@ -134,6 +143,10 @@ LEFT OUTER JOIN
 	charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
 AND
 	cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_EARLIEST DROP OFF DATE'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+	cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.CURRENT BOOKING NUMBER'    
 LEFT OUTER JOIN
 	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
 AND
@@ -241,8 +254,9 @@ AND NOT
   TRIM(cvr19.charter_voyage_refnum_value || ' ' || cvr20.charter_voyage_refnum_value) vgm_cut_off, 
   cvr13.charter_voyage_refnum_value temperature_setting,  
   cvr11.charter_voyage_refnum_value genset,
-  cvr12.charter_voyage_refnum_value pickup_name,
-  cvr18.charter_voyage_refnum_value
+  REPLACE(cvr12.charter_voyage_refnum_value,'\n',CHR(13)) 
+  pickup_name,
+  REPLACE(cvr18.charter_voyage_refnum_value,'\n',CHR(13))
   return_name
 FROM
 	job j
@@ -314,18 +328,16 @@ WHERE
 	j.job_gid = :JOB_ID
 AND NOT
   s.shipment_gid IS NULL]]></sqlStatement>
-    <sqlStatement name="Q_FACILITY"><![CDATA[SELECT
-  (SELECT location_name
-  FROM location
-  WHERE location_gid = orel.source_location_gid)
+    <sqlStatement name="Q_FACILITY"><![CDATA[SELECT DISTINCT
+  loc.location_name
   facility_name,
-  glogowner.xxscou_nvo_report_functions.loc_address(orel.source_location_gid)
+  glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid)
   facility_address,
-  glogowner.xxscou_nvo_report_functions.loc_city_state_zip(orel.source_location_gid)
+  loc.city || ', ' || loc.province_code || ' ' || loc.postal_code || CHR(13) || loc.country_code3_gid  
   facility_city_state_zip,
   (SELECT phone1
   FROM contact
-  WHERE contact_gid = orel.source_location_gid)
+  WHERE contact_gid = loc.location_gid)
   facility_phone
 FROM
 	job j
@@ -333,6 +345,8 @@ INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
 INNER JOIN 
   order_release orel ON jorj.order_release_gid = orel.order_release_gid
+INNER JOIN 
+  location loc ON orel.source_location_gid = loc.location_gid  
 AND orel.source_location_gid NOT IN (
   SELECT location_gid 
   FROM location_refnum

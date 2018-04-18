@@ -7,7 +7,10 @@
     <parameter name="SHIPMENT_ID" dataType="character" />
   </parameters>
   <dataQuery>
-    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:START_DATE from_dt, 
+:END_DATE to_dt 
+FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
   s.shipment_xid booking_request,
   cv.charter_voyage_xid booking_confirm,
@@ -84,7 +87,7 @@ ORDER BY
   itr.insert_date]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAM" source="Q_PARAM">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="FROM_DT" value="FROM_DT" />
       <element name="TO_DT" value="TO_DT" />
     </group>

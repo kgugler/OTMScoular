@@ -5,34 +5,34 @@
     <parameter name="JOB_ID" dataType="character"></parameter>
     <parameter name="BOOKING_ID" dataType="character" />
     <parameter name="CONTAINER_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_MAIN"><![CDATA[SELECT :INV_PARTY_ID customer_num, :JOB_ID job_num, :BOOKING_ID booking_num, :CONTAINER_ID container_num FROM Dual]]></sqlStatement>
-    <sqlStatement name="Q_ROWS"><![CDATA[SELECT a.booking_no,
-	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.shipment_xid, 'Data Missing in System') ELSE a.shipment_xid END) shipment_id,  
-	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.container_no, 'Data Missing in System') ELSE a.container_no END) container_no,  
-	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.ieseventdate, 'Data Missing in System') ELSE a.ieseventdate END) event_date, 
-	(CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.message, 'Data Missing in System') ELSE a.message END) message,   
-  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.msg_type, 'Data Missing in System') ELSE a.msg_type END) msg_type, 
-  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.event_location, 'Data Missing in System') ELSE a.event_location END) event_location,
-  (CASE WHEN :P_RUN = 'DRAFT' THEN NVL(a.insert_date, 'Data Missing in System') ELSE a.insert_date END) insert_date
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:INV_PARTY_ID customer_num, 
+:JOB_ID job_num, 
+:BOOKING_ID booking_num, 
+:CONTAINER_ID container_num 
+FROM Dual]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.booking_no,
+	a.shipment_id,
+  a.container_no,  
+	a.event_date, 
+	a.message,   
+  a.msg_type, 
+  a.event_location,
+  a.insert_date
 FROM
 (SELECT DISTINCT
   j.job_gid,
   isr.shipment_refnum_value,
-  REPLACE(isr.shipment_refnum_value,'SCOULAR/NVO.','') booking_no,
+  j.attribute15 booking_no,
   ies.i_transaction_no, 
-  s.shipment_xid, 
+  s.shipment_xid shipment_id, 
   isrem.remark_text container_no,
   ies.eventdate,
-  TO_CHAR(TO_DATE(ies.eventdate,'dd-mm-rr'), 'MM/DD/YYYY') ieseventdate,
+  TO_CHAR(TO_DATE(ies.eventdate,'dd-mm-rr'), 'MM/DD/YYYY') event_date,
   bss.description message,
   (CASE WHEN ies.insert_user = 'SCOULAR/NVO.INTEGRATION' THEN 'CLM' 
   WHEN ies.insert_user = 'SCOULAR.INTEGRATION' THEN 'Vessel Message' 
@@ -49,19 +49,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.transport_mode_gid = 'VESSEL-CO'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -113,82 +108,8 @@ OR
 AND 
   isrem.remark_text = :CONTAINER_ID))
 ORDER BY j.job_gid, isr.shipment_refnum_value, isrem.remark_text, ies.eventdate) a]]></sqlStatement>
-    <sqlStatement name="Q_ROWCOUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (
-SELECT DISTINCT
-  j.job_gid
-FROM
-	job j
-INNER JOIN
-  job_order_release_join jorj ON j.job_gid = jorj.job_gid
-INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.transport_mode_gid = 'VESSEL-CO'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
-AND
-	s.shipment_type_gid = 'TRANSPORT'
-AND
-	s.transport_mode_gid = 'VESSEL-CO'
-AND
-	s.is_primary = 'Y'
-AND
-  s.perspective = 'B'
-INNER JOIN
-  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
-AND
-  sip.involved_party_qual_gid = 'SHIPPER'
-INNER JOIN
-	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
-AND
-	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
-INNER JOIN 
-  ie_shipment_refnum isr ON isr.shipment_refnum_value = sr.shipment_refnum_value
-AND
-  isr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
-LEFT OUTER JOIN
-  ie_shipmentstatus ies ON isr.i_transaction_no = ies.i_transaction_no
-LEFT OUTER JOIN 
-  bs_status_code bss ON ies.status_code_gid = bss.bs_status_code_gid
-LEFT OUTER JOIN
-  ie_ss_stop iss ON isr.i_transaction_no = iss.i_transaction_no
-LEFT OUTER JOIN 
-  ie_ss_remark isrem ON isr.i_transaction_no = isrem.i_transaction_no
-WHERE 
-  sip.involved_party_contact_gid = :INV_PARTY_ID
-AND
-  (:JOB_ID IS NULL 
-OR
-  (NOT :JOB_ID IS NULL 
-AND 
-  j.job_gid = :JOB_ID))
-AND
-  (:BOOKING_ID IS NULL 
-OR 
-  (NOT :BOOKING_ID IS NULL 
-AND 
-  (isr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
-AND
-  isr.shipment_refnum_value = REPLACE(:BOOKING_ID,'SCOULAR/NVO.',''))))
-AND
-  (:CONTAINER_ID IS NULL 
-OR
-  (NOT :CONTAINER_ID IS NULL 
-AND 
-  isrem.remark_text = :CONTAINER_ID))
-)]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
       <element name="CUSTOMER_NUM" value="CUSTOMER_NUM" />
       <element name="JOB_NUM" value="JOB_NUM" />
@@ -204,9 +125,6 @@ AND
       <element name="MSG_TYPE" value="MSG_TYPE"></element>
       <element name="EVENT_LOCATION" value="EVENT_LOCATION" />
       <element name="INSERT_DATE" value="INSERT_DATE" />
-    </group>
-    <group name="G_ROWCOUNT" source="Q_ROWCOUNT">
-      <element name="ROW_COUNT" value="ROW_COUNT" />
     </group>
   </dataStructure>
 </dataTemplate>

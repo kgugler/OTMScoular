@@ -2,28 +2,25 @@
 <dataTemplate name="NVO_BOOKING_CONFIRMATION_EXPORT_AUTO" description="NVO Booking Confirmation (Export) - Auto" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="JOB_ID" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
     <sqlStatement name="Q_MAIN1"><![CDATA[SELECT DISTINCT
-	(TO_CHAR(TO_DATE(cv.insert_date,'dd-mm-rr'), 'fmMM/DD/YYYY')) booking_date,
-	cv.charter_voyage_xid booking_number,
+	(TO_CHAR(TO_DATE(cv.insert_date,'dd-mm-rr'), 'fmMM/DD/YYYY')) 
+  booking_date,
+	cvr6.charter_voyage_refnum_value 
+  booking_number,
 	glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER')
   shipper_name,
 	loc.location_name shipping_line,
 	glogowner.xxscou_nvo_report_functions.entity_phone(s.shipment_gid,'XXX','SHIPPER')
   contact,
-	j.attribute3 shipper_references,
-  'TSC' || j.job_xid ref_num,
-  (CASE WHEN sref1.shipment_refnum_value IS NULL THEN
-    sref2.shipment_refnum_value
-  ELSE
-    sref1.shipment_refnum_value
-  END) voyage_name,
+	j.attribute3 
+  shipper_references,
+  'TSC' || j.job_xid 
+  ref_num,
+  TRIM(cv.voyage_name || ' ' || cvr1.charter_voyage_refnum_value)
+  voyage_name,
   glogowner.xxscou_nvo_report_functions.port_place(s.shipment_gid,'SCOULAR/NVO.PLACE OF RECEIPT',
   (SELECT q.origin_location_gid
   FROM order_release orel
@@ -43,12 +40,18 @@
   discharge_port,
   glogowner.xxscou_nvo_report_functions.loc_city_country(cv.dest_location_gid)
   place_of_delivery, 
-	cvr3.charter_voyage_refnum_value equipment_available,
-	cvr4.charter_voyage_refnum_value inland_erd,
-	cvr5.charter_voyage_refnum_value port_erd,
-  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'fmMM/DD/YYYY') etd,
-  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') eta,
-  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') delivery_eta,
+	cvr3.charter_voyage_refnum_value 
+  equipment_available,
+	cvr4.charter_voyage_refnum_value 
+  inland_erd,
+	cvr5.charter_voyage_refnum_value 
+  port_erd,
+  TO_CHAR(TO_DATE(cv.departure_date,'dd-mm-rr'), 'fmMM/DD/YYYY') 
+  etd,
+  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') 
+  eta,
+  TO_CHAR(TO_DATE(cv.arrival_date,'dd-mm-rr'), 'fmMM/DD/YYYY') 
+  delivery_eta,
   REPLACE(TRIM((SELECT 
   listagg((CASE WHEN charter_voyage_refnum_qual_gid LIKE('%20%') THEN
   (CASE WHEN charter_voyage_refnum_qual_gid LIKE('%RF%') THEN '20 FT Reefer'
@@ -142,6 +145,10 @@ LEFT OUTER JOIN
 	charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
 AND
 	cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_EARLIEST DROP OFF DATE'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+	cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.CURRENT BOOKING NUMBER'    
 LEFT OUTER JOIN
 	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
 AND
@@ -516,24 +523,15 @@ WHERE
   END) facility_phone  
 FROM
 (SELECT
-  (CASE WHEN :P_RUN = 'DRAFT' 
-  THEN NVL(loc.location_name,'Data Missing in System')
-  ELSE loc.location_name END) facility_name, 
-  (CASE WHEN :P_RUN = 'DRAFT' 
-  THEN NVL(glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid),'Data Missing in System')
-  ELSE glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid) END)
+  loc.location_name
+  facility_name, 
+  glogowner.xxscou_nvo_report_functions.loc_address(loc.location_gid)
   facility_address,
-  (CASE WHEN :P_RUN = 'DRAFT' 
-  THEN NVL(glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid),'Data Missing in System')
-  ELSE glogowner.xxscou_nvo_report_functions.loc_city_state_zip(loc.location_gid) END) 
+  loc.city || ', ' || loc.province_code || ' ' || loc.postal_code || CHR(13) || loc.country_code3_gid  
   facility_city_state_zip,
-  (CASE WHEN :P_RUN = 'DRAFT' 
-  THEN NVL((SELECT phone1
+  (SELECT phone1
   FROM contact
-  WHERE contact_gid = loc.location_gid),'Data Missing in System')
-  ELSE (SELECT phone1
-  FROM contact
-  WHERE contact_gid = loc.location_gid) END)
+  WHERE contact_gid = loc.location_gid)
   facility_phone,
   (SELECT COUNT(qcos.quote_gid) 
   FROM quote_cost_option_shipment qcos
@@ -544,7 +542,8 @@ FROM
   WHERE order_release_gid IN 
   (SELECT order_release_gid
   FROM job_order_release_join
-  WHERE job_gid = :JOB_ID))) print_yes_no
+  WHERE job_gid = :JOB_ID))) 
+  print_yes_no
 FROM
 	job j
 INNER JOIN

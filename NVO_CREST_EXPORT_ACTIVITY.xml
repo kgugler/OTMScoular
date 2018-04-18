@@ -7,7 +7,7 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
 :INS_START_DATE lc_start_date,
 :INS_END_DATE lc_end_date,
 :LOC office_cd
@@ -22,7 +22,7 @@ FROM DUAL]]></sqlStatement>
     TO_CHAR(j.update_date,'MM/DD/YYYY')
   END)
   book_confirm_date,
-  cv.charter_voyage_xid book_no,
+  cvr1.charter_voyage_refnum_value book_no,
   glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','SHIPPER') 
   shipper_name, 
   glogowner.xxscou_nvo_report_functions.entity_location_name(s.shipment_gid,'XXX','ULTIMATE CONSIGNEE') 
@@ -36,7 +36,7 @@ FROM DUAL]]></sqlStatement>
   TO_CHAR(j.attribute_date8,'MM/DD/YYYY') cutoff_dt,
   TRIM((CASE WHEN cv.voyage_name IS NULL
   THEN v.vessel_name
-  ELSE cv.voyage_name END) || ' ' || cvr.charter_voyage_refnum_value) vessel_voyage,
+  ELSE cv.voyage_name END) || ' ' || cvr2.charter_voyage_refnum_value) vessel_voyage,
   (CASE WHEN s.source_location_gid = 
     (SELECT orel.source_location_gid
     FROM job_order_release_join jorjoin
@@ -65,10 +65,13 @@ FROM DUAL]]></sqlStatement>
   TRIM((SELECT listagg (ssunit.tag_3, ', ')
   WITHIN GROUP (ORDER BY ssunit.tag_3) 
   FROM s_ship_unit ssunit
-  INNER JOIN shipment_stop_d ssd ON ssunit.s_ship_unit_gid = ssd.s_ship_unit_gid
-  AND ssd.stop_num = 1
-  WHERE ssd.shipment_gid = s.shipment_gid)) containers,
-  (CASE WHEN cvr1.charter_voyage_refnum_value IS NULL THEN
+  INNER JOIN s_equipment_s_ship_unit_join sessuj
+  ON sessuj.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej
+  ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  WHERE ssej.shipment_gid = s.shipment_gid)) 
+  containers,
+  (CASE WHEN cvr3.charter_voyage_refnum_value IS NULL THEN
     (SELECT qr.quote_refnum_value
     FROM order_release orel 
     INNER JOIN quote q ON orel.quote_gid = q.quote_gid
@@ -76,7 +79,7 @@ FROM DUAL]]></sqlStatement>
     AND qr.quote_refnum_qual_gid = 'SCOULAR.ITEM DESCRIPTION'
     WHERE orel.order_release_gid = jorj.order_release_gid)
   ELSE
-    cvr1.charter_voyage_refnum_value
+    cvr3.charter_voyage_refnum_value
   END) commodity,
   (CASE WHEN l2.location_xid = 'TSCOP' THEN '51'
   WHEN l2.location_xid = 'TSCCST' THEN '45'
@@ -137,17 +140,28 @@ AND
 LEFT OUTER JOIN
 	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
 LEFT OUTER JOIN
-  vessel v ON cv.vessel_gid = v.vessel_gid    
-LEFT OUTER JOIN
-	charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
-AND
-	cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+  vessel v ON cv.vessel_gid = v.vessel_gid
 LEFT OUTER JOIN
 	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
 AND
-	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_COMMODITY'
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CURRENT BOOKING NUMBER'    
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr2 ON cv.charter_voyage_gid = cvr2.charter_voyage_gid
+AND
+	cvr2.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr3 ON cv.charter_voyage_gid = cvr3.charter_voyage_gid
+AND
+	cvr3.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_COMMODITY'
 WHERE
   j.domain_name = 'SCOULAR/NVO'   
+AND
+  NOT EXISTS
+  (SELECT js.status_value_gid
+  FROM job_status jstat
+  WHERE jstat.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND jstat.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
+  AND jstat.job_gid = j.job_gid)  
 AND
   (TO_DATE(j.insert_date,'dd-mm-rr') >= TO_DATE(:INS_START_DATE,'YYYY-MM-DD')
 AND

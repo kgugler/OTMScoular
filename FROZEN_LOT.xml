@@ -1,0 +1,935 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FROZEN_LOT" description="Frozen Lot" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  z.commodity, z.commodity_sort, z.warehouse_name, z.lot_number, z.insert_date,
+  (CASE WHEN z.duplicate = 'Duplicate' THEN '*' ELSE '' END) duplicate,
+  z.expiration_date, z.other_dates, z.received, z.shipped, z.reserved,
+    (CASE WHEN z.duplicate = 'Duplicate' THEN
+        (CASE WHEN z.row_num = 1 THEN '' ELSE TO_CHAR(((SELECT SUM(CASE WHEN REPLACE(d.dest_location_gid,'SCOULAR.','') = z.warehouse_name THEN ROUND(d.weight_base,2) ELSE -ROUND(d.weight_base,2) END) FROM
+        (SELECT orel.source_location_gid, orel.dest_location_gid, ssl.weight_base, ssr.remark_text, row_number()
+        OVER (ORDER BY ssl.insert_date ASC) rown FROM shipment ship
+        INNER JOIN shipment_stop_d ssd ON ship.shipment_gid = ssd.shipment_gid AND ssd.stop_num = 1
+        INNER JOIN s_ship_unit_line ssl ON ssd.s_ship_unit_gid = ssl.s_ship_unit_gid
+        INNER JOIN s_ship_unit_line_remark ssr ON ssl.s_ship_unit_gid = ssr.s_ship_unit_gid
+        AND ssl.s_ship_unit_line_no = ssr.s_ship_unit_line_no AND ssr.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+        INNER JOIN order_release orel ON ssl.order_release_gid = orel.order_release_gid
+        WHERE ship.shipment_type_gid = 'TRANSPORT' ORDER BY ssl.insert_date ASC) d WHERE d.remark_text = z.lot_number
+        AND (REPLACE(d.source_location_gid,'SCOULAR.','') = z.warehouse_name OR REPLACE(d.dest_location_gid,'SCOULAR.','') = z.warehouse_name) AND ROWNUM <= z.row_num))) END)
+    ELSE TO_CHAR(z.received) END)
+  balance,
+  SUBSTR(z.inbound_ship_id,-5,5) inbound_ship_id, SUBSTR(z.outbound_ship_id,-5,5) outbound_ship_id,
+  z.origin, z.destination, z.lot_fat, z.lot_ash, z.lot_moisture, z.lot_protein, z.lot_on_fda_hold, z.lot_notes
+FROM
+(SELECT y.*,
+  (CASE WHEN COUNT(*) OVER (PARTITION BY y.commodity_sort|| y.lot_number || y.warehouse_name) > 1 THEN 'Duplicate' ELSE '' END) duplicate,
+  row_number() OVER (PARTITION BY y.commodity_sort|| y.lot_number || y.warehouse_name ORDER BY y.commodity_sort|| y.lot_number || y.warehouse_name, y.insert_date) row_num
+FROM
+(SELECT a.* FROM
+  (SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  (CASE WHEN orr.order_release_refnum_value = 'HAKE' THEN 'WHOF' ELSE orr.order_release_refnum_value END) commodity_sort,
+  loc1.location_xid warehouse_name, ssulr1.remark_text lot_number,
+  ssulr2.remark_text expiration_date, slref7.refnum_value other_dates, '' received,
+  (CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_YES' THEN
+    (CASE WHEN slref8.refnum_value IS NULL THEN TO_CHAR(ROUND(ssul.weight_base,2)) ELSE '-' || TO_CHAR(ROUND(ssul.weight_base,2)) END)
+  ELSE '' END) shipped,
+  (CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_NO' THEN
+    (CASE WHEN slref8.refnum_value IS NULL THEN TO_CHAR(ROUND(ssul.weight_base,2)) ELSE '-' || TO_CHAR(ROUND(ssul.weight_base,2)) END)
+  ELSE '' END) reserved,
+   '' inbound_ship_id,  s.shipment_xid outbound_ship_id, loc1.location_xid origin, loc2.location_xid destination, slref3.refnum_value lot_fat,
+  slref4.refnum_value lot_ash, slref5.refnum_value lot_moisture, slref6.refnum_value lot_protein, slref8.refnum_value shrink_weight,
+  (CASE WHEN ssulr3.remark_text = 'false' THEN '' ELSE 'YES' END) lot_on_fda_hold,
+  (SELECT LISTAGG(slref.refnum_value, ', ') WITHIN GROUP (ORDER BY slref.refnum_value) FROM s_ship_unit_line_refnum slref
+  WHERE slref.s_ship_unit_gid = ssul.s_ship_unit_gid AND slref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+  AND slref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES') lot_notes
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr2 ON ssul.s_ship_unit_gid = ssulr2.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr2.s_ship_unit_line_no AND ssulr2.remark_qual_gid = 'SCOULAR.LOT EXPIRATION DATE'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr3 ON ssul.s_ship_unit_gid = ssulr3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr3.s_ship_unit_line_no AND ssulr3.remark_qual_gid = 'SCOULAR.LOT FDA HOLD'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref3 ON ssul.s_ship_unit_gid = slref3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref3.s_ship_unit_line_no AND slref3.s_sul_refnum_qual_gid = 'SCOULAR.LOT FAT'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref4 ON ssul.s_ship_unit_gid = slref4.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref4.s_ship_unit_line_no AND slref4.s_sul_refnum_qual_gid = 'SCOULAR.LOT ASH'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref5 ON ssul.s_ship_unit_gid = slref5.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref5.s_ship_unit_line_no AND slref5.s_sul_refnum_qual_gid = 'SCOULAR.LOT MOISTURE'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref6 ON ssul.s_ship_unit_gid = slref6.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref6.s_ship_unit_line_no AND slref6.s_sul_refnum_qual_gid = 'SCOULAR.LOT PROTEIN'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref7 ON ssul.s_ship_unit_gid = slref7.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref7.s_ship_unit_line_no AND slref7.s_sul_refnum_qual_gid = 'SCOULAR.OTHER DATES'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD' AND s.shipment_type_gid = 'TRANSPORT'
+AND sref2.shipment_refnum_value = 'L'
+AND glogowner.xxscou_frozen_report_functions.has_lot_complete(ssulr1.remark_text) = 'NO'
+AND (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc1.location_gid) = 'NO'
+OR (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc1.location_gid) = 'YES'
+AND glogowner.xxscou_frozen_report_functions.compare_weight_loaded(ssulr1.remark_text, loc1.location_gid) = 'YES'))
+) a
+UNION
+SELECT b.* FROM
+  (SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  (CASE WHEN orr.order_release_refnum_value = 'HAKE' THEN 'WHOF' ELSE orr.order_release_refnum_value END) commodity_sort,
+  loc2.location_xid warehouse_name, ssulr1.remark_text lot_number,
+  ssulr2.remark_text expiration_date, slref7.refnum_value other_dates,
+  (CASE WHEN slref8.refnum_value IS NULL THEN TO_CHAR(ROUND(ssul.weight_base,2)) ELSE '-' || TO_CHAR(ROUND(ssul.weight_base,2)) END) received,
+  '' shipped, '' reserved, s.shipment_xid inbound_ship_id, '' outbound_ship_id,
+  loc1.location_xid origin, loc2.location_xid destination, slref3.refnum_value lot_fat, slref4.refnum_value lot_ash,
+  slref5.refnum_value lot_moisture, slref6.refnum_value lot_protein, slref8.refnum_value shrink_weight,
+  (CASE WHEN ssulr3.remark_text = 'false' THEN '' ELSE 'YES' END) lot_on_fda_hold,
+  (SELECT LISTAGG(slref.refnum_value, ', ') WITHIN GROUP (ORDER BY slref.refnum_value) FROM s_ship_unit_line_refnum slref
+  WHERE slref.s_ship_unit_gid = ssul.s_ship_unit_gid  AND slref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+  AND slref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES')
+  lot_notes
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr2 ON ssul.s_ship_unit_gid = ssulr2.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr2.s_ship_unit_line_no AND ssulr2.remark_qual_gid = 'SCOULAR.LOT EXPIRATION DATE'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr3 ON ssul.s_ship_unit_gid = ssulr3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr3.s_ship_unit_line_no AND ssulr3.remark_qual_gid = 'SCOULAR.LOT FDA HOLD'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref3 ON ssul.s_ship_unit_gid = slref3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref3.s_ship_unit_line_no AND slref3.s_sul_refnum_qual_gid = 'SCOULAR.LOT FAT'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref4 ON ssul.s_ship_unit_gid = slref4.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref4.s_ship_unit_line_no AND slref4.s_sul_refnum_qual_gid = 'SCOULAR.LOT ASH'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref5 ON ssul.s_ship_unit_gid = slref5.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref5.s_ship_unit_line_no AND slref5.s_sul_refnum_qual_gid = 'SCOULAR.LOT MOISTURE'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref6 ON ssul.s_ship_unit_gid = slref6.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref6.s_ship_unit_line_no AND slref6.s_sul_refnum_qual_gid = 'SCOULAR.LOT PROTEIN'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref7 ON ssul.s_ship_unit_gid = slref7.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref7.s_ship_unit_line_no AND slref7.s_sul_refnum_qual_gid = 'SCOULAR.OTHER DATES'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD' AND s.shipment_type_gid = 'TRANSPORT'
+AND sref2.shipment_refnum_value = 'U'
+AND glogowner.xxscou_frozen_report_functions.has_lot_complete(ssulr1.remark_text) = 'NO'
+AND (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc2.location_gid) = 'NO'
+OR (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc2.location_gid) = 'YES'
+AND glogowner.xxscou_frozen_report_functions.compare_weight_unloaded(ssulr1.remark_text, loc2.location_gid) = 'YES'))
+) b
+UNION
+SELECT c.* FROM
+(SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  (CASE WHEN orr.order_release_refnum_value = 'HAKE' THEN 'WHOF' ELSE orr.order_release_refnum_value END) commodity_sort,
+  loc2.location_xid warehouse_name, ssulr1.remark_text lot_number,
+  (CASE WHEN ssulr2.remark_text IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT EXPIRATION DATE')
+  ELSE ssulr2.remark_text END) expiration_date,
+  (CASE WHEN slref7.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.OTHER DATES')
+  ELSE slref7.refnum_value END) other_dates,
+  (CASE WHEN slref8.refnum_value IS NULL THEN TO_CHAR(ROUND(ssul.weight_base,2)) ELSE '-' || TO_CHAR(ROUND(ssul.weight_base,2)) END) received,
+  '' shipped, '' reserved, s.shipment_xid inbound_ship_id, '' outbound_ship_id, loc1.location_xid origin, loc2.location_xid destination,
+  (CASE WHEN slref3.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT FAT')
+  ELSE slref3.refnum_value END) lot_fat,
+  (CASE WHEN slref4.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT ASH')
+  ELSE slref4.refnum_value END) lot_ash,
+  (CASE WHEN slref5.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT MOISTURE')
+  ELSE slref5.refnum_value END) lot_moisture,
+  (CASE WHEN slref6.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT PROTEIN')
+  ELSE slref6.refnum_value END) lot_protein,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.WEIGHT AS SHRINK')
+  ELSE slref8.refnum_value END) shrink_weight,
+  (CASE WHEN ssulr3.remark_text = 'false' THEN '' ELSE 'YES' END) lot_on_fda_hold,
+  (CASE WHEN
+    (SELECT LISTAGG(slref.refnum_value, ', ') WITHIN GROUP (ORDER BY slref.refnum_value) FROM s_ship_unit_line_refnum slref
+    WHERE slref.s_ship_unit_gid = ssul.s_ship_unit_gid AND slref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+    AND slref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES') IS NULL
+  THEN
+    (SELECT LISTAGG(ssr9.refnum_value, ', ') WITHIN GROUP (ORDER BY ssr9.refnum_value) FROM s_ship_unit_line ssul9
+    INNER JOIN s_ship_unit_line_remark ssrem9 ON ssul9.s_ship_unit_gid = ssrem9.s_ship_unit_gid
+    AND ssul9.s_ship_unit_line_no = ssrem9.s_ship_unit_line_no AND ssrem9.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+    INNER JOIN s_ship_unit_line_refnum ssr9 ON ssul9.s_ship_unit_gid = ssr9.s_ship_unit_gid
+    AND ssul9.s_ship_unit_line_no = ssr9.s_ship_unit_line_no AND ssr9.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES'
+    WHERE ssrem9.remark_text = ssulr1.remark_text)
+  ELSE
+    (SELECT LISTAGG(slref.refnum_value, ', ') WITHIN GROUP (ORDER BY slref.refnum_value) FROM s_ship_unit_line_refnum slref
+    WHERE slref.s_ship_unit_gid = ssul.s_ship_unit_gid AND slref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+    AND slref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES')
+  END) lot_notes
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr2 ON ssul.s_ship_unit_gid = ssulr2.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr2.s_ship_unit_line_no AND ssulr2.remark_qual_gid = 'SCOULAR.LOT EXPIRATION DATE'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr3 ON ssul.s_ship_unit_gid = ssulr3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr3.s_ship_unit_line_no AND ssulr3.remark_qual_gid = 'SCOULAR.LOT FDA HOLD'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref3 ON ssul.s_ship_unit_gid = slref3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref3.s_ship_unit_line_no AND slref3.s_sul_refnum_qual_gid = 'SCOULAR.LOT FAT'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref4 ON ssul.s_ship_unit_gid = slref4.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref4.s_ship_unit_line_no AND slref4.s_sul_refnum_qual_gid = 'SCOULAR.LOT ASH'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref5 ON ssul.s_ship_unit_gid = slref5.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref5.s_ship_unit_line_no AND slref5.s_sul_refnum_qual_gid = 'SCOULAR.LOT MOISTURE'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref6 ON ssul.s_ship_unit_gid = slref6.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref6.s_ship_unit_line_no AND slref6.s_sul_refnum_qual_gid = 'SCOULAR.LOT PROTEIN'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref7 ON ssul.s_ship_unit_gid = slref7.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref7.s_ship_unit_line_no AND slref7.s_sul_refnum_qual_gid = 'SCOULAR.OTHER DATES'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD' AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT ssulf.s_ship_unit_gid FROM s_ship_unit_line_refnum ssulf
+  WHERE ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE' AND ssulf.refnum_value = 'YES'
+  AND ssulf.s_ship_unit_gid = ssul.s_ship_unit_gid)
+AND sref2.shipment_refnum_value = 'T'
+AND glogowner.xxscou_frozen_report_functions.compare_wt_transfer_received(ssulr1.remark_text, loc2.location_gid) = 'YES'
+) c
+UNION
+SELECT d.* FROM
+(SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  (CASE WHEN orr.order_release_refnum_value = 'HAKE' THEN 'WHOF' ELSE orr.order_release_refnum_value END) commodity_sort,
+  loc1.location_xid warehouse_name, ssulr1.remark_text lot_number,
+  (CASE WHEN ssulr2.remark_text IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT EXPIRATION DATE')
+  ELSE ssulr2.remark_text END) expiration_date,
+  (CASE WHEN slref7.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.OTHER DATES')
+  ELSE slref7.refnum_value END) other_dates, '' received,
+  (CASE WHEN slref8.refnum_value IS NULL THEN TO_CHAR(ROUND(ssul.weight_base,2)) ELSE '-' || TO_CHAR(ROUND(ssul.weight_base,2)) END) shipped,
+  '' reserved, '' inbound_ship_id, s.shipment_xid outbound_ship_id, loc1.location_xid origin, loc2.location_xid destination,
+  (CASE WHEN slref3.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT FAT')
+  ELSE slref3.refnum_value END)
+  lot_fat,
+  (CASE WHEN slref4.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT ASH')
+  ELSE slref4.refnum_value END) lot_ash,
+  (CASE WHEN slref5.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT MOISTURE')
+  ELSE slref5.refnum_value END) lot_moisture,
+  (CASE WHEN slref6.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.LOT PROTEIN')
+  ELSE slref6.refnum_value END) lot_protein,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    glogowner.xxscou_frozen_report_functions.get_lot_shipment_refnum(ssulr1.remark_text, 'SCOULAR.WEIGHT AS SHRINK')
+  ELSE slref8.refnum_value END) shrink_weight,
+  (CASE WHEN ssulr3.remark_text = 'false' THEN '' ELSE 'YES' END) lot_on_fda_hold,
+  (CASE WHEN
+    (SELECT LISTAGG(slref.refnum_value, ', ') WITHIN GROUP (ORDER BY slref.refnum_value) FROM s_ship_unit_line_refnum slref
+    WHERE slref.s_ship_unit_gid = ssul.s_ship_unit_gid AND slref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+    AND slref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES') IS NULL
+  THEN
+    (SELECT LISTAGG(ssr9.refnum_value, ', ') WITHIN GROUP (ORDER BY ssr9.refnum_value) FROM s_ship_unit_line ssul9
+    INNER JOIN s_ship_unit_line_remark ssrem9 ON ssul9.s_ship_unit_gid = ssrem9.s_ship_unit_gid
+    AND ssul9.s_ship_unit_line_no = ssrem9.s_ship_unit_line_no AND ssrem9.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+    INNER JOIN s_ship_unit_line_refnum ssr9 ON ssul9.s_ship_unit_gid = ssr9.s_ship_unit_gid
+    AND ssul9.s_ship_unit_line_no = ssr9.s_ship_unit_line_no AND ssr9.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES'
+    WHERE ssrem9.remark_text = ssulr1.remark_text)
+  ELSE
+    (SELECT LISTAGG(slref.refnum_value, ', ') WITHIN GROUP (ORDER BY slref.refnum_value) FROM s_ship_unit_line_refnum slref
+    WHERE slref.s_ship_unit_gid = ssul.s_ship_unit_gid AND slref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+    AND slref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES')
+  END) lot_notes
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr2 ON ssul.s_ship_unit_gid = ssulr2.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr2.s_ship_unit_line_no AND ssulr2.remark_qual_gid = 'SCOULAR.LOT EXPIRATION DATE'
+LEFT OUTER JOIN s_ship_unit_line_remark ssulr3 ON ssul.s_ship_unit_gid = ssulr3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr3.s_ship_unit_line_no AND ssulr3.remark_qual_gid = 'SCOULAR.LOT FDA HOLD'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref3 ON ssul.s_ship_unit_gid = slref3.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref3.s_ship_unit_line_no AND slref3.s_sul_refnum_qual_gid = 'SCOULAR.LOT FAT'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref4 ON ssul.s_ship_unit_gid = slref4.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref4.s_ship_unit_line_no AND slref4.s_sul_refnum_qual_gid = 'SCOULAR.LOT ASH'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref5 ON ssul.s_ship_unit_gid = slref5.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref5.s_ship_unit_line_no AND slref5.s_sul_refnum_qual_gid = 'SCOULAR.LOT MOISTURE'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref6 ON ssul.s_ship_unit_gid = slref6.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref6.s_ship_unit_line_no AND slref6.s_sul_refnum_qual_gid = 'SCOULAR.LOT PROTEIN'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref7 ON ssul.s_ship_unit_gid = slref7.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref7.s_ship_unit_line_no AND slref7.s_sul_refnum_qual_gid = 'SCOULAR.OTHER DATES'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD' AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT ssulf.s_ship_unit_gid FROM s_ship_unit_line_refnum ssulf
+  WHERE ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES' AND ssulf.s_ship_unit_gid = ssul.s_ship_unit_gid)
+AND sref2.shipment_refnum_value = 'T'
+AND glogowner.xxscou_frozen_report_functions.compare_wt_transfer_shipped(ssulr1.remark_text, loc1.location_gid) = 'YES'
+) d) y
+ORDER BY y.lot_number || y.warehouse_name, y.insert_date) z
+ORDER BY z.commodity_sort, z.warehouse_name, z.lot_number, z.insert_date ASC]]></sqlStatement>
+    <sqlStatement name="Q_COMMOD"><![CDATA[SELECT
+  z.commodity commod,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.amerbet_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.amerbet_com_total),0) END),'999,999,990')) amerbet,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.amermit_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.amermit_com_total),0) END),'999,999,990')) amermit,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.amerpot_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.amerpot_com_total),0) END),'999,999,990')) amerpot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.artesjt_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.artesjt_com_total),0) END),'999,999,990')) artesjt,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.dencost2_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.dencost2_com_total),0) END),'999,999,990')) dencost2,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.halsout_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.halsout_com_total),0) END),'999,999,990')) halsout,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.hennfort_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.hennfort_com_total),0) END),'999,999,990')) hennfort,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.norbut_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.norbut_com_total),0) END),'999,999,990')) norbut,
+  TRIM(TO_CHAR(ROUND(SUM(z.grand_total),0),'999,999,990')) total
+FROM
+(SELECT DISTINCT
+  y.commodity,
+  (CASE WHEN y.warehouse_name = 'AMERBET'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) amerbet_com_total,
+  (CASE WHEN y.warehouse_name = 'AMERMIT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) amermit_com_total,
+  (CASE WHEN y.warehouse_name = 'AMERPOT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) amerpot_com_total,
+  (CASE WHEN y.warehouse_name = 'ARTESJT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) artesjt_com_total,
+  (CASE WHEN y.warehouse_name = 'DENCOST2'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) dencost2_com_total,
+  (CASE WHEN y.warehouse_name = 'HALSOUT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) halsout_com_total,
+  (CASE WHEN y.warehouse_name = 'HENNFORT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) hennfort_com_total,
+  (CASE WHEN y.warehouse_name = 'NORBUT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) norbut_com_total,
+  (CASE WHEN y.warehouse_name IN ('AMERBET','AMERMIT','AMERPOT','ARTESJT','DENCOST2','HALSOUT','HENNFORT','NORBUT') THEN
+    SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE
+    0
+  END) grand_total
+FROM
+(SELECT a.* FROM
+  (SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc1.location_xid warehouse_name,
+  0 received,
+  (CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_YES' THEN
+    (CASE WHEN slref8.refnum_value IS NULL THEN
+      ssul.weight_base
+    ELSE
+      -ssul.weight_base
+    END)
+  ELSE
+    0
+  END) shipped,
+  (CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_NO' THEN
+    (CASE WHEN slref8.refnum_value IS NULL THEN
+      ssul.weight_base
+    ELSE
+      -ssul.weight_base
+    END)
+  ELSE
+   0
+  END) reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT sstopd.shipment_gid
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssunit ON sstopd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line ssuline ON ssunit.s_ship_unit_gid = ssuline.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line_remark ssulremark ON ssuline.s_ship_unit_gid = ssulremark.s_ship_unit_gid
+  AND ssuline.s_ship_unit_line_no = ssulremark.s_ship_unit_line_no
+  AND ssulremark.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+  INNER JOIN s_ship_unit sshipu ON sstopd.s_ship_unit_gid = sshipu.s_ship_unit_gid
+  INNER JOIN shipment_refnum sref ON sstopd.shipment_gid = sref.shipment_gid
+  AND sref.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+  INNER JOIN s_ship_unit_line_refnum ssulf ON sshipu.s_ship_unit_gid = ssulf.s_ship_unit_gid
+  AND ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  WHERE ssulremark.remark_text = ssulr1.remark_text
+  AND sstopd.stop_num = 1
+  AND sref.shipment_refnum_value = 'U')
+AND sref2.shipment_refnum_value = 'L'
+AND
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc1.location_gid) = 'NO'
+OR
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc1.location_gid) = 'YES'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_weight_loaded(ssulr1.remark_text, loc1.location_gid) = 'YES'))
+) a
+UNION
+SELECT b.* FROM
+  (SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc2.location_xid warehouse_name,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    ssul.weight_base
+  ELSE
+    -ssul.weight_base
+  END)
+  received,
+  0 shipped,
+  0 reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT sstopd.shipment_gid
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssunit ON sstopd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line ssuline ON ssunit.s_ship_unit_gid = ssuline.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line_remark ssulremark ON ssuline.s_ship_unit_gid = ssulremark.s_ship_unit_gid
+  AND ssuline.s_ship_unit_line_no = ssulremark.s_ship_unit_line_no
+  AND ssulremark.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+  INNER JOIN s_ship_unit sshipu ON sstopd.s_ship_unit_gid = sshipu.s_ship_unit_gid
+  INNER JOIN shipment_refnum sref ON sstopd.shipment_gid = sref.shipment_gid
+  AND sref.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+  INNER JOIN s_ship_unit_line_refnum ssulf ON sshipu.s_ship_unit_gid = ssulf.s_ship_unit_gid
+  AND ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  WHERE ssulremark.remark_text = ssulr1.remark_text
+  AND sstopd.stop_num = 1
+  AND sref.shipment_refnum_value = 'U')
+AND sref2.shipment_refnum_value = 'U'
+AND
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc2.location_gid) = 'NO'
+OR
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc2.location_gid) = 'YES'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_weight_unloaded(ssulr1.remark_text, loc2.location_gid) = 'YES'))
+) b
+UNION
+SELECT c.* FROM
+(SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc2.location_xid warehouse_name,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    ssul.weight_base
+  ELSE
+    -ssul.weight_base
+  END) received,
+  0 shipped,
+  0 reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT ssulf.s_ship_unit_gid
+  FROM s_ship_unit_line_refnum ssulf
+  WHERE ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  AND ssulf.s_ship_unit_gid = ssul.s_ship_unit_gid)
+AND sref2.shipment_refnum_value = 'T'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_wt_transfer_received(ssulr1.remark_text, loc2.location_gid) = 'YES'
+) c
+UNION
+SELECT d.* FROM
+(SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc1.location_xid warehouse_name,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    ssul.weight_base
+  ELSE
+    -ssul.weight_base
+  END) received,
+ ssul.weight_base shipped,
+ 0 reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT ssulf.s_ship_unit_gid
+  FROM s_ship_unit_line_refnum ssulf
+  WHERE ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  AND ssulf.s_ship_unit_gid = ssul.s_ship_unit_gid)
+AND
+  sref2.shipment_refnum_value = 'T'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_wt_transfer_shipped(ssulr1.remark_text, loc1.location_gid) = 'YES'
+) d
+) y
+GROUP BY
+   y.commodity, y.warehouse_name) z
+GROUP BY
+  z.commodity
+ORDER BY
+  z.commodity ASC]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+  TRIM(TO_CHAR((CASE WHEN SUM(z.amerbet_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.amerbet_com_total),0) END),'999,999,990')) amerbet_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.amermit_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.amermit_com_total),0) END),'999,999,990')) amermit_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.amerpot_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.amerpot_com_total),0) END),'999,999,990')) amerpot_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.artesjt_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.artesjt_com_total),0) END),'999,999,990')) artesjt_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.dencost2_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.dencost2_com_total),0) END),'999,999,990')) dencost2_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.halsout_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.halsout_com_total),0) END),'999,999,990')) halsout_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.hennfort_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.hennfort_com_total),0) END),'999,999,990')) hennfort_tot,
+  TRIM(TO_CHAR((CASE WHEN SUM(z.norbut_com_total) IS NULL THEN 0 ELSE ROUND(SUM(z.norbut_com_total),0) END),'999,999,990')) norbut_tot,
+  TRIM(TO_CHAR(ROUND(SUM(z.grand_total),0),'999,999,990')) grand_total
+FROM
+(SELECT DISTINCT
+  (CASE WHEN y.warehouse_name = 'AMERBET'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) amerbet_com_total,
+  (CASE WHEN y.warehouse_name = 'AMERMIT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) amermit_com_total,
+  (CASE WHEN y.warehouse_name = 'AMERPOT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) amerpot_com_total,
+  (CASE WHEN y.warehouse_name = 'ARTESJT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) artesjt_com_total,
+  (CASE WHEN y.warehouse_name = 'DENCOST2'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) dencost2_com_total,
+  (CASE WHEN y.warehouse_name = 'HALSOUT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) halsout_com_total,
+  (CASE WHEN y.warehouse_name = 'HENNFORT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) hennfort_com_total,
+  (CASE WHEN y.warehouse_name = 'NORBUT'
+  THEN SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE 0
+  END) norbut_com_total,
+  (CASE WHEN y.warehouse_name IN ('AMERBET','AMERMIT','AMERPOT','ARTESJT','DENCOST2','HALSOUT','HENNFORT','NORBUT') THEN
+    SUM(y.received) - SUM(y.shipped) - SUM(y.reserved)
+  ELSE
+    0
+  END) grand_total
+FROM
+(SELECT a.* FROM
+  (SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc1.location_xid warehouse_name,
+  0 received,
+  (CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_YES' THEN
+    (CASE WHEN slref8.refnum_value IS NULL THEN
+      ssul.weight_base
+    ELSE
+      -ssul.weight_base
+    END)
+  ELSE
+    0
+  END) shipped,
+  (CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_NO' THEN
+    (CASE WHEN slref8.refnum_value IS NULL THEN
+      ssul.weight_base
+    ELSE
+      -ssul.weight_base
+    END)
+  ELSE
+   0
+  END) reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT sstopd.shipment_gid
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssunit ON sstopd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line ssuline ON ssunit.s_ship_unit_gid = ssuline.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line_remark ssulremark ON ssuline.s_ship_unit_gid = ssulremark.s_ship_unit_gid
+  AND ssuline.s_ship_unit_line_no = ssulremark.s_ship_unit_line_no
+  AND ssulremark.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+  INNER JOIN s_ship_unit sshipu ON sstopd.s_ship_unit_gid = sshipu.s_ship_unit_gid
+  INNER JOIN shipment_refnum sref ON sstopd.shipment_gid = sref.shipment_gid
+  AND sref.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+  INNER JOIN s_ship_unit_line_refnum ssulf ON sshipu.s_ship_unit_gid = ssulf.s_ship_unit_gid
+  AND ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  WHERE ssulremark.remark_text = ssulr1.remark_text
+  AND sstopd.stop_num = 1
+  AND sref.shipment_refnum_value = 'U')
+AND sref2.shipment_refnum_value = 'L'
+AND
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc1.location_gid) = 'NO'
+OR
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc1.location_gid) = 'YES'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_weight_loaded(ssulr1.remark_text, loc1.location_gid) = 'YES'))
+) a
+UNION
+SELECT b.* FROM
+  (SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc2.location_xid warehouse_name,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    ssul.weight_base
+  ELSE
+    -ssul.weight_base
+  END)
+  received,
+  0 shipped,
+  0 reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT sstopd.shipment_gid
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssunit ON sstopd.s_ship_unit_gid = ssunit.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line ssuline ON ssunit.s_ship_unit_gid = ssuline.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line_remark ssulremark ON ssuline.s_ship_unit_gid = ssulremark.s_ship_unit_gid
+  AND ssuline.s_ship_unit_line_no = ssulremark.s_ship_unit_line_no
+  AND ssulremark.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+  INNER JOIN s_ship_unit sshipu ON sstopd.s_ship_unit_gid = sshipu.s_ship_unit_gid
+  INNER JOIN shipment_refnum sref ON sstopd.shipment_gid = sref.shipment_gid
+  AND sref.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+  INNER JOIN s_ship_unit_line_refnum ssulf ON sshipu.s_ship_unit_gid = ssulf.s_ship_unit_gid
+  AND ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  WHERE ssulremark.remark_text = ssulr1.remark_text
+  AND sstopd.stop_num = 1
+  AND sref.shipment_refnum_value = 'U')
+AND sref2.shipment_refnum_value = 'U'
+AND
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc2.location_gid) = 'NO'
+OR
+  (glogowner.xxscou_frozen_report_functions.lot_has_transfer_shipments(ssulr1.remark_text, loc2.location_gid) = 'YES'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_weight_unloaded(ssulr1.remark_text, loc2.location_gid) = 'YES'))
+) b
+UNION
+SELECT c.* FROM
+(SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc2.location_xid warehouse_name,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    ssul.weight_base
+  ELSE
+    -ssul.weight_base
+  END) received,
+  0 shipped,
+  0 reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT ssulf.s_ship_unit_gid
+  FROM s_ship_unit_line_refnum ssulf
+  WHERE ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  AND ssulf.s_ship_unit_gid = ssul.s_ship_unit_gid)
+AND sref2.shipment_refnum_value = 'T'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_wt_transfer_received(ssulr1.remark_text, loc2.location_gid) = 'YES'
+) c
+UNION
+SELECT d.* FROM
+(SELECT
+  s.shipment_gid, ssu.s_ship_unit_gid, ssul.s_ship_unit_line_no, ssul.insert_date, orr.order_release_refnum_value commodity,
+  loc1.location_xid warehouse_name,
+  (CASE WHEN slref8.refnum_value IS NULL THEN
+    ssul.weight_base
+  ELSE
+    -ssul.weight_base
+  END) received,
+ ssul.weight_base shipped,
+ 0 reserved
+FROM shipment s
+INNER JOIN shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+INNER JOIN shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+AND sref1.shipment_refnum_value = '5035'
+INNER JOIN shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND sref2.shipment_refnum_qual_gid = 'SCOULAR.RECORD TYPE'
+INNER JOIN shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND ssd.stop_num = 1
+INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+INNER JOIN s_ship_unit_line_remark ssulr1 ON ssul.s_ship_unit_gid = ssulr1.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = ssulr1.s_ship_unit_line_no
+AND ssulr1.remark_qual_gid = 'SCOULAR.LOT NUMBER'
+LEFT OUTER JOIN s_ship_unit_line_refnum slref8 ON ssul.s_ship_unit_gid = slref8.s_ship_unit_gid
+AND ssul.s_ship_unit_line_no = slref8.s_ship_unit_line_no
+AND slref8.s_sul_refnum_qual_gid = 'SCOULAR.WEIGHT AS SHRINK'
+LEFT OUTER JOIN order_release_refnum orr ON orel.order_release_gid = orr.order_release_gid
+AND orr.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN location loc1 ON orel.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE s.domain_name = 'SCOULAR/FOOD'
+AND s.shipment_type_gid = 'TRANSPORT'
+AND NOT EXISTS
+  (SELECT ssulf.s_ship_unit_gid
+  FROM s_ship_unit_line_refnum ssulf
+  WHERE ssulf.s_sul_refnum_qual_gid = 'SCOULAR.IS LOT COMPLETE'
+  AND ssulf.refnum_value = 'YES'
+  AND ssulf.s_ship_unit_gid = ssul.s_ship_unit_gid)
+AND
+  sref2.shipment_refnum_value = 'T'
+AND
+  glogowner.xxscou_frozen_report_functions.compare_wt_transfer_shipped(ssulr1.remark_text, loc1.location_gid) = 'YES'
+) d
+) y
+GROUP BY
+   y.warehouse_name) z]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="WAREHOUSE_NAME" value="WAREHOUSE_NAME"></element>
+      <element name="LOT_NUMBER" value="LOT_NUMBER" />
+      <element name="DUPLICATE" value="DUPLICATE" />
+      <element name="EXPIRATION_DATE" value="EXPIRATION_DATE" />
+      <element name="OTHER_DATES" value="OTHER_DATES" />
+      <element name="RECEIVED" value="RECEIVED"></element>
+      <element name="SHIPPED" value="SHIPPED" />
+      <element name="RESERVED" value="RESERVED" />
+      <element name="BALANCE" value="BALANCE" />
+      <element name="INBOUND_SHIP_ID" value="INBOUND_SHIP_ID" />
+      <element name="OUTBOUND_SHIP_ID" value="OUTBOUND_SHIP_ID" />
+      <element name="ORIGIN" value="ORIGIN" />
+      <element name="DESTINATION" value="DESTINATION"></element>
+      <element name="LOT_FAT" value="LOT_FAT"></element>
+      <element name="LOT_ASH" value="LOT_ASH" />
+      <element name="LOT_MOISTURE" value="LOT_MOISTURE" />
+      <element name="LOT_PROTEIN" value="LOT_PROTEIN"></element>
+      <element name="LOT_ON_FDA_HOLD" value="LOT_ON_FDA_HOLD"></element>
+      <element name="LOT_NOTES" value="LOT_NOTES" />
+    </group>
+    <group name="G_COMMOD" source="Q_COMMOD">
+      <element name="COMMOD" value="COMMOD" />
+      <element name="AMERBET" value="AMERBET"></element>
+      <element name="AMERMIT" value="AMERMIT" />
+      <element name="AMERPOT" value="AMERPOT" />
+      <element name="ARTESJT" value="ARTESJT" />
+      <element name="DENCOST2" value="DENCOST2" />
+      <element name="HALSOUT" value="HALSOUT" />
+      <element name="HENNFORT" value="HENNFORT" />
+      <element name="NORBUT" value="NORBUT" />
+      <element name="TOTAL" value="TOTAL" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="AMERBET_TOT" value="AMERBET_TOT" />
+      <element name="AMERMIT_TOT" value="AMERMIT_TOT" />
+      <element name="AMERPOT_TOT" value="AMERPOT_TOT" />
+      <element name="ARTESJT_TOT" value="ARTESJT_TOT" />
+      <element name="DENCOST2_TOT" value="DENCOST2_TOT" />
+      <element name="HALSOUT_TOT" value="HALSOUT_TOT" />
+      <element name="HENNFORT_TOT" value="HENNFORT_TOT" />
+      <element name="NORBUT_TOT" value="NORBUT_TOT" />
+      <element name="GRAND_TOTAL" value="GRAND_TOTAL" />
+    </group>
+  </dataStructure>
+</dataTemplate>
