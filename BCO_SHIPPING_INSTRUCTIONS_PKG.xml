@@ -1,0 +1,670 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPPING_INSTRUCTIONS_PKG" description="BCO Shipping Instructions with Packaging Information" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	cv.charter_voyage_xid booking_number,
+	TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'), 'fmMM/DD/YYYY') created_date,
+  (CASE WHEN sref1.shipment_refnum_value IS NULL THEN 
+    s.shipment_xid
+  ELSE
+    sref1.shipment_refnum_value
+  END) ref_num,
+	TRIM(con2.first_name || ' ' || con2.last_name) from_name,
+  (CASE WHEN loc1.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(loc1.city || ', ' || loc1.province_code || ' ' || cc1.country_name)
+  ELSE
+    TRIM(loc1.city || ' ' || cc1.country_name)
+  END) load_port,
+  (CASE WHEN NVL(
+  (SELECT gpcc.classification_code
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid  
+  INNER JOIN gtm_item_classification gic ON ssul.packaged_item_gid = gic.gtm_item_gid
+  INNER JOIN gtm_prod_class_code gpcc ON gic.gtm_prod_class_code_gid = gpcc.gtm_prod_class_code_gid
+  AND gpcc.gtm_prod_class_type_gid = 'HTS US'
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'XXXYYYXXX') = 'XXXYYYXXX' THEN 
+  (SELECT gpcc.classification_code
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid  
+  INNER JOIN gtm_item_classification gic ON ssul.packaged_item_gid = gic.gtm_item_gid
+  INNER JOIN gtm_prod_class_code gpcc ON gic.gtm_prod_class_code_gid = gpcc.gtm_prod_class_code_gid
+  AND gpcc.gtm_prod_class_type_gid = 'SCHEDULE B'
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)    
+  ELSE 
+  (SELECT gpcc.classification_code
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid  
+  INNER JOIN gtm_item_classification gic ON ssul.packaged_item_gid = gic.gtm_item_gid
+  INNER JOIN gtm_prod_class_code gpcc ON gic.gtm_prod_class_code_gid = gpcc.gtm_prod_class_code_gid
+  AND gpcc.gtm_prod_class_type_gid = 'HTS US'
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  END) hs_code,
+	cvr.charter_voyage_refnum_value cut_date,
+	TO_CHAR(s.sail_date, 'fmMM/DD/YYYY') sail_date,
+	TRIM(loc2.province_code || ' ' || loc2.country_code3_gid)	origin,
+	cv.voyage_name vessel,
+	cvra.charter_voyage_refnum_value voyage_number,
+  (CASE WHEN loc3.country_code3_gid IN ('USA','CAN') THEN
+    TRIM(loc3.city || ', ' || loc3.province_code || ' ' || cc3.country_name) 
+  ELSE
+    TRIM(loc3.city || ' ' || cc3.country_name) 
+  END)
+  discharge_port,
+	TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,990')) || ' Containers' 
+  containers, 
+	(SELECT sref1.shipment_refnum_value
+	FROM shipment_refnum sref1
+	WHERE sref1.shipment_gid = s.shipment_gid
+	AND sref1.shipment_refnum_qual_gid = 'ITN') aes_number
+FROM
+	shipment s
+LEFT OUTER JOIN
+	location loc1 ON s.port_of_load_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  country_code cc1 ON loc1.country_code3_gid = cc1.country_code3_gid  
+LEFT OUTER JOIN
+	location loc2 ON s.source_location_gid = loc2.location_gid 
+LEFT OUTER JOIN
+	location loc3 ON s.port_of_dis_location_gid = loc3.location_gid
+LEFT OUTER JOIN
+  country_code cc3 ON loc3.country_code3_gid = cc3.country_code3_gid    
+LEFT OUTER JOIN
+	location loc4 ON s.dest_location_gid = loc4.location_gid   
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+	cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME'
+LEFT OUTER JOIN
+	charter_voyage_refnum cvra ON cv.charter_voyage_gid = cvra.charter_voyage_gid
+AND
+	cvra.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'
+LEFT OUTER JOIN
+	contact con2 ON sip2.involved_party_contact_gid = con2.contact_gid
+LEFT OUTER JOIN
+	shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+	sref1.shipment_refnum_qual_gid = 'SCOULAR/BCO.INVOICE NUMBER'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+	oob.order_base_xid contract_number,
+	COALESCE(obr1.remark_text,
+  (SELECT it.item_name
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)) 
+  commodity,
+  obr2.remark_text 
+  delivery_port
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+	oob.order_type_gid = 'SCOULAR.SALES_ORDER'  
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESTINATION PORT'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  contract_number,
+  (SELECT it.item_name
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = :SHIPMENT_ID AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  commodity,
+  ''
+  delivery_port  
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+    <sqlStatement name="Q_NOTES"><![CDATA[SELECT 
+  a.label,
+  a.report_text
+FROM
+(SELECT
+  'A' order_by,
+  'Special Instructions:' label,
+  TRIM(obr1.remark_text
+  ||
+  (CASE WHEN NOT obr2.remark_text IS NULL THEN CHR(13) || CHR(13) || obr2.remark_text ELSE '' END))
+  report_text
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+	oob.order_type_gid = 'SCOULAR.SALES_ORDER'
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_SPECIAL INSTRUCTIONS'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'   
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION
+SELECT
+  'B' order_by,
+  'Other Terms:' label,
+  obr3.remark_text
+  report_text
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+	oob.order_type_gid = 'SCOULAR.SALES_ORDER'
+LEFT OUTER JOIN
+	ob_remark obr3 ON oob.order_base_gid = obr3.order_base_gid
+AND
+	obr3.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_OTHER SPECIAL TERMS'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID    
+UNION
+SELECT
+  'C' order_by,
+  'Additional Notes:' label,
+  TRIM(srem1.remark_text || '  ' || srem2.remark_text)
+  report_text
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+	oob.order_type_gid = 'SCOULAR.SALES_ORDER'
+LEFT OUTER JOIN
+	shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+	srem1.remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES'   
+LEFT OUTER JOIN
+	shipment_remark srem2 ON s.shipment_gid = srem2.shipment_gid
+AND
+	srem2.remark_qual_gid = 'SCOULAR/BCO.ADDITIONAL NOTES NOT ON MBL'    
+WHERE
+	s.shipment_gid = :SHIPMENT_ID) a
+WHERE 
+  NOT a.report_text IS NULL
+ORDER BY
+  a.order_by]]></sqlStatement>
+    <sqlStatement name="Q_ENTITY1"><![CDATA[SELECT DISTINCT
+	obrns1.ob_refnum_value shipper,
+	(CASE WHEN NVL(TRIM(obrns2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrns4.ob_refnum_value END) shipper_address,
+	(CASE WHEN NVL(TRIM(obrns5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrns5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrns8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrns8.ob_refnum_value END) s_city_state_zip,
+  (CASE WHEN NOT obrns9.ob_refnum_value IS NULL THEN obrns9.ob_refnum_value END) 
+  shipper_phone,
+  (CASE WHEN NOT obrns10.ob_refnum_value IS NULL THEN obrns10.ob_refnum_value END) 
+  shipper_fax
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_refnum obrns1 ON ssul.order_base_gid = obrns1.order_base_gid
+AND
+	obrns1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER NAME'
+LEFT OUTER JOIN
+	ob_refnum obrns2 ON ssul.order_base_gid = obrns2.order_base_gid
+AND
+	obrns2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrns3 ON ssul.order_base_gid = obrns3.order_base_gid
+AND
+	obrns3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrns4 ON ssul.order_base_gid = obrns4.order_base_gid
+AND
+	obrns4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrns5 ON ssul.order_base_gid = obrns5.order_base_gid
+AND
+	obrns5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER CITY'
+LEFT OUTER JOIN
+	ob_refnum obrns6 ON ssul.order_base_gid = obrns6.order_base_gid
+AND
+	obrns6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrns7 ON ssul.order_base_gid = obrns7.order_base_gid
+AND
+	obrns7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrns8 ON ssul.order_base_gid = obrns8.order_base_gid
+AND
+	obrns8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_refnum obrns9 ON ssul.order_base_gid = obrns9.order_base_gid
+AND
+	obrns9.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER PHONE'  
+LEFT OUTER JOIN
+	ob_refnum obrns10 ON ssul.order_base_gid = obrns10.order_base_gid
+AND
+	obrns10.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_SHIPPER FAX'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ENTITY2"><![CDATA[SELECT DISTINCT
+	obrnc1.ob_refnum_value consignee,
+	(CASE WHEN NVL(TRIM(obrnc2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrnc2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrnc3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrnc3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrnc4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrnc4.ob_refnum_value END) consignee_address,
+	(CASE WHEN NVL(TRIM(obrnc5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrnc5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrnc6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrnc6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrnc7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrnc7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrnc8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrnc8.ob_refnum_value END) c_city_state_zip
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid  
+LEFT OUTER JOIN
+	ob_refnum obrnc1 ON ssul.order_base_gid = obrnc1.order_base_gid
+AND
+	obrnc1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONSIGNEE NAME'
+LEFT OUTER JOIN
+	ob_refnum obrnc2 ON ssul.order_base_gid = obrnc2.order_base_gid
+AND
+	obrnc2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrnc3 ON ssul.order_base_gid = obrnc3.order_base_gid
+AND
+	obrnc3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrnc4 ON ssul.order_base_gid = obrnc4.order_base_gid
+AND
+	obrnc4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrnc5 ON ssul.order_base_gid = obrnc5.order_base_gid
+AND
+	obrnc5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS CITY'
+LEFT OUTER JOIN
+	ob_refnum obrnc6 ON ssul.order_base_gid = obrnc6.order_base_gid
+AND
+	obrnc6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrnc7 ON ssul.order_base_gid = obrnc7.order_base_gid
+AND
+	obrnc7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrnc8 ON ssul.order_base_gid = obrnc8.order_base_gid
+AND
+	obrnc8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_CONS COUNTRY CODE'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ENTITY3"><![CDATA[SELECT DISTINCT
+	obrn1.ob_refnum_value party,
+	(CASE WHEN NVL(TRIM(obrn2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrn4.ob_refnum_value END) address,
+	(CASE WHEN NVL(TRIM(obrn5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || 
+  (SELECT country_name 
+  FROM country_code 
+  WHERE country_code3_gid =  obrn8.ob_refnum_value)  
+  END) city_state_zip,
+  (CASE WHEN NOT obrn9.ob_refnum_value IS NULL THEN obrn9.ob_refnum_value END) 
+  phone,
+  (CASE WHEN NOT obrn10.ob_refnum_value IS NULL THEN obrn10.ob_refnum_value END) 
+  fax,
+  (CASE WHEN NOT obrn11.ob_refnum_value IS NULL THEN obrn11.ob_refnum_value END)   
+  email
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON ssul.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NOTIFY NAME'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON ssul.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON ssul.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrn4 ON ssul.order_base_gid = obrn4.order_base_gid
+AND
+	obrn4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrn5 ON ssul.order_base_gid = obrn5.order_base_gid
+AND
+	obrn5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP CITY'
+LEFT OUTER JOIN
+	ob_refnum obrn6 ON ssul.order_base_gid = obrn6.order_base_gid
+AND
+	obrn6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrn7 ON ssul.order_base_gid = obrn7.order_base_gid
+AND
+	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn8 ON ssul.order_base_gid = obrn8.order_base_gid
+AND
+	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn9 ON ssul.order_base_gid = obrn9.order_base_gid
+AND
+	obrn9.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP PHONE'
+LEFT OUTER JOIN
+	ob_refnum obrn10 ON ssul.order_base_gid = obrn10.order_base_gid
+AND
+	obrn10.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP FAX'
+LEFT OUTER JOIN
+	ob_refnum obrn11 ON ssul.order_base_gid = obrn11.order_base_gid
+AND
+	obrn11.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_NP EMAIL'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ALSO_NP"><![CDATA[SELECT DISTINCT
+  (CASE WHEN obrn1.ob_refnum_value IS NULL THEN 'N' ELSE 'Y' END) also_notify,
+  CHR(13) || TRIM('ALSO NOTIFY: ' ||
+	obrn1.ob_refnum_value || CHR(13) ||
+	(CASE WHEN NVL(TRIM(obrn2.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn2.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn3.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn3.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn4.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE chr(10) || obrn4.ob_refnum_value END)
+  || CHR(13) ||
+  (CASE WHEN NVL(TRIM(obrn5.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE obrn5.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn6.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn6.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn7.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn7.ob_refnum_value END) ||
+	(CASE WHEN NVL(TRIM(obrn8.ob_refnum_value),'XXXYYYZZZYYYXXX') = 'XXXYYYZZZYYYXXX' THEN '' ELSE ' ' || obrn8.ob_refnum_value END)
+  || CHR(13) ||
+  (CASE WHEN NOT obrn9.ob_refnum_value IS NULL THEN obrn9.ob_refnum_value END) 
+  || ' ' ||
+  (CASE WHEN NOT obrn10.ob_refnum_value IS NULL THEN obrn10.ob_refnum_value END) 
+  || ' ' ||
+  (CASE WHEN NOT obrn11.ob_refnum_value IS NULL THEN obrn11.ob_refnum_value END))
+  also_notify_party
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+AND
+	oob.order_type_gid = 'SCOULAR.SALES_ORDER'
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP NAME'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP ADDRESS LINE 1'
+LEFT OUTER JOIN
+	ob_refnum obrn3 ON oob.order_base_gid = obrn3.order_base_gid
+AND
+	obrn3.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP ADDRESS LINE 2'
+LEFT OUTER JOIN
+	ob_refnum obrn4 ON oob.order_base_gid = obrn4.order_base_gid
+AND
+	obrn4.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP ADDRESS LINE 3'
+LEFT OUTER JOIN
+	ob_refnum obrn5 ON oob.order_base_gid = obrn5.order_base_gid
+AND
+	obrn5.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP CITY'
+LEFT OUTER JOIN
+	ob_refnum obrn6 ON oob.order_base_gid = obrn6.order_base_gid
+AND
+	obrn6.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP PROVINCE'
+LEFT OUTER JOIN
+	ob_refnum obrn7 ON oob.order_base_gid = obrn7.order_base_gid
+AND
+	obrn7.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP ZIP CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn8 ON oob.order_base_gid = obrn8.order_base_gid
+AND
+	obrn8.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP COUNTRY CODE'
+LEFT OUTER JOIN
+	ob_refnum obrn9 ON oob.order_base_gid = obrn9.order_base_gid
+AND
+	obrn9.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP PHONE'
+LEFT OUTER JOIN
+	ob_refnum obrn10 ON oob.order_base_gid = obrn10.order_base_gid
+AND
+	obrn10.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP FAX'
+LEFT OUTER JOIN
+	ob_refnum obrn11 ON oob.order_base_gid = obrn11.order_base_gid
+AND
+	obrn11.ob_refnum_qual_gid = 'SCOULAR/BCO.BCO_OB PAYTERM_ALSO NP EMAIL'   
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	ROWNUM rnum, a.*
+FROM
+(SELECT
+	ssu.tag_3
+  container_number,
+	ssu.tag_1
+  seal_number,	
+	TRIM(TO_CHAR(ROUND(ssu.unit_net_weight*1000,0), '999,999,990'))
+  unit_weight,
+  (CASE WHEN NOT TRIM(ssur1.refnum_value || ' ' || ssur2.refnum_value) IS NULL THEN
+     TRIM(ssur1.refnum_value || ' ' || glogowner.xxscou_nvo_report_functions.type_of_pieces(ssur1.refnum_value,ssur2.refnum_value))       
+  END)
+  packaging_info
+FROM
+	shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
+AND
+  ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
+AND
+  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE TYPE'   
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+ORDER BY container_number
+) a
+ORDER BY rnum]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+	TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight*1000,0)), '999,999,990')) || ' KG'
+	total_weight
+FROM
+	shipment s
+INNER JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+GROUP BY 
+  ssu.unit_net_weight_uom_code]]></sqlStatement>
+    <sqlStatement name="Q_QUANTITY"><![CDATA[SELECT
+  (CASE WHEN 
+    (SELECT COUNT(ssur.refnum_value) FROM shipment_stop_d sstopdd
+    INNER JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+    AND NOT sunit.tag_3 IS NULL
+    INNER JOIN s_ship_unit_refnum ssur ON sunit.s_ship_unit_gid = ssur.s_ship_unit_gid
+    AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
+    WHERE sstopdd.shipment_gid = :SHIPMENT_ID AND sstopdd.stop_num = 1) = 0 THEN
+      TRIM(TO_CHAR((SELECT COUNT(sstopdd.s_ship_unit_gid) FROM shipment_stop_d sstopdd
+      INNER JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+      AND NOT sunit.tag_3 IS NULL
+      WHERE sstopdd.shipment_gid = :SHIPMENT_ID AND sstopdd.stop_num = 1), '999,999,990')) || ' BULK' 
+  ELSE
+      glogowner.xxscou_nvo_report_functions.count_of_pieces_shipment_bco(:SHIPMENT_ID)
+  END)
+  quantity
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="CREATED_DATE" value="CREATED_DATE" />
+      <element name="REF_NUM" value="REF_NUM" />
+      <element name="FROM_NAME" value="FROM_NAME" />
+      <element name="LOAD_PORT" value="LOAD_PORT" />
+      <element name="HS_CODE" value="HS_CODE"></element>
+      <element name="CUT_DATE" value="CUT_DATE" />
+      <element name="SAIL_DATE" value="SAIL_DATE" />
+      <element name="ORIGIN" value="ORIGIN" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="VOYAGE_NUMBER" value="VOYAGE_NUMBER" />
+      <element name="DISCHARGE_PORT" value="DISCHARGE_PORT" />
+      <element name="CONTAINERS" value="CONTAINERS"></element>
+      <element name="AES_NUMBER" value="AES_NUMBER"></element>
+      <element name="ONE_COLUMN" value="ONE_COLUMN"></element>
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="CONTRACT_NUMBER" value="CONTRACT_NUMBER"></element>
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="DELIVERY_PORT" value="DELIVERY_PORT" />
+    </group>
+    <group name="G_NOTES" source="Q_NOTES">
+      <element name="LABEL" value="LABEL" />
+      <element name="REPORT_TEXT" value="REPORT_TEXT" />
+    </group>
+    <group name="G_ENTITY1" source="Q_ENTITY1">
+      <element name="SHIPPER" value="SHIPPER" />
+      <element name="SHIPPER_ADDRESS" value="SHIPPER_ADDRESS" />
+      <element name="S_CITY_STATE_ZIP" value="S_CITY_STATE_ZIP" />
+      <element name="SHIPPER_PHONE" value="SHIPPER_PHONE" />
+      <element name="SHIPPER_FAX" value="SHIPPER_FAX" />
+    </group>
+    <group name="G_ENTITY2" source="Q_ENTITY2">
+      <element name="CONSIGNEE" value="CONSIGNEE" />
+      <element name="CONSIGNEE_ADDRESS" value="CONSIGNEE_ADDRESS" />
+      <element name="C_CITY_STATE_ZIP" value="C_CITY_STATE_ZIP"></element>
+    </group>
+    <group name="G_ENTITY3" source="Q_ENTITY3">
+      <element name="PARTY" value="PARTY" />
+      <element name="ADDRESS" value="ADDRESS" />
+      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
+      <element name="PHONE" value="PHONE" />
+      <element name="FAX" value="FAX" />
+      <element name="EMAIL" value="EMAIL" />
+    </group>
+    <group name="G_ALSO_NP" source="Q_ALSO_NP">
+      <element name="ALSO_NOTIFY" value="ALSO_NOTIFY" />
+      <element name="ALSO_NOTIFY_PARTY" value="ALSO_NOTIFY_PARTY" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="RNUM" value="RNUM" />
+      <element name="CONTAINER_NUMBER" value="CONTAINER_NUMBER" />
+      <element name="SEAL_NUMBER" value="SEAL_NUMBER" />
+      <element name="UNIT_WEIGHT" value="UNIT_WEIGHT" />
+      <element name="PACKAGING_INFO" value="PACKAGING_INFO" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+    </group>
+    <group name="G_QUANTITY" source="Q_QUANTITY">
+      <element name="QUANTITY" value="QUANTITY" />
+    </group>
+  </dataStructure>
+</dataTemplate>

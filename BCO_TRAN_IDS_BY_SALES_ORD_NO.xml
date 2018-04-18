@@ -5,7 +5,7 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
   oref1.ob_refnum_value loc,
   s.shipment_xid shipment_id,
   oob.order_base_xid contract_no,
@@ -15,10 +15,14 @@
   ssu.unit_net_weight_uom_code weight_uom
 FROM
   ob_order_base oob
+INNER JOIN 
+  s_ship_unit_line ssul ON oob.order_base_gid = ssul.order_base_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-INNER JOIN
-  shipment s ON vsob.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'
 INNER JOIN

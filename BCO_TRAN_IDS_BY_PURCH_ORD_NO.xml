@@ -24,10 +24,14 @@ AND
   oref.ob_refnum_qual_gid = 'SCOULAR.PURCHASE ORDER PLANNED TO INVENTORY'
 AND
   oref.ob_refnum_value = 'Y'
+INNER JOIN 
+  s_ship_unit_line ssul ON oob.order_base_gid = ssul.order_base_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-INNER JOIN
-  shipment s ON vsob.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'  
 INNER JOIN
@@ -69,10 +73,16 @@ SELECT
   'MT' weight_uom
 FROM
   ob_order_base oob
-INNER JOIN
-  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-INNER JOIN
-  shipment s ON vsob.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_refnum ssur ON ssur.refnum_value = oob.order_base_xid
+AND
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+INNER JOIN 
+  shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND 
+  ssd.stop_num = 1
+INNER JOIN 
+  shipment s ON s.shipment_gid = ssd.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'
 INNER JOIN
@@ -93,11 +103,6 @@ AND NOT EXISTS
   WHERE or1.ob_refnum_qual_gid = 'SCOULAR.PURCHASE ORDER PLANNED TO INVENTORY'
   AND or1.ob_refnum_value = 'Y'
   AND or1.order_base_gid = oob.order_base_gid)
-AND EXISTS
-  (SELECT sr1.s_ship_unit_gid
-  FROM s_ship_unit_refnum sr1
-  WHERE sr1.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND sr1.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID')  
 AND EXISTS
   (SELECT sr1.s_ship_unit_gid
   FROM s_ship_unit_refnum sr1
@@ -122,10 +127,16 @@ SELECT
   'MT' weight_uom
 FROM
   ob_order_base oob
-INNER JOIN
-  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-INNER JOIN
-  shipment s ON vsob.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_refnum ssur ON ssur.refnum_value = oob.order_base_xid
+AND
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+INNER JOIN 
+  shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND 
+  ssd.stop_num = 1
+INNER JOIN 
+  shipment s ON s.shipment_gid = ssd.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'
 INNER JOIN
@@ -146,11 +157,6 @@ AND NOT EXISTS
   WHERE or1.ob_refnum_qual_gid = 'SCOULAR.PURCHASE ORDER PLANNED TO INVENTORY'
   AND or1.ob_refnum_value = 'Y'
   AND or1.order_base_gid = oob.order_base_gid)
-AND EXISTS
-  (SELECT sr1.s_ship_unit_gid
-  FROM s_ship_unit_refnum sr1
-  WHERE sr1.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND sr1.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID')  
 AND EXISTS
   (SELECT sr1.s_ship_unit_gid
   FROM s_ship_unit_refnum sr1
@@ -167,10 +173,16 @@ SELECT
   'MT' weight_uom
 FROM
   ob_order_base oob
-INNER JOIN
-  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-INNER JOIN
-  shipment s ON vsob.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_refnum ssur ON ssur.refnum_value = oob.order_base_xid
+AND
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+INNER JOIN 
+  shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND 
+  ssd.stop_num = 1
+INNER JOIN 
+  shipment s ON s.shipment_gid = ssd.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'
 INNER JOIN
@@ -191,11 +203,6 @@ AND NOT EXISTS
   WHERE or1.ob_refnum_qual_gid = 'SCOULAR.PURCHASE ORDER PLANNED TO INVENTORY'
   AND or1.ob_refnum_value = 'Y'
   AND or1.order_base_gid = oob.order_base_gid)
-AND EXISTS
-  (SELECT sr1.s_ship_unit_gid
-  FROM s_ship_unit_refnum sr1
-  WHERE sr1.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND sr1.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID')  
 AND NOT EXISTS
   (SELECT sr1.s_ship_unit_gid
   FROM s_ship_unit_refnum sr1

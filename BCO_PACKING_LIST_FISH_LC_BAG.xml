@@ -1,0 +1,246 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_PACKING_LIST_FISH_LC_BAG" description="BCO FISH Packing List w/ LC Bag Statement" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="PRINT_WEIGHT" dataType="character" />
+    <parameter name="PRINT_BAGS" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :PRINT_WEIGHT print_wt, 
+  :PRINT_BAGS print_bg,
+  (CASE WHEN :PRINT_WEIGHT = 'YES' AND :PRINT_BAGS = 'YES' THEN
+    '1'
+  WHEN :PRINT_WEIGHT = 'YES' AND :PRINT_BAGS = 'NO' THEN
+    '2'
+  WHEN :PRINT_WEIGHT = 'NO' AND :PRINT_BAGS = 'YES' THEN
+    '3'
+  WHEN :PRINT_WEIGHT = 'NO' AND :PRINT_BAGS = 'NO' THEN
+    '4'
+  ELSE
+    '1'
+  END)
+  mode_type
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') 
+  booking_date,
+	TRIM(TO_CHAR(
+  (SELECT COUNT(sstopdd.s_ship_unit_gid) 
+  FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' 
+  || TRIM(TO_CHAR(
+  (SELECT ssu.received_ship_unit_count
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+  ,'999,999')) || ' FT CONTAINERS' 
+  quantity,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) 
+  vessel,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND ROWNUM = 1) 
+  bl_num,
+  (CASE WHEN loc.country_code3_gid = 'CHN' THEN
+    'YES'
+  ELSE
+    'NO'
+  END)
+  china_message,  
+  (CASE WHEN sref.shipment_refnum_value IN ('5334','5335') THEN
+    'YES'
+  ELSE
+    'NO'
+  END)
+  one_column
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'   
+LEFT OUTER JOIN
+	shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+	sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  location loc ON s.dest_location_gid = loc.location_gid  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+	obr1.remark_text 
+  credit_number,
+	COALESCE(obr2.remark_text,
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)) 
+  description,
+  obrn1.ob_refnum_value || ' ' || obrn2.ob_refnum_value
+  bags  
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+LEFT OUTER JOIN
+	ob_remark obr2 ON oob.order_base_gid = obr2.order_base_gid
+AND
+	obr2.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+	ob_refnum obrn1 ON oob.order_base_gid = obrn1.order_base_gid
+AND
+	obrn1.ob_refnum_qual_gid = 'SCOULAR.PACKAGING NUMBER'
+LEFT OUTER JOIN
+	ob_refnum obrn2 ON oob.order_base_gid = obrn2.order_base_gid
+AND
+	obrn2.ob_refnum_qual_gid = 'SCOULAR.PACKAGING UNIT OF MEASURE'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  credit_number,
+  (SELECT it.description
+  FROM shipment_stop_d sstopd
+  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND	NOT ssu.tag_3 IS NULL
+  INNER JOIN s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN packaged_item pi ON	ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item it ON pi.item_gid = it.item_gid
+  WHERE sstopd.shipment_gid = :SHIPMENT_ID AND sstopd.stop_num = 1 AND ROWNUM = 1)
+  description,
+  ''
+  bags
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	ROWNUM rnum, a.*
+FROM
+(SELECT
+  ssu.tag_3
+  container_number,
+  (CASE WHEN :PRINT_WEIGHT = 'YES' THEN
+    TRIM(TO_CHAR(ROUND(ssu.unit_net_weight_base / 2204.5855379,3), '999,999,990.000'))
+  ELSE
+    ''
+  END)
+  unit_weight,
+  (CASE WHEN :PRINT_BAGS = 'YES' THEN
+    TRIM(TO_CHAR(ssur.refnum_value, '999,999,990'))
+  ELSE
+    ''
+  END)
+  number_bags
+FROM
+	shipment s
+INNER JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+LEFT OUTER JOIN
+	s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND
+	ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'  
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+ORDER BY container_number
+) a
+ORDER BY rnum]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+	TRIM(TO_CHAR(SUM(ROUND(ssu.unit_net_weight_base / 2204.5855379,3)), '999,999,990.000')) || ' MT'
+	total_weight,
+	TRIM(TO_CHAR(SUM(ssur.refnum_value), '999,999,990'))
+	total_bags
+FROM
+	shipment s
+INNER JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL
+LEFT OUTER JOIN
+	s_ship_unit_refnum ssur ON ssu.s_ship_unit_gid = ssur.s_ship_unit_gid
+AND
+	ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
+      <element name="PRINT_WT" value="PRINT_WT" />
+      <element name="PRINT_BG" value="PRINT_BG" />
+      <element name="MODE_TYPE" value="MODE_TYPE" />
+    </group>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="BOOKING_DATE" value="BOOKING_DATE" />
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="VESSEL" value="VESSEL" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="CHINA_MESSAGE" value="CHINA_MESSAGE" />
+      <element name="ONE_COLUMN" value="ONE_COLUMN"></element>
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="CREDIT_NUMBER" value="CREDIT_NUMBER" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="BAGS" value="BAGS" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="RNUM" value="RNUM" />
+      <element name="CONTAINER_NUMBER" value="CONTAINER_NUMBER" />
+      <element name="UNIT_WEIGHT" value="UNIT_WEIGHT" />
+      <element name="NUMBER_BAGS" value="NUMBER_BAGS" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
+      <element name="TOTAL_BAGS" value="TOTAL_BAGS" />
+    </group>
+  </dataStructure>
+</dataTemplate>

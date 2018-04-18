@@ -3,7 +3,7 @@
   <parameters></parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAM"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
   TO_CHAR(SYSDATE -7,'MM/DD/YYYY') start_dt,
   TO_CHAR(SYSDATE,'MM/DD/YYYY') end_dt
 FROM DUAL]]></sqlStatement>
@@ -33,7 +33,7 @@ ORDER BY
   itrans.insert_date DESC]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAM" source="Q_PARAM">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="START_DT" value="START_DT" />
       <element name="END_DT" value="END_DT" />
     </group>

@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENTS_NEED_DOC_MAN" description="BCO Shipments Needing Doc Manager Assigned" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOCS" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :LOCS loc_nums FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
+  s.shipment_xid 
+  shipment_id,
+  sref2.shipment_refnum_value
+  booking_no,
+  glog_util.remove_domain(s.servprov_gid)
+  carrier,
+  sref3.shipment_refnum_value
+  per_cont,
+  sref4.shipment_refnum_value
+  contract_no, 
+  ROUND(s.total_net_weight_base / 2204.5855379,3)
+  actual_wt,
+  TO_CHAR(s.sail_date,'MM/DD/YYYY')
+  sail_date,
+  TO_CHAR(s.port_discharge_eta,'MM/DD/YYYY')
+  eta,
+  sref5.shipment_refnum_value
+  commodity,  
+  sref1.shipment_refnum_value
+  loc,
+  glog_util.remove_domain(ss.status_value_gid)
+  loading_status,
+  s.total_ship_unit_count
+  cont_count,
+  loc1.city
+  dest_city,
+  loc1.country_code3_gid
+  dest_country,
+  sref6.shipment_refnum_value
+  doc_cut_dt,    
+  loc2.city
+  origin_city,
+  sref7.shipment_refnum_value  
+  transloader,
+  glog_util.remove_domain(sip.involved_party_contact_gid)
+  cust_id
+FROM 
+  shipment s
+INNER JOIN
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+  s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+  s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND 
+  ssu.tag_3 IS NOT NULL  
+INNER JOIN
+  order_release o ON ssul.order_release_gid = o.order_release_gid
+INNER JOIN
+  ob_order_base ob ON o.order_base_gid = ob.order_base_gid
+AND 
+  o.order_base_gid LIKE 'SCOULAR/BCO.S%'
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.COST PER CONTAINER'
+LEFT OUTER JOIN
+  shipment_refnum sref4 ON s.shipment_gid = sref4.shipment_gid
+AND
+  sref4.shipment_refnum_qual_gid = 'SCOULAR/BCO.CONTRACT NO'
+LEFT OUTER JOIN
+  shipment_refnum sref5 ON s.shipment_gid = sref5.shipment_gid
+AND
+  sref5.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref6 ON s.shipment_gid = sref6.shipment_gid
+AND
+  sref6.shipment_refnum_qual_gid = 'SCOULAR.DOC CLOSING TIME'
+LEFT OUTER JOIN
+  shipment_refnum sref7 ON s.shipment_gid = sref7.shipment_gid
+AND
+  sref7.shipment_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME'
+LEFT OUTER JOIN
+  shipment_status ss ON s.shipment_gid = ss.shipment_gid
+AND
+  ss.status_type_gid = 'SCOULAR/BCO.SHIPMENT LOADING STATUS'
+LEFT OUTER JOIN
+  location loc1 ON s.dest_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.source_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+WHERE 
+  s.insert_date > SYSDATE - 60 
+AND 
+  s.shipment_type_gid = 'TRANSPORT' 
+AND 
+  s.transport_mode_gid = 'VESSEL-CO' 
+AND NOT EXISTS (
+  SELECT 
+    sip.shipment_gid 
+  FROM 
+    shipment_involved_party sip 
+  WHERE 
+    sip.shipment_gid = s.shipment_gid 
+  AND 
+    sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER')
+AND
+  (:LOCS IS NULL OR (NOT :LOCS IS NULL AND
+  sref1.shipment_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOCS,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

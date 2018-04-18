@@ -1,0 +1,233 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_PACKING_LIST_MEXICO" description="BCO Mexico Packing List" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+	TO_CHAR(s.sail_date, 'fmMonth DD, YYYY') 
+  booking_date,
+  srem1.remark_text
+  credit_number,
+	TRIM(TO_CHAR(
+  (SELECT COUNT(sstopdd.s_ship_unit_gid) 
+  FROM shipment_stop_d sstopdd
+	JOIN s_ship_unit sunit ON sstopdd.s_ship_unit_gid = sunit.s_ship_unit_gid
+	AND NOT sunit.tag_3 IS NULL
+	WHERE sstopdd.shipment_gid = s.shipment_gid AND sstopdd.stop_num = 1), '999,999,999')) || ' X ' 
+  ||
+  (CASE WHEN 
+    (SELECT ssu.received_ship_unit_count
+    FROM shipment_stop_d sstopd
+    INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND	NOT ssu.tag_3 IS NULL
+    WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1) = 42 THEN
+      '40 FT HC CONTAINERS'
+  ELSE
+    TRIM(TO_CHAR(
+    (SELECT ssu.received_ship_unit_count
+    FROM shipment_stop_d sstopd
+    INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND	NOT ssu.tag_3 IS NULL
+    WHERE sstopd.shipment_gid = s.shipment_gid AND sstopd.stop_num = 1 AND ROWNUM = 1)  
+    ,'999,999')) || ' FT CONTAINERS' 
+  END)  
+  quantity,
+	TRIM(cv.voyage_name || ' ' || cvr.charter_voyage_refnum_value) 
+  vessel,
+	(SELECT sr.shipment_refnum_value
+	FROM shipment_refnum sr
+	WHERE sr.shipment_refnum_qual_gid = 'SCOULAR.BILL OF LADING NUMBER'
+	AND sr.shipment_gid = s.shipment_gid AND ROWNUM = 1) 
+  bl_num
+FROM
+	shipment s
+LEFT OUTER JOIN
+	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
+AND
+	srn.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+	charter_voyage cv ON cv.charter_voyage_gid = 'SCOULAR/BCO.' || srn.shipment_refnum_value
+LEFT OUTER JOIN
+  charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+  cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+LEFT OUTER JOIN
+  shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_LETTER OF CREDIT NUM'
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+  oob.order_base_xid
+  order_id,
+	COALESCE(obr1.remark_text,
+  itm.description) 
+  description
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+	ob_remark obr1 ON oob.order_base_gid = obr1.order_base_gid
+AND
+	obr1.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_COMMODITY DETAIL'
+LEFT OUTER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+LEFT OUTER JOIN
+  item itm ON oline.packaged_item_gid = itm.item_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+UNION ALL
+SELECT
+  ''
+  order_id,
+  ''
+  description
+FROM DUAL
+WHERE NOT EXISTS
+(SELECT
+  s.shipment_gid
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+WHERE
+	s.shipment_gid = :SHIPMENT_ID)]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+	ROWNUM rnum, a.*
+FROM
+(SELECT
+	ssu.tag_3
+  container_number,
+  (CASE WHEN ssu.unit_net_weight_uom_code = 'MTON' OR ssu.unit_net_weight_uom_code = 'MT' THEN
+    ROUND(ssu.unit_net_weight,3) 
+  WHEN ssu.unit_net_weight_uom_code = 'LB' THEN
+    ROUND(ssu.unit_net_weight * 0.0004536,3)
+  WHEN ssu.unit_net_weight_uom_code = 'KG' THEN
+    ROUND(ssu.unit_net_weight / 1000,3)
+  ELSE
+    ROUND(ssu.unit_net_weight,3) 
+  END)
+  net_wt,
+  (CASE WHEN ssu.unit_net_weight_uom_code = 'MTON' OR ssu.unit_net_weight_uom_code = 'MT' THEN
+    ROUND(ssu.unit_net_weight,3) 
+  WHEN ssu.unit_net_weight_uom_code = 'LB' THEN
+    ROUND(ssu.unit_net_weight * 0.0004536,3)
+  WHEN ssu.unit_net_weight_uom_code = 'KG' THEN
+    ROUND(ssu.unit_net_weight / 1000,3)
+  ELSE
+    ROUND(ssu.unit_net_weight,3) 
+  END) +
+  (CASE WHEN sref2.refnum_value = 'MTON' OR sref2.refnum_value = 'MT' THEN
+    ROUND(TO_NUMBER(sref1.refnum_value),3) 
+  WHEN sref2.refnum_value = 'LB' THEN
+    ROUND(TO_NUMBER(sref1.refnum_value) * 0.0004536,3)
+  WHEN sref2.refnum_value = 'KG' THEN
+    ROUND(TO_NUMBER(sref1.refnum_value) / 1000,3)
+  ELSE
+    0
+  END)
+  gross_wt,
+  sref3.refnum_value
+  bags
+FROM
+	shipment s
+INNER JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref1 ON ssu.s_ship_unit_gid = sref1.s_ship_unit_gid
+AND
+  sref1.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER TARE WEIGHT'
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref2 ON ssu.s_ship_unit_gid = sref2.s_ship_unit_gid
+AND
+  sref2.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER TARE WEIGHT UOM'
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref3 ON ssu.s_ship_unit_gid = sref3.s_ship_unit_gid
+AND
+  sref3.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'    
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+ORDER BY container_number
+) a
+ORDER BY rnum]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+  (CASE WHEN ssu.unit_net_weight_uom_code = 'MTON' OR ssu.unit_net_weight_uom_code = 'MT' THEN
+    SUM(ROUND(ssu.unit_net_weight,3))
+  WHEN ssu.unit_net_weight_uom_code = 'LB' THEN
+    SUM(ROUND(ssu.unit_net_weight * 0.0004536,3))
+  WHEN ssu.unit_net_weight_uom_code = 'KG' THEN
+    SUM(ROUND(ssu.unit_net_weight / 1000,3))
+  ELSE
+    SUM(ROUND(ssu.unit_net_weight,3))
+  END)
+  total_net_wt,
+  (CASE WHEN ssu.unit_net_weight_uom_code = 'MTON' OR ssu.unit_net_weight_uom_code = 'MT' THEN
+    SUM(ROUND(ssu.unit_net_weight,3))
+  WHEN ssu.unit_net_weight_uom_code = 'LB' THEN
+    SUM(ROUND(ssu.unit_net_weight * 0.0004536,3))
+  WHEN ssu.unit_net_weight_uom_code = 'KG' THEN
+    SUM(ROUND(ssu.unit_net_weight / 1000,3))
+  ELSE
+    SUM(ROUND(ssu.unit_net_weight,3))
+  END) +
+  (CASE WHEN sref2.refnum_value = 'MTON' OR sref2.refnum_value = 'MT' THEN
+    SUM(ROUND(TO_NUMBER(sref1.refnum_value),3))
+  WHEN sref2.refnum_value = 'LB' THEN
+    SUM(ROUND(TO_NUMBER(sref1.refnum_value) * 0.0004536,3))
+  WHEN sref2.refnum_value = 'KG' THEN
+    SUM(ROUND(TO_NUMBER(sref1.refnum_value) / 1000,3))
+  ELSE
+    0
+  END)
+  total_gross_wt,
+  SUM(TO_NUMBER(sref3.refnum_value))
+  total_bags
+FROM
+	shipment s
+INNER JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL	
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref1 ON ssu.s_ship_unit_gid = sref1.s_ship_unit_gid
+AND
+  sref1.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER TARE WEIGHT'
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref2 ON ssu.s_ship_unit_gid = sref2.s_ship_unit_gid
+AND
+  sref2.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER TARE WEIGHT UOM'
+LEFT OUTER JOIN
+  s_ship_unit_refnum sref3 ON ssu.s_ship_unit_gid = sref3.s_ship_unit_gid
+AND
+  sref3.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT'    
+WHERE
+	s.shipment_gid = :SHIPMENT_ID
+GROUP BY
+  ssu.unit_net_weight_uom_code, sref2.refnum_value]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

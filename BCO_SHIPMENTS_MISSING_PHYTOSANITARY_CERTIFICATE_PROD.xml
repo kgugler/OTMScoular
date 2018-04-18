@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENTS_MISSING_PHYTOSANITARY_CERTIFICATE" description="SHIPMENTS MISSING PHYTOSANITARY CERTIFICATE" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters></parameters>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  a.*
+FROM
+(SELECT
+  s.shipment_xid,
+  dm.first_name || ' ' || dm.last_name AS document_mgr,
+  sref.shipment_refnum_value AS booking_confirmation,
+  loc.country_code3_gid destination_country,
+  TO_CHAR((SELECT COUNT(ssd3.s_ship_unit_gid)
+  FROM shipment_stop_d ssd3
+  WHERE ssd3.shipment_gid = s.shipment_gid 
+  AND ssd3.stop_num = 1),'999,999,990') container_count,
+  TO_CHAR((SELECT COUNT(ssd3.s_ship_unit_gid)
+  FROM shipment_stop_d ssd3
+  WHERE ssd3.shipment_gid = s.shipment_gid 
+  AND ssd3.stop_num = 1) -
+  (SELECT COUNT(ssur.s_ship_unit_gid) 
+  FROM s_ship_unit_refnum ssur 
+  INNER JOIN shipment_stop_d ssd5 ON ssur.s_ship_unit_gid = ssd5.s_ship_unit_gid
+  WHERE ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.PHYTOSANITARY CERT NUMBER' 
+  AND ssd5.shipment_gid = s.shipment_gid
+  AND ssd5.stop_num = 1),'999,999,990') missing_container_count,
+  TO_CHAR(glogowner.utc.get_local_date(s.attribute_date10,(SELECT location_gid
+    FROM location
+    WHERE city = 'OVERLAND PARK'
+    AND province_code = 'KS'
+    AND ROWNUM = 1)),'MM/DD/YYYY') earliest_load_date,
+  (CASE WHEN loc.country_code3_gid IN ('ARE','BGD') THEN
+    TO_CHAR(glogowner.utc.get_local_date(s.attribute_date10,(SELECT location_gid
+    FROM location
+    WHERE city = 'OVERLAND PARK'
+    AND province_code = 'KS'
+    AND ROWNUM = 1)) + 14,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(glogowner.utc.get_local_date(s.attribute_date10,(SELECT location_gid
+    FROM location
+    WHERE city = 'OVERLAND PARK'
+    AND province_code = 'KS'
+    AND ROWNUM = 1)) + 27,'MM/DD/YYYY')
+  END) phyto_due_date,
+  (CASE WHEN loc.country_code3_gid IN ('ARE','BGD') THEN
+    TO_CHAR((glogowner.utc.get_local_date(s.attribute_date10,(SELECT location_gid
+    FROM location
+    WHERE city = 'OVERLAND PARK'
+    AND province_code = 'KS'
+    AND ROWNUM = 1)) + 14) - (SYSDATE),'999')
+  ELSE
+    TO_CHAR((glogowner.utc.get_local_date(s.attribute_date10,(SELECT location_gid
+    FROM location
+    WHERE city = 'OVERLAND PARK'
+    AND province_code = 'KS'
+    AND ROWNUM = 1)) + 27) - (SYSDATE),'999')
+  END) days_to_phyto_due
+FROM
+  shipment s 
+LEFT OUTER JOIN
+  VIEW_SHIPMENT_DOCUMENT_MANAGER dm ON dm.shipment_gid = s.shipment_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON	sref.shipment_gid = s.shipment_gid 
+AND
+  sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN
+  location loc ON s.dest_location_gid = loc.location_gid
+WHERE
+  s.shipment_gid in 
+(SELECT DISTINCT 
+  ship.shipment_gid 
+FROM 
+  shipment ship 
+INNER JOIN 
+  view_shipment_order_base vsob ON ship.shipment_gid = vsob.shipment_gid 
+AND 
+  vsob.order_base_gid like 'SCOULAR/BCO.S%' 
+WHERE 
+  ship.shipment_type_gid = 'TRANSPORT' 
+AND 
+((SELECT 
+  COUNT(ssu.s_ship_unit_gid)
+FROM 
+  s_ship_unit ssu 
+INNER JOIN 
+  shipment_stop_d ssd1 ON ssu.s_ship_unit_gid = ssd1.s_ship_unit_gid 
+WHERE 
+  ssd1.shipment_gid = ship.shipment_gid 
+AND ssd1.stop_num = 1) 
+> 
+(SELECT
+  COUNT(ssur.s_ship_unit_gid) 
+FROM 
+  s_ship_unit_refnum ssur 
+INNER JOIN
+  shipment_stop_d ssd2 ON ssur.s_ship_unit_gid = ssd2.s_ship_unit_gid
+WHERE 
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.PHYTOSANITARY CERT NUMBER' 
+AND 
+  ssd2.shipment_gid = ship.shipment_gid
+AND
+  ssd2.stop_num = 1))) 
+AND NOT
+  s.attribute_date10 IS NULL
+AND NOT EXISTS
+  (SELECT sref.shipment_gid
+  FROM shipment_refnum sref 
+  WHERE sref.shipment_gid = s.shipment_gid 
+  AND sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+  AND sref.shipment_refnum_value in ('5071','5078'))
+  ) a
+ORDER BY
+  TO_DATE(a.phyto_due_date,'MM/DD/YYYY') ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="DOCUMENT_MGR" value="DOCUMENT_MGR" />
+      <element name="BOOKING_CONFIRMATION" value="BOOKING_CONFIRMATION" />
+      <element name="DESTINATION_COUNTRY" value="DESTINATION_COUNTRY" />
+      <element name="CONTAINER_COUNT" value="CONTAINER_COUNT" />
+      <element name="MISSING_CONTAINER_COUNT" value="MISSING_CONTAINER_COUNT" />
+      <element name="EARLIEST_LOAD_DATE" value="EARLIEST_LOAD_DATE" />
+      <element name="PHYTO_DUE_DATE" value="PHYTO_DUE_DATE" />
+      <element name="DAYS_TO_PHYTO_DUE" value="DAYS_TO_PHYTO_DUE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

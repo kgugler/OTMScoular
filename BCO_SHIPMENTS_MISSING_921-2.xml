@@ -5,16 +5,22 @@
   <dataQuery>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
   s.shipment_xid,
-  dm.first_name || ' ' || dm.last_name AS document_mgr,
-  sref.shipment_refnum_value AS booking_confirmation
+  con.first_name || ' ' || con.last_name 
+  document_mgr,
+  sref.shipment_refnum_value
+  booking_confirmation
 FROM
   shipment s 
-LEFT OUTER JOIN
-  VIEW_SHIPMENT_DOCUMENT_MANAGER dm ON dm.shipment_gid = s.shipment_gid 
 INNER JOIN
   shipment_refnum sref ON	sref.shipment_gid = s.shipment_gid 
 AND
   sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+LEFT OUTER JOIN  
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid 
+LEFT OUTER JOIN
+  contact con ON con.contact_gid = sip.involved_party_contact_gid 
+AND
+  sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER'  
 WHERE
   s.ATTRIBUTE_DATE10 <= SYSDATE + 7
 AND

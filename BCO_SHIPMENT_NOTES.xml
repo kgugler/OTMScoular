@@ -2,7 +2,6 @@
 <dataTemplate name="BCO_SHIPMENT_NOTES" description="BCO Shipment Notes Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="SHIPMENT_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
   </parameters>
   <dataQuery>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT

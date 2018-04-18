@@ -9,36 +9,51 @@
   <lexicals></lexicals>
   <dataQuery>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
-  sref3.shipment_refnum_value transloader,
-  cv.charter_voyage_xid booking_number,
+  sref3.shipment_refnum_value 
+  transloader,
+  cv.charter_voyage_xid 
+  booking_number,
   sh.shipment_xid,
-  cvr1.charter_voyage_refnum_value ramp_cutoff_date,
-  cvr2.charter_voyage_refnum_value port_cutoff_date,
+  cvr1.charter_voyage_refnum_value 
+  ramp_cutoff_date,
+  cvr2.charter_voyage_refnum_value 
+  port_cutoff_date,
   TO_CHAR(
   (CASE WHEN cv.source_location_gid IS NULL THEN
     cv.departure_date
   ELSE
     glogowner.utc.get_local_date(cv.departure_date,cv.source_location_gid)
-  END),'MM/DD/YYYY') sail_date,
+  END),'MM/DD/YYYY') 
+  sail_date,
   TO_CHAR(
   (CASE WHEN cv.dest_location_gid IS NULL THEN
     cv.arrival_date
   ELSE
     glogowner.utc.get_local_date(cv.arrival_date,cv.dest_location_gid)
-  END),'MM/DD/YYYY') eta_date,
-  sh.total_ship_unit_count containers,
-  (SELECT obase.order_base_xid
-  FROM view_shipment_order_base vsob
-  INNER JOIN ob_order_base obase ON vsob.order_base_gid = obase.order_base_gid
-  WHERE vsob.shipment_gid = sh.shipment_gid) contract_number,
-  sref1.shipment_refnum_value business_unit,
-  sref2.shipment_refnum_value commodity
+  END),'MM/DD/YYYY') 
+  eta_date,
+  sh.total_ship_unit_count 
+  containers,
+  (SELECT oob.order_base_xid
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = sh.shipment_gid
+  AND ROWNUM = 1) 
+  contract_number,
+  sref1.shipment_refnum_value 
+  business_unit,
+  sref2.shipment_refnum_value 
+  commodity
 FROM 
   shipment sh 
 INNER JOIN 
   shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid 
 AND 
   sref.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+INNER JOIN
+  charter_voyage cv ON CONCAT('SCOULAR/BCO.',sref.shipment_refnum_value) = cv.charter_voyage_gid   
 INNER JOIN 
   shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid 
 AND 
@@ -47,12 +62,10 @@ INNER JOIN
   shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid 
 AND 
   sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'    
-INNER JOIN 
+LEFT OUTER JOIN 
   shipment_refnum sref3 ON sh.shipment_gid = sref3.shipment_gid 
 AND 
   sref3.shipment_refnum_qual_gid = 'SCOULAR/BCO.TRANSLOADER LOCATION NAME'   
-INNER JOIN
-  charter_voyage cv ON CONCAT('SCOULAR/BCO.',sref.shipment_refnum_value) = cv.charter_voyage_gid 
 LEFT OUTER JOIN 
   charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid 
 AND 

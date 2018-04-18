@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPMENTS_MISSING_EXPORT_CERTS" description="Shipments Missing Export Certificates" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <lexicals></lexicals>
+  <parameters></parameters>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  s.sail_date,
+  s.shipment_xid,
+  con.first_name || ' ' || con.last_name doc_manager,
+  sref1.shipment_refnum_value booking_number,
+  sref2.shipment_refnum_value commodity,
+  loc.location_xid destination_code,
+  TO_CHAR(s.sail_date,'MM/DD/YYYY') sail_dt,
+  TO_CHAR(ROUND(s.sail_date - 2 - SYSDATE,0))
+  days_until_due
+FROM
+  shipment s 
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid  
+INNER JOIN 
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND 
+  sref1.shipment_refnum_qual_gid = 'CHARTER VOYAGE' 
+INNER JOIN
+  charter_voyage cv ON 'SCOULAR/BCO.' || sref1.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+	sip.involved_party_qual_gid = 'SCOULAR.DOCUMENT MANAGER' 
+LEFT OUTER JOIN
+	contact con ON sip.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid 
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid 
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'  
+LEFT OUTER JOIN
+  location loc ON s.dest_location_gid = loc.location_gid
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.consol_gid IS NULL
+AND
+  TO_DATE(s.sail_date,'dd-mm-rr') >= TO_DATE('2016-10-01','YYYY-MM-DD')
+AND
+  SUBSTR(oob.order_base_xid,0,1) = 'S'
+AND
+  (sref3.shipment_refnum_value ='2200'
+OR
+  (sref3.shipment_refnum_value ='5071'
+AND
+  sref2.shipment_refnum_value IN ('LACT','PDPW','WHEY'))
+OR
+  (sref2.shipment_refnum_value = 'BAKE'
+AND
+  loc.country_code3_gid = 'VNM')
+  )
+AND
+((SELECT 
+  COUNT(ssu.s_ship_unit_gid)
+FROM 
+  s_ship_unit ssu 
+INNER JOIN 
+  shipment_stop_d ssd1 ON ssu.s_ship_unit_gid = ssd1.s_ship_unit_gid 
+WHERE 
+  ssd1.shipment_gid = s.shipment_gid 
+AND ssd1.stop_num = 1
+)
+> 
+(SELECT
+  COUNT(ssur.s_ship_unit_gid) 
+FROM 
+  s_ship_unit_refnum ssur 
+INNER JOIN
+  shipment_stop_d ssd2 ON ssur.s_ship_unit_gid = ssd2.s_ship_unit_gid
+WHERE 
+  ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR/BCO.PHYTOSANITARY CERT NUMBER' 
+AND 
+  ssd2.shipment_gid = s.shipment_gid
+AND
+  ssd2.stop_num = 1))
+ORDER BY 
+  s.sail_date ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="SHIPMENT_XID" value="SHIPMENT_XID" />
+      <element name="DOC_MANAGER" value="DOC_MANAGER" />
+      <element name="BOOKING_NUMBER" value="BOOKING_NUMBER" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="DESTINATION_CODE" value="DESTINATION_CODE" />
+      <element name="SAIL_DT" value="SAIL_DT" />
+      <element name="DAYS_UNTIL_DUE" value="DAYS_UNTIL_DUE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

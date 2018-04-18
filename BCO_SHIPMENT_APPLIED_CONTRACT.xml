@@ -17,14 +17,18 @@
   obr2.ob_refnum_value commodity,
   TRIM(TO_CHAR(ROUND(obl.weight_base / 2204.5855379,0))) cak_weight,
   TRIM(TO_CHAR(ROUND((SELECT SUM(ssu1.unit_net_weight_base)
-  FROM view_shipment_order_base vsob1
-  INNER JOIN shipment sh1 ON vsob1.shipment_gid = sh1.shipment_gid
-  INNER JOIN shipment_stop_d sstopd1 ON sh1.shipment_gid = sstopd1.shipment_gid
+  FROM
+  (SELECT DISTINCT ssul1.order_base_gid, sh1.shipment_gid
+  FROM s_ship_unit_line ssul1
+  INNER JOIN s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+  INNER JOIN shipment sh1 ON ssej1.shipment_gid = sh1.shipment_gid
+  AND sh1.shipment_type_gid = 'TRANSPORT') a
+  INNER JOIN shipment_stop_d sstopd1 ON a.shipment_gid = sstopd1.shipment_gid
   AND	sstopd1.stop_num = 1
   INNER JOIN s_ship_unit ssu1 ON sstopd1.s_ship_unit_gid = ssu1.s_ship_unit_gid
   AND	NOT ssu1.tag_3 IS NULL	
-  WHERE vsob1.order_base_gid = oob.order_base_gid
-  AND sh1.shipment_type_gid = 'TRANSPORT') / 2204.5855379,3))) applied_weight,
+  WHERE a.order_base_gid = oob.order_base_gid) / 2204.5855379,3))) applied_weight,
   obrem.remark_text price,
   obr3.ob_refnum_value payment,
   TO_CHAR((CASE WHEN obl.source_location_gid IS NULL THEN
@@ -84,10 +88,14 @@
   END) per_container
 FROM
   ob_order_base oob
+INNER JOIN 
+  s_ship_unit_line ssul ON oob.order_base_gid = ssul.order_base_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_base vsob ON oob.order_base_gid = vsob.order_base_gid
-INNER JOIN
-  shipment s ON vsob.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 LEFT OUTER JOIN
 	shipment_refnum srn ON srn.shipment_gid = s.shipment_gid
 AND

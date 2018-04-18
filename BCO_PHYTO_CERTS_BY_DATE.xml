@@ -6,7 +6,10 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :START_DATE start_dt, :END_DATE end_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+:START_DATE start_dt, 
+:END_DATE end_dt 
+FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
   sref3.shipment_refnum_value loc,
   phy.phyto_number_xid phyto_id,

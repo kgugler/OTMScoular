@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPPING_SCHEDULE" description="BCO SHIPPING SCHEDULE" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_BCO_SHIPPING_SCHEDULE" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="P_RUN" dataType="character" />
+    <parameter name="CUSTOMERID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_CUST_ID"><![CDATA[SELECT REPLACE(:CUSTOMERID, 'SCOULAR.', '') cust_id FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  loc,
+  contract,
+  commodity,
+  destination_port,
+  mt_weight mt_weight,
+  mt_applied mt_applied,
+  boxes boxes,
+  customer,
+  customer_name,
+  begin_sail,
+  end_sail,
+  booking,
+  load_port,
+  bkg_dest_port,
+  carrier,
+  voyage_name,
+  voyage_number,
+  est_mt_weight,
+  est_boxes,
+  applied_mt,
+  applied_boxes,
+  ship_date,
+  arrival_date,
+  note,
+  tot_est_mt_weight,
+  tot_est_boxes,
+  tot_applied_mt,
+  tot_applied_boxes  
+FROM
+  VIEW_SHIPPING_SCHEDULE
+WHERE
+  CONCAT('SCOULAR.', customer) = :CUSTOMERID 
+AND
+  :P_RUN = 'FINAL'
+UNION
+SELECT
+  NVL(loc, 'Data Missing in System') loc,
+  NVL(contract, 'Data Missing in System') contract,
+  NVL(commodity, 'Data Missing in System') commodity,
+  NVL(destination_port, 'Data Missing in System') destination_port,
+  NVL(mt_weight, 'Data Missing in System') mt_weight,
+  NVL(mt_applied, 'Data Missing in System') mt_applied,
+  NVL(boxes, 'Data Missing in System') boxes,
+  NVL(customer, 'Data Missing in System') customer,
+  NVL(customer_name, 'Data Missing in System') customer_name,
+  NVL(begin_sail, 'Data Missing in System') begin_sail,
+  NVL(end_sail, 'Data Missing in System') end_sail,
+  NVL(booking, 'Data Missing in System') booking,
+  NVL(load_port, 'Data Missing in System') load_port,
+  NVL(bkg_dest_port, 'Data Missing in System') bkg_dest_port,
+  NVL(carrier, 'Data Missing in System') carrier,
+  NVL(voyage_name, 'Data Missing in System') voyage_name,
+  NVL(voyage_number, 'Data Missing in System') voyage_number,
+  NVL(est_mt_weight, 'Data Missing in System') est_mt_weight,
+  NVL(est_boxes, 'Data Missing in System') est_boxes,
+  NVL(applied_mt, 'Data Missing in System') applied_mt,
+  NVL(applied_boxes, 'Data Missing in System') applied_boxes,
+  NVL(ship_date, 'Data Missing in System') ship_date,
+  NVL(arrival_date, 'Data Missing in System') arrival_date,
+  NVL(note, 'Data Missing in System') note,
+  NVL(tot_est_mt_weight, 'Data Missing in System') tot_est_mt_weight,
+  NVL(tot_est_boxes, 'Data Missing in System') tot_est_boxes,
+  NVL(tot_applied_mt, 'Data Missing in System') tot_applied_mt,
+  NVL(tot_applied_boxes, 'Data Missing in System') tot_applied_boxes  
+FROM
+  VIEW_SHIPPING_SCHEDULE
+WHERE
+  CONCAT('SCOULAR.', customer) = :CUSTOMERID 
+AND
+  :P_RUN = 'DRAFT'
+ORDER BY
+  contract,
+  begin_sail,
+  end_sail,
+  booking,
+  ship_date,
+  arrival_date]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_BCO_SHIPPING_SCHEDULE.before_report" />
+  <dataStructure>
+    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
+      <element name="DRAFT_FINAL" value="DRAFT_FINAL"></element>
+    </group>
+    <group name="G_CUST_ID" source="Q_CUST_ID">
+      <element name="CUST_ID" value="CUST_ID"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC"></element>
+      <element name="CONTRACT" value="CONTRACT"></element>
+      <element name="COMMODITY" value="COMMODITY"></element>
+      <element name="DESTINATION_PORT" value="DESTINATION_PORT"></element>
+      <element name="MT_WEIGHT" value="MT_WEIGHT"></element>
+      <element name="MT_APPLIED" value="MT_APPLIED"></element>
+      <element name="BOXES" value="BOXES"></element>
+      <element name="CUSTOMER" value="CUSTOMER"></element>
+      <element name="CUSTOMER_NAME" value="CUSTOMER_NAME"></element>
+      <element name="BEGIN_SAIL" value="BEGIN_SAIL"></element>
+      <element name="END_SAIL" value="END_SAIL"></element>
+      <element name="BOOKING" value="BOOKING"></element>
+      <element name="LOAD_PORT" value="LOAD_PORT"></element>
+      <element name="BKG_DEST_PORT" value="BKG_DEST_PORT"></element>
+      <element name="CARRIER" value="CARRIER"></element>
+      <element name="VOYAGE_NAME" value="VOYAGE_NAME"></element>
+      <element name="VOYAGE_NUMBER" value="VOYAGE_NUMBER"></element>
+      <element name="SHIPMENT" value="SHIPMENT"></element>
+      <element name="EST_MT_WEIGHT" value="EST_MT_WEIGHT"></element>
+      <element name="EST_BOXES" value="EST_BOXES"></element>
+      <element name="APPLIED_MT" value="APPLIED_MT"></element>
+      <element name="APPLIED_BOXES" value="APPLIED_BOXES"></element>
+      <element name="SHIP_DATE" value="SHIP_DATE"></element>
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE"></element>
+      <element name="NOTE" value="NOTE"></element>
+      <element name="TOT_EST_MT_WEIGHT" value="TOT_EST_MT_WEIGHT"></element>
+      <element name="TOT_EST_BOXES" value="TOT_EST_BOXES"></element>
+      <element name="TOT_APPLIED_MT" value="TOT_APPLIED_MT"></element>
+      <element name="TOT_APPLIED_BOXES" value="TOT_APPLIED_BOXES"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

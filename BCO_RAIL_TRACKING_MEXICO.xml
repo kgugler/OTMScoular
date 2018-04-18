@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_RAIL_TRACKING_MEXICO" description="BCO Mexico Rail Tracking" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+    <parameter name="CONTAINER_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  glog_util.remove_domain(:SHIPMENT_ID) shipment_num,
+  :CONTAINER_ID container_num,
+  (CASE WHEN :SHIPMENT_ID IS NULL AND :CONTAINER_ID IS NULL THEN
+    'Please select a Shipment Number and/or Rail Car'
+  ELSE
+    ''
+  END) message
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT 
+  a.containerno, 
+  a.ieseventdate,
+	a.shipment_xid shipment_id,  
+	a.containerno container_no,  
+	TO_CHAR(a.ieseventdate,'MM/DD/YYYY hh24:mm:ss') event_date,  
+  a.msgtype msg_type, 
+  a.eventlocation event_location,
+  TO_CHAR(a.insertdate,'MM/DD/YYYY hh24:mm:ss') insert_date,
+	a.description  
+FROM
+(SELECT DISTINCT
+  ies.i_transaction_no, 
+  s.shipment_xid, 
+  ssu.tag_3 
+  containerno,
+  (CASE WHEN 
+    (SELECT location_gid
+    FROM location
+    WHERE city = iss.event_city
+    AND province_code = iss.event_state
+    AND ROWNUM = 1)
+  IS NULL THEN
+    ies.eventdate
+  ELSE
+    glogowner.utc.get_local_date(ies.eventdate,
+    (SELECT location_gid
+    FROM location
+    WHERE city = iss.event_city
+    AND province_code = iss.event_state
+    AND ROWNUM = 1)) 
+  END)
+  ieseventdate,
+  bss.description,
+  (CASE WHEN ies.insert_user = 'SCOULAR/BCO.INTEGRATION' THEN 'CLM' 
+  WHEN ies.insert_user = 'SCOULAR.INTEGRATION' THEN 'Vessel Message' 
+  ELSE '' 
+  END) 
+  msgtype,
+  (CASE WHEN iss.location_gid IS NULL
+  THEN 
+    iss.event_city || ',' || iss.event_state || ' ' || iss.event_country
+  ELSE
+    loc.city || ',' || loc.province_code || ' ' || loc.country_code3_gid
+  END) 
+  eventlocation,
+  from_tz(CAST(ies.insert_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central'
+  insertdate
+FROM
+  shipment s
+JOIN
+	shipment_stop_d sstopd ON s.shipment_gid = sstopd.shipment_gid
+AND
+	sstopd.stop_num = 1
+JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+AND
+	NOT ssu.tag_3 IS NULL
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'	
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/BCO.' || sr.shipment_refnum_value = cv.charter_voyage_gid 
+LEFT OUTER JOIN 
+  ie_shipment_refnum isr ON isr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'  
+AND
+  isr.shipment_refnum_value = sr.shipment_refnum_value   
+LEFT OUTER JOIN
+  ie_shipmentstatus ies ON isr.i_transaction_no = ies.i_transaction_no
+LEFT OUTER JOIN 
+  bs_status_code bss ON ies.status_code_gid = bss.bs_status_code_gid
+LEFT OUTER JOIN
+  ie_ss_stop iss ON isr.i_transaction_no = iss.i_transaction_no
+LEFT OUTER JOIN
+  location loc ON iss.location_gid = loc.location_gid
+WHERE 
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (:SHIPMENT_ID IS NULL
+OR
+  (NOT :SHIPMENT_ID IS NULL
+AND
+  s.shipment_gid = :SHIPMENT_ID))
+AND
+  (:CONTAINER_ID IS NULL 
+OR
+  (NOT :CONTAINER_ID IS NULL
+AND
+  ssu.tag_3 = :CONTAINER_ID))
+AND NOT 
+  (:SHIPMENT_ID IS NULL
+AND
+  :CONTAINER_ID IS NULL)
+) a
+ORDER BY 
+  a.containerno, 
+  a.ieseventdate]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

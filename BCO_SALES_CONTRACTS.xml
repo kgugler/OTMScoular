@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<dataTemplate name="BCO_SALES_CONTRACTS" description="BCO Sales Contracts In Last 7 Days - 2083" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+<dataTemplate name="BCO_SALES_CONTRACTS" description="BCO Sales Contracts In Last 7 Days" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
+    <parameter name="LOCS" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  NVL(:LOCS, 'ALL LOCS') loc_codes
+FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
   oob.order_base_xid contract_id, 
   ROUND((ol.weight_base * 0.0004536),3) original_quantity, 
@@ -23,7 +23,10 @@
   oref4.ob_refnum_value contract_price_uom, 
   oref5.ob_refnum_value payment_terms, 
   oref6.ob_refnum_value tolerance_less, 
-  oref7.ob_refnum_value tolerance_more
+  oref7.ob_refnum_value tolerance_more,
+  oob.inco_term_gid inco_term,
+  oob.term_location_text term_location,
+  oref8.ob_refnum_value market_zone
 FROM 
   ob_order_base oob
 INNER JOIN 
@@ -34,8 +37,6 @@ INNER JOIN
   ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid 
 AND
   oref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
-AND
-  oref1.ob_refnum_value = '2083' 
 INNER JOIN
   ob_refnum oref2 ON  oob.order_base_gid = oref2.order_base_gid 
 AND
@@ -65,15 +66,28 @@ AND
 LEFT OUTER JOIN
   ob_refnum oref7 ON  oob.order_base_gid = oref7.order_base_gid 
 AND
-  oref7.ob_refnum_qual_gid = 'SCOULAR.TOLERANCE_MORE'  
+  oref7.ob_refnum_qual_gid = 'SCOULAR.TOLERANCE_MORE' 
+LEFT OUTER JOIN
+  ob_refnum oref8 ON  oob.order_base_gid = oref8.order_base_gid 
+AND
+  oref8.ob_refnum_qual_gid = 'SCOULAR.MARKET ZONE CODE'    
 WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
   oob.insert_date > SYSDATE - 7 
 AND 
   oob.order_base_xid like 'S%'
+AND
+  (:LOCS IS NULL OR (NOT :LOCS IS NULL AND
+  oref1.ob_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOCS,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt))) 
 ORDER BY
   oob.insert_date ASC]]></sqlStatement>
   </dataQuery>
   <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="LOC_CODES" value="LOC_CODES" />
+    </group>
     <group name="G_ROWS" source="Q_ROWS">
       <element name="CONTRACT_ID" value="CONTRACT_ID" />
       <element name="ORIGINAL_QUANTITY" value="ORIGINAL_QUANTITY" />
@@ -90,6 +104,9 @@ ORDER BY
       <element name="PAYMENT_TERMS" value="PAYMENT_TERMS"></element>
       <element name="TOLERANCE_LESS" value="TOLERANCE_LESS"></element>
       <element name="TOLERANCE_MORE" value="TOLERANCE_MORE"></element>
+      <element name="INCO_TERM" value="INCO_TERM"></element>
+      <element name="TERM_LOCATION" value="TERM_LOCATION"></element>
+      <element name="MARKET_ZONE" value="MARKET_ZONE"></element>
     </group>
   </dataStructure>
 </dataTemplate>

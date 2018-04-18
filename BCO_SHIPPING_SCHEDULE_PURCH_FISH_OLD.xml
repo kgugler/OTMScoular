@@ -1,0 +1,279 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_SHIPPING_SCHEDULE_PURCH_FISH" description="BCO FISH Purchase Side Shipping Schedule for Customers" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_BCO_SHIPPING_SCHEDULE" version="1.0">
+  <lexicals></lexicals>
+  <parameters>
+    <parameter name="CUSTOMERID" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT REPLACE(:CUSTOMERID, 'SCOULAR.', '') cust_id, TO_CHAR(SYSDATE,'MM/DD/YYYY HH:MI PM') sys_date FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  tab1.loc,
+  tab1.contract,
+  tab1.commodity,
+  tab1.destination_port,
+  tab1.mt_weight,
+  tab1.mt_applied,
+  tab1.boxes,
+  ipc.contact_xid customer,
+  cust.location_name customer_name,
+  tab1.begin_sail,
+  tab1.end_sail,
+  tab2.booking,
+  tab2.load_port,
+  tab2.bkg_dest_port,
+  tab2.carrier,
+  tab2.voyage_name,
+  tab2.voyage_number,
+  tab2.est_mt_weight,
+  tab2.est_boxes,
+  tab2.applied_mt,
+  tab2.applied_boxes,
+  tab2.ship_date,
+  tab2.arrival_date,
+  tab1.note
+FROM
+(SELECT 
+  a.loc,
+  a.order_base_gid,
+  a.contract,
+  a.commodity,
+  a.destination_port,
+  a.mt_weight,
+  a.begin_sail,
+  a.end_sail,
+  a.mt_applied,
+  a.boxes,
+  a.note
+FROM
+  (SELECT 
+    obr1.ob_refnum_value Loc,
+    ob.order_base_gid,
+    ob.order_base_xid contract,
+    obr.ob_refnum_value commodity,
+    obrm.remark_text destination_port,
+    TO_CHAR(obl.early_pickup_date, 'MM/DD/YY') begin_sail,
+    TO_CHAR(obl.late_delivery_date, 'MM/DD/YY') end_sail,
+    TRIM(TO_CHAR(ROUND(AVG(ROUND(COALESCE(obl.weight / 2204.5855379, 0), 3)), 0), '999,999,990')) mt_weight,
+    TRIM(TO_CHAR(SUM(ROUND((
+    CASE WHEN ssu.tag_3 IS NULL THEN 0
+    ELSE ssu.unit_net_weight_base
+    END / 2204.5855379), 3)), '999,999,990.999')) mt_applied,
+    TRIM(TO_CHAR(SUM(1),'999,999,990')) boxes,
+    (SELECT
+    LISTAGG(TRIM(obrm1.remark_text), CHR(13) || CHR(10)) 
+    WITHIN GROUP (ORDER BY obrm1.remark_sequence) 
+    FROM ob_remark obrm1
+    WHERE obrm1.remark_qual_gid = 'SCOULAR/BCO.EXTERNAL NOTES'
+    AND obrm1.order_base_gid = ob.order_base_gid)
+    note
+  FROM 
+    ob_order_base ob
+  INNER JOIN 
+    ob_line obl ON ob.order_base_gid = obl.order_base_gid
+  LEFT OUTER JOIN 
+    ob_refnum obr ON obr.order_base_gid = ob.order_base_gid
+  AND 
+    obr.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'
+  LEFT OUTER JOIN 
+    ob_remark obrm ON obrm.order_base_gid = ob.order_base_gid
+  AND 
+    obrm.remark_qual_gid = 'SCOULAR/BCO.BCO_PAYTERM_DESTINATION PORT'
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssur.refnum_value = ob.order_base_xid
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+  INNER JOIN 
+    shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND 
+    ssd.stop_num = 1
+  INNER JOIN 
+    shipment s ON s.shipment_gid = ssd.shipment_gid
+  AND 
+    s.shipment_type_gid = 'TRANSPORT'
+  INNER JOIN 
+    s_ship_unit ssu ON ssu.s_ship_unit_gid = ssd.s_ship_unit_gid
+  INNER JOIN 
+    ob_refnum obr1 ON obr1.order_base_gid = ob.order_base_gid 
+  AND 
+    obr1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+  AND 
+    obr1.ob_refnum_value IN ('5334','5335')
+  WHERE EXISTS (
+    SELECT s1.shipment_gid
+    FROM shipment s1
+    INNER JOIN shipment_stop_d ssd1 ON s1.shipment_gid = ssd1.shipment_gid
+    AND ssd1.stop_num = 1
+    INNER JOIN s_ship_unit_refnum ssur1 ON ssd1.s_ship_unit_gid = ssur1.s_ship_unit_gid
+    AND ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+    WHERE s1.shipment_type_gid = 'TRANSPORT'
+    AND ssur1.refnum_value = ob.order_base_xid
+    AND TO_DATE(s1.port_discharge_eta) - TO_DATE(CURRENT_DATE) >= -2
+  )
+  GROUP BY 
+    obr1.ob_refnum_value,
+    ob.order_base_gid,
+    ob.order_base_xid,
+    obr.ob_refnum_value,
+    obrm.remark_text,
+    TO_CHAR(obl.early_pickup_date, 'MM/DD/YY'),
+    TO_CHAR(obl.late_delivery_date, 'MM/DD/YY')
+  ) a
+) tab1
+INNER JOIN
+(SELECT 
+  b.order_base_gid,
+  b.booking,
+  b.load_port,
+  b.bkg_dest_port,
+  b.carrier,
+  b.voyage_name,
+  b.voyage_number,
+  b.est_mt_weight,
+  b.est_boxes,
+  b.applied_mt,
+  b.applied_boxes,
+  b.ship_date,
+  b.arrival_date
+FROM
+  (SELECT DISTINCT 
+    oob.order_base_gid,
+    (CASE WHEN SUBSTR(oob.order_base_xid, 1, 1) = 'P'
+    THEN sr.shipment_refnum_value ELSE 'N/A'
+    END) booking,
+    COALESCE(loadport1a.location_name, loadport2.location_name) load_port,
+    bkg_destport.location_name bkg_dest_port,
+    carrier.location_name carrier,
+    cv.voyage_name voyage_name,
+    voyagenum.charter_voyage_refnum_value voyage_number,
+    TO_CHAR(s.sail_date, 'MM/DD/YY') ship_date,
+    TO_CHAR(s.port_discharge_eta, 'MM/DD/YY') arrival_date,
+    SUM(ROUND((
+    (CASE WHEN ssu.tag_3 IS NOT NULL THEN 0
+    ELSE ssu.unit_net_weight_base
+    END) / 2204.5855379), 3)) est_mt_weight,
+    SUM(
+    (CASE WHEN ssu.tag_3 IS NOT NULL THEN 0
+    ELSE 1
+    END)) Est_Boxes,
+    SUM(ROUND((
+    (CASE WHEN ssu.tag_3 IS NULL THEN 0
+    ELSE ssu.unit_net_weight_base
+    END) / 2204.5855379), 3)) applied_mt,
+    SUM(
+    (CASE WHEN ssu.tag_3 IS NULL THEN 0
+    ELSE 1
+    END)) applied_boxes
+  FROM 
+    ob_order_base oob
+  INNER JOIN 
+    s_ship_unit_refnum ssur ON ssur.refnum_value = oob.order_base_xid
+  AND
+    ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.MATCHED_PO_ID'
+  INNER JOIN 
+    shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssur.s_ship_unit_gid
+  AND 
+    ssd.stop_num = 1
+  INNER JOIN 
+    shipment s ON s.shipment_gid = ssd.shipment_gid
+  AND 
+    s.shipment_type_gid = 'TRANSPORT'
+  INNER JOIN 
+    s_ship_unit ssu ON ssu.s_ship_unit_gid = ssd.s_ship_unit_gid
+  INNER JOIN 
+    shipment_refnum sr ON sr.shipment_gid = s.shipment_gid
+  AND 
+    sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'
+  INNER JOIN 
+    charter_voyage cv ON cv.charter_voyage_xid = sr.shipment_refnum_value
+  LEFT OUTER JOIN 
+    charter_voyage_refnum voyagenum ON voyagenum.charter_voyage_gid = cv.charter_voyage_gid
+  AND 
+    voyagenum.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'
+  LEFT OUTER JOIN 
+    charter_voyage_refnum loadport1 ON loadport1.charter_voyage_gid = cv.charter_voyage_gid
+  AND 
+    loadport1.charter_voyage_refnum_qual_gid = 'SCOULAR/BCO.VIA_LOCATION_ID'
+  LEFT OUTER JOIN 
+    location loadport1a ON loadport1a.location_gid = CONCAT('SCOULAR.',loadport1.charter_voyage_refnum_value)
+  INNER JOIN 
+    location loadport2 ON loadport2.location_gid = cv.source_location_gid
+  INNER JOIN 
+    location bkg_destport ON bkg_destport.location_gid = cv.dest_location_gid
+  INNER JOIN 
+    location carrier ON carrier.location_gid = cv.servprov_gid
+  WHERE
+    TO_DATE(s.port_discharge_eta) - TO_DATE(CURRENT_DATE) >= -2    
+  GROUP BY 
+    oob.order_base_gid,
+    (CASE WHEN SUBSTR(oob.order_base_xid, 1, 1) = 'P'
+    THEN sr.shipment_refnum_value ELSE 'N/A'
+    END),
+    COALESCE(loadport1a.location_name, loadport2.location_name),
+    bkg_destport.location_name,
+    carrier.location_name,
+    cv.voyage_name,
+    voyagenum.charter_voyage_refnum_value,
+    TO_CHAR(s.sail_date, 'MM/DD/YY'),
+    TO_CHAR(s.port_discharge_eta, 'MM/DD/YY')  
+  ORDER BY 1,2,3
+  ) b
+) tab2 ON tab1.order_base_gid = tab2.order_base_gid
+INNER JOIN
+  ob_involved_party obip ON tab1.order_base_gid = obip.order_base_gid
+AND	
+  obip.involved_party_qual_gid = 'CUSTOMER'
+INNER JOIN
+  contact ipc ON obip.involved_party_contact_gid = ipc.contact_gid
+INNER JOIN
+  location cust ON ipc.location_gid = cust.location_gid
+WHERE 
+  ipc.contact_gid = :CUSTOMERID
+AND 
+  obip.domain_name = 'SCOULAR/BCO'
+ORDER BY 
+  tab1.contract,
+  tab1.begin_sail,
+  tab1.end_sail,
+  tab2.booking,
+  tab2.ship_date,
+  tab2.arrival_date]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_BCO_SHIPPING_SCHEDULE.before_report_purch_fish" />
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="CUST_ID" value="CUST_ID"></element>
+      <element name="SYS_DATE" value="SYS_DATE"></element>
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC" value="LOC"></element>
+      <element name="CONTRACT" value="CONTRACT"></element>
+      <element name="COMMODITY" value="COMMODITY"></element>
+      <element name="DESTINATION_PORT" value="DESTINATION_PORT"></element>
+      <element name="MT_WEIGHT" value="MT_WEIGHT"></element>
+      <element name="MT_APPLIED" value="MT_APPLIED"></element>
+      <element name="BOXES" value="BOXES"></element>
+      <element name="CUSTOMER" value="CUSTOMER"></element>
+      <element name="CUSTOMER_NAME" value="CUSTOMER_NAME"></element>
+      <element name="BEGIN_SAIL" value="BEGIN_SAIL"></element>
+      <element name="END_SAIL" value="END_SAIL"></element>
+      <element name="BOOKING" value="BOOKING"></element>
+      <element name="LOAD_PORT" value="LOAD_PORT"></element>
+      <element name="BKG_DEST_PORT" value="BKG_DEST_PORT"></element>
+      <element name="CARRIER" value="CARRIER"></element>
+      <element name="VOYAGE_NAME" value="VOYAGE_NAME"></element>
+      <element name="VOYAGE_NUMBER" value="VOYAGE_NUMBER"></element>
+      <element name="SHIPMENT" value="SHIPMENT"></element>
+      <element name="EST_MT_WEIGHT" value="EST_MT_WEIGHT"></element>
+      <element name="EST_BOXES" value="EST_BOXES"></element>
+      <element name="APPLIED_MT" value="APPLIED_MT"></element>
+      <element name="APPLIED_BOXES" value="APPLIED_BOXES"></element>
+      <element name="SHIP_DATE" value="SHIP_DATE"></element>
+      <element name="ARRIVAL_DATE" value="ARRIVAL_DATE"></element>
+      <element name="NOTE" value="NOTE"></element>
+      <element name="TOT_EST_MT_WEIGHT" value="TOT_EST_MT_WEIGHT"></element>
+      <element name="TOT_EST_BOXES" value="TOT_EST_BOXES"></element>
+      <element name="TOT_APPLIED_MT" value="TOT_APPLIED_MT"></element>
+      <element name="TOT_APPLIED_BOXES" value="TOT_APPLIED_BOXES"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

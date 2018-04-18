@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_RELEASE_SHEET_MEXICO" description="BCO Mexico Warehouse Release Sheet" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_PKG_RELEASE_SHEET_MEX" version="1.0">
+  <parameters>
+    <parameter name="P_WAREHOUSE_GID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_LOCATION"><![CDATA[SELECT location_name
+  FROM location
+ WHERE location_gid = :P_WAREHOUSE_GID]]></sqlStatement>
+    <sqlStatement name="Q_TOT_OUT"><![CDATA[SELECT   COUNT(*) total_out
+  FROM glogowner.xxscou_release_sheet_mexico
+  WHERE inbound_outbound = 'OUTBOUND'
+  AND location_gid = :P_WAREHOUSE_GID]]></sqlStatement>
+    <sqlStatement name="Q_NOTES"><![CDATA[SELECT 
+  remark_text
+FROM 
+  location_remark
+WHERE 
+  location_gid = :P_WAREHOUSE_GID
+AND
+  remark_qual_gid = 'SCOULAR.ADDITIONAL NOTES']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT   
+  nmc,
+  TO_CHAR(start_date,'MM/DD/YYYY') start_date,
+  start_date_ch,
+  shipment,
+  shipment_ch,
+  (SELECT orr.order_release_xid
+  FROM shipment sh,
+  shipment_stop_d ssd,
+  s_ship_unit ssu,
+  s_ship_unit_line ssul,
+  order_release orr
+  WHERE 1 = 1
+  AND sh.shipment_gid = ssd.shipment_gid
+  AND ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ssd.stop_num = 1
+  AND ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND orr.order_release_gid = ssul.order_release_gid
+  AND sh.shipment_gid = glogowner.xxscou_release_sheet_mexico.shipment_gid
+  AND ssu.s_ship_unit_gid = glogowner.xxscou_release_sheet_mexico.attribute1)
+  ordrel,
+  mode1,
+  mode_ch,
+  carrier,
+  carrier_ch,
+  customer,
+  customer_ch,
+  address,
+  address_ch,
+  so,
+  so_ch,
+  product,
+  product_ch,
+  TO_CHAR(quantity,'999,999,990')
+  quantity,
+  quantity_ch,
+  uom,
+  uom_ch,
+  packaging_num,
+  packaging_num_ch,
+  packaging_uom,
+  packaging_uom_ch,
+  packaging_ltl,
+  packaging_ltl_ch,
+  (CASE WHEN
+    (SELECT ssur.refnum_value
+    FROM s_ship_unit_refnum ssur
+    WHERE ssur.s_ship_unit_gid = glogowner.xxscou_release_sheet_mexico.attribute1
+    AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT') IS NULL THEN
+      (CASE WHEN packaging_ltl = 'BULK' THEN 
+        '1'
+      ELSE
+        (CASE WHEN packaging_uom = 'KG' THEN
+          TRIM(TO_CHAR(ROUND(((SELECT s.total_net_weight_base
+          FROM shipment s
+          WHERE s.shipment_gid = glogowner.xxscou_release_sheet_mexico.shipment_gid) / 2.2045855379) / TO_NUMBER(glogowner.xxscou_release_sheet_mexico.packaging_num),0)))
+        END)
+      END)
+  ELSE
+    (SELECT ssur.refnum_value
+     FROM s_ship_unit_refnum ssur
+     WHERE ssur.s_ship_unit_gid = glogowner.xxscou_release_sheet_mexico.attribute1
+     AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.PIECE COUNT')  
+  END)
+  bag_count,
+  notes,
+  notes_ch,
+  inbound_outbound outbound   
+FROM 
+  glogowner.xxscou_release_sheet_mexico
+WHERE 
+  inbound_outbound = 'OUTBOUND'
+AND 
+  location_gid = :P_WAREHOUSE_GID
+ORDER BY 
+  TO_DATE(start_date,'MM/DD/YYYY')]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[select trim(to_char(sysdate,'FMDay, Month DD, yyyy hh:mi AM')) CURR_DATE from dual]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_PKG_RELEASE_SHEET_MEX.before_report" />
+</dataTemplate>

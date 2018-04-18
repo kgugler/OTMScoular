@@ -3,64 +3,93 @@
   <parameters>
     <parameter name="START_DATE" dataType="character" />
     <parameter name="END_DATE" dataType="character" />
+    <parameter name="LOCS" dataType="character" />
   </parameters>
   <dataQuery>
-    <sqlStatement name="Q_PARAM"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :START_DATE from_dt, 
+  :END_DATE to_dt,
+  (CASE WHEN :LOCS IS NULL THEN
+    'ALL'
+  ELSE
+    :LOCS
+  END)
+  loc_codes
+FROM 
+  DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
-  a.loc,
-  TO_CHAR(a.end_date,'fmMonth YYYY') cont_date,
-  TRIM(TO_CHAR(ROUND(SUM(a.total_net_weight_base) / 2204.5855379,0),'999,999,990')) 
-  orig_quant,
-  TRIM(TO_CHAR(ROUND(SUM(a.total_net_weight_base - 
-  NVL((SELECT SUM(ssu.unit_net_weight_base)
-  FROM shipment_stop_d sstopd
-  INNER JOIN s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  AND	NOT ssu.tag_3 IS NULL
-  WHERE sstopd.shipment_gid = a.shipment_gid AND sstopd.stop_num = 1),0)) / 2204.5855379,0),'999,999,990'))
-  balance
+  oref1.ob_refnum_value
+  loc,
+  oob.order_base_xid
+  contract_no,
+  oref2.ob_refnum_value
+  commodity,
+  con.contact_xid
+  customer_id,
+  loc.country_code3_gid
+  contract_country,
+  ROUND(oline.weight_base / 2204.5855379,2)
+  contract_quantity,
+  ROUND((oline.weight_base / 2204.5855379) - NVL((SELECT SUM(wt.weight) FROM
+  (SELECT DISTINCT ssu1.s_ship_unit_gid,
+  ((CASE WHEN ssu1.tag_3 IS NULL THEN 
+    0
+  ELSE 
+    ssu1.unit_net_weight_base
+  END) / 2204.5855379) weight
+  FROM s_ship_unit_line ssul1
+  INNER JOIN shipment_stop_d ssd1 ON ssd1.s_ship_unit_gid = ssul1.s_ship_unit_gid
+  AND ssd1.stop_num = 1
+  INNER JOIN s_ship_unit ssu1 ON ssu1.s_ship_unit_gid = ssd1.s_ship_unit_gid  
+  WHERE ssul1.order_base_gid = oob.order_base_gid) wt),0),2)
+  unshipped_quantity,  
+  TO_CHAR(oline.early_pickup_date,'MM-DD-YYYY')
+  ship_start,
+  TO_CHAR(oline.late_delivery_date,'MM-DD-YYYY')
+  ship_end,
+  (CASE WHEN oref3.ob_refnum_value IS NULL THEN
+    'OPEN'
+  ELSE
+    oref3.ob_refnum_value
+  END)
+  contract_status
 FROM
-(SELECT 
-  oref1.ob_refnum_value loc, 
-  TRUNC(TO_DATE(ol.late_delivery_date,'dd-mm-rr'),'MM') end_date,   
-  oob.total_net_weight_base,
-  s.shipment_gid
-FROM
-  shipment s
+  ob_order_base oob
 INNER JOIN
-	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid  
-INNER JOIN
-  ob_order_base oob ON vsob.order_base_gid = oob.order_base_gid
-INNER JOIN 
-  ob_line ol ON oob.order_base_gid = ol.order_base_gid
-INNER JOIN
-  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid 
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+LEFT OUTER JOIN
+  ob_refnum oref1 ON oob.order_base_gid = oref1.order_base_gid
 AND
-  oref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+  oref1.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  ob_refnum oref2 ON oob.order_base_gid = oref2.order_base_gid
+AND
+  oref2.ob_refnum_qual_gid = 'SCOULAR.COMMODITY'  
+LEFT OUTER JOIN
+  ob_refnum oref3 ON oob.order_base_gid = oref3.order_base_gid
+AND
+  oref3.ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'    
+LEFT OUTER JOIN
+  ob_involved_party obip ON oob.order_base_gid = obip.order_base_gid
+AND
+  obip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+  contact con ON obip.involved_party_contact_gid = con.contact_gid
+LEFT OUTER JOIN
+  location loc ON oline.dest_location_gid = loc.location_gid
 WHERE
-  s.shipment_type_gid = 'TRANSPORT'
+  oob.domain_name = 'SCOULAR/BCO'
 AND
-  (TO_DATE(ol.late_delivery_date,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+  oob.order_base_xid LIKE 'S%'
 AND
-  TO_DATE(ol.late_delivery_date,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))  
-AND 
-  oob.order_base_xid like 'S%'
+  (TO_DATE(oline.early_pickup_date,'DD-MM-RR') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
 AND
-  s.domain_name = 'SCOULAR/BCO') a
-GROUP BY 
-  a.loc, a.end_date  
+  TO_DATE(oline.early_pickup_date,'DD-MM-RR') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:LOCS IS NULL OR (NOT :LOCS IS NULL AND
+  oref1.ob_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOCS,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt))) 
 ORDER BY
-  a.loc, a.end_date ASC]]></sqlStatement>
+  oline.early_pickup_date DESC]]></sqlStatement>
   </dataQuery>
-  <dataStructure>
-    <group name="G_PARAM" source="Q_PARAM">
-      <element name="FROM_DT" value="FROM_DT" />
-      <element name="TO_DT" value="TO_DT" />
-    </group>
-    <group name="G_ROWS" source="Q_ROWS">
-      <element name="LOC" value="LOC" />
-      <element name="CONT_DATE" value="CONT_DATE" />
-      <element name="ORIG_QUANT" value="ORIG_QUANT" />
-      <element name="BALANCE" value="BALANCE" />
-    </group>
-  </dataStructure>
 </dataTemplate>

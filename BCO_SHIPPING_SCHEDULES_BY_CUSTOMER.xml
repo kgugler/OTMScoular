@@ -4,10 +4,14 @@
   <lexicals></lexicals>
   <dataQuery>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
-  v.process_control_request_id job_id,
+  v.process_control_request_id 
+  job_id,
   v.parameter_id,
-  TO_CHAR(from_tz(CAST(v.next_process_time AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI PM') next_process_time,
-  TO_CHAR((v.cycle_duration / 60 / 60 / 24), '99') || ' day(s)' cycle_duration
+  TO_CHAR(from_tz(CAST(v.next_process_time AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY HH:MI PM') 
+  next_process_time,
+  TO_CHAR((v.cycle_duration / 60 / 60 / 24), '99') || ' day(s)' 
+  cycle_duration,
+  output
 FROM
   process_control_request pr
 CROSS JOIN
@@ -31,13 +35,24 @@ CROSS JOIN
     NULL
   END)
   parameter_id,
-  SUBSTR(topic_parameters,27,INSTR(topic_parameters,'-queryString')-28) report_name
+  SUBSTR(topic_parameters,27,INSTR(topic_parameters,'-queryString')-28) 
+  report_name,
+  (CASE WHEN INSTR(topic_parameters,'PDF') > 0 THEN
+    'PDF'
+  WHEN INSTR(topic_parameters,'xls') > 0 THEN
+    (CASE WHEN INSTR(topic_parameters,'xlsx') > 0 THEN
+      'Excel2007'
+    ELSE
+      'Excel'
+    END)
+  END)
+  output
 FROM 
   process_control_request pr1
 WHERE NOT 
   pr1.next_process_time IS NULL
 AND
-  pr1.domain_name = 'SCOULAR/BCO') v
+  TRIM(SUBSTR(SUBSTR(pr1.topic_parameters,27,INSTR(pr1.topic_parameters,'-queryString')-28),1,12)) = 'SCOULAR/BCO') v
 WHERE
   pr.process_control_request_id = v.process_control_request_id
 AND
@@ -45,7 +60,7 @@ AND
 AND
   NOT v.parameter_id IS NULL  
 AND
-  pr.domain_name = 'SCOULAR/BCO'
+  TRIM(SUBSTR(SUBSTR(pr.topic_parameters,27,INSTR(pr.topic_parameters,'-queryString')-28),1,12)) = 'SCOULAR/BCO'
 ORDER BY
   v.process_control_request_id]]></sqlStatement>
   </dataQuery>
