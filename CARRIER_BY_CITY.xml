@@ -1,0 +1,147 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="CARRIER_BY_CITY" description="Carrier by City" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="EQUIPMENT_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT 
+  :START_DATE from_date,
+  :END_DATE to_date,
+  NVL(REPLACE(:EQUIPMENT_ID,'SCOULAR.',''),'ALL') equipments
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.carrier,
+  a.transport_mode, 
+  a.equipment_group, 
+  a.packaging_type,  
+  a.source_city, 
+  a.source_province, 
+  a.source_country, 
+  COUNT(a.shipment_xid) shipment_count
+FROM
+(SELECT DISTINCT
+  s.shipment_xid,
+  sp.servprov_xid carrier,  
+  tm.transport_mode_xid transport_mode,
+  eqg.equipment_group_xid equipment_group,
+  sref.shipment_refnum_value packaging_type,  
+  loc1.city source_city,
+  loc1.province_code source_province,
+  loc1.country_code3_gid source_country
+FROM
+	shipment s
+INNER JOIN
+	transport_mode tm ON s.transport_mode_gid = tm.transport_mode_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN 
+  s_equipment seq ON ssej.s_equipment_gid = seq.s_equipment_gid
+LEFT OUTER JOIN
+  equipment_group eqg ON seq.equipment_group_gid = eqg.equipment_group_gid
+INNER JOIN
+  servprov sp ON s.servprov_gid = sp.servprov_gid
+LEFT OUTER JOIN
+  location loc1 ON s.dest_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+WHERE
+	s.start_time >= TO_DATE(:START_DATE,'YYYY-MM-DD') AND s.start_time <= TO_DATE(:END_DATE, 'YYYY-MM-DD')
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')  
+AND
+  (:EQUIPMENT_ID IS NULL 
+OR
+  (NOT :EQUIPMENT_ID IS NULL
+AND
+  seq.equipment_group_gid IN (SELECT REGEXP_SUBSTR(:EQUIPMENT_ID,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:EQUIPMENT_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))
+UNION
+SELECT DISTINCT
+  s.shipment_xid,
+  sp.servprov_xid carrier,  
+  tm.transport_mode_xid transport_mode,
+  eqg.equipment_group_xid equipment_group,
+  sref.shipment_refnum_value packaging_type,  
+  loc1.city source_city,
+  loc1.province_code source_province,
+  loc1.country_code3_gid source_country
+FROM
+	shipment s
+INNER JOIN
+	transport_mode tm ON s.transport_mode_gid = tm.transport_mode_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN 
+  s_equipment seq ON ssej.s_equipment_gid = seq.s_equipment_gid
+LEFT OUTER JOIN
+  equipment_group eqg ON seq.equipment_group_gid = eqg.equipment_group_gid
+INNER JOIN
+  servprov sp ON s.servprov_gid = sp.servprov_gid
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LTL PACKAGING DESCRIPTION'
+WHERE
+	s.start_time >= TO_DATE(:START_DATE,'YYYY-MM-DD') AND s.start_time <= TO_DATE(:END_DATE, 'YYYY-MM-DD')
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')  
+AND
+  (:EQUIPMENT_ID IS NULL 
+OR
+  (NOT :EQUIPMENT_ID IS NULL
+AND
+  seq.equipment_group_gid IN (SELECT REGEXP_SUBSTR(:EQUIPMENT_ID,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:EQUIPMENT_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))) a
+GROUP BY  
+  a.carrier,
+  a.transport_mode, 
+  a.equipment_group, 
+  a.packaging_type,  
+  a.source_city, 
+  a.source_province, 
+  a.source_country
+ORDER BY
+  a.source_city, 
+  a.source_province, 
+  a.source_country,
+  a.carrier,
+  a.transport_mode, 
+  a.equipment_group, 
+  a.packaging_type]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="FROM_DATE" value="FROM_DATE" />
+      <element name="TO_DATE" value="TO_DATE"></element>
+      <element name="EQUIPMENTS" value="EQUIPMENTS" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CARRIER" value="CARRIER"></element>
+      <element name="TRANSPORT_MODE" value="TRANSPORT_MODE"></element>
+      <element name="EQUIPMENT_GROUP" value="EQUIPMENT_GROUP" />
+      <element name="PACKAGING_TYPE" value="PACKAGING_TYPE"></element>
+      <element name="SOURCE_CITY" value="SOURCE_CITY" />
+      <element name="SOURCE_PROVINCE" value="SOURCE_PROVINCE" />
+      <element name="SOURCE_COUNTRY" value="SOURCE_COUNTRY" />
+      <element name="SHIPMENT_COUNT" value="SHIPMENT_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

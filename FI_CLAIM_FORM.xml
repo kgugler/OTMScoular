@@ -1,0 +1,170 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CLAIM_FORM" description="FI Claim Form" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="CLAIM_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT
+  (CASE WHEN
+    NVL((SELECT COUNT(cli.claim_gid)
+    FROM claim_line_item cli
+    WHERE cli.claim_gid = clm.claim_gid
+    AND cli.damage_type_gid = 'SCOULAR.LOSS' 
+    AND ROWNUM = 1),0) > 0
+  THEN
+    'X'
+  ELSE
+    ' '
+  END) loss,
+  (CASE WHEN
+    NVL((SELECT COUNT(cli.claim_gid)
+    FROM claim_line_item cli
+    WHERE cli.claim_gid = clm.claim_gid
+    AND cli.damage_type_gid = 'SCOULAR.DAMAGE' 
+    AND ROWNUM = 1),0) > 0
+  THEN
+    'X'
+  ELSE
+    ' '
+  END) damage,
+  TO_CHAR(clm.insert_date,'MM/DD/YYYY')
+  claim_date,
+  loc1.location_name
+  shipper,
+	(SELECT listagg (la1.address_line, CHR(13)) 
+	WITHIN GROUP (ORDER BY la1.line_sequence) FROM location_address la1 
+	WHERE la1.location_gid = loc1.location_gid) || CHR(13) ||
+	loc1.city || ', ' || loc1.province_code || ' ' || loc1.postal_code 
+  shipper_address,  
+  loc2.location_name
+  carrier,
+  loc3.location_name
+  consignee,
+	(SELECT listagg (la2.address_line, CHR(13)) 
+	WITHIN GROUP (ORDER BY la2.line_sequence) FROM location_address la2 
+	WHERE la2.location_gid = loc2.location_gid) || CHR(13) ||
+	loc3.city || ', ' || loc3.province_code || ' ' || loc3.postal_code 
+  consignee_address,
+  (CASE WHEN sref.shipment_refnum_value IS NULL THEN
+    sh.shipment_xid
+  ELSE
+    sh.shipment_xid || ' / ' || sref.shipment_refnum_value
+  END)
+  po_number,
+  clrem.remark_text
+  notes
+FROM
+  claim clm
+INNER JOIN
+  shipment sh ON clm.shipment_gid = sh.shipment_gid
+LEFT OUTER JOIN
+  shipment_refnum sref ON sh.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'
+LEFT OUTER JOIN
+  claim_involved_party clip1 ON clm.claim_gid = clip1.claim_gid
+AND
+  clip1.involved_party_qual_gid = 'SHIPPER'
+LEFT OUTER JOIN
+  claim_involved_party clip2 ON clm.claim_gid = clip2.claim_gid
+AND
+  clip2.involved_party_qual_gid = 'CONSIGNEE'  
+LEFT OUTER JOIN
+  location loc1 ON clip1.involved_party_contact_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.servprov_gid = loc2.location_gid
+LEFT OUTER JOIN
+  location loc3 ON clip2.involved_party_contact_gid = loc3.location_gid  
+LEFT OUTER JOIN
+  claim_remark clrem ON clm.claim_gid = clrem.claim_gid
+AND
+  clrem.remark_qual_gid = 'SCOULAR.NOTES'
+WHERE
+  clm.claim_gid = :CLAIM_ID]]></sqlStatement>
+    <sqlStatement name="Q_ROWS1"><![CDATA[SELECT 
+  (CASE WHEN a.damaged_quantity IS NOT NULL AND a.refnum_value != 'BULK'
+  THEN a.damaged_quantity ||
+  ' x ' ||
+  a.refnum_value||
+  ' = '||
+  TRIM(TO_CHAR(a.damaged_weight_by_pkg,'999,999,990.00')) ||
+  ' ' ||
+  a.damaged_weight_by_pkg_uom || CHR(13)
+  ELSE NULL
+  END) ||
+  CASE WHEN a.damaged_quantity IS NOT NULL AND a.damaged_weight_by_pkg_uom != a.damaged_weight_uom_code
+  THEN TRIM(TO_CHAR(a.damaged_weight_by_pkg,'999,999,990.00')) ||
+  ' ' ||
+  a.damaged_weight_by_pkg_uom ||
+  ' = ' ||
+  TRIM(TO_CHAR(damaged_weight,'999,999,990.00')) ||
+  ' ' ||
+  damaged_weight_uom_code || CHR(13)
+  ELSE NULL
+  END ||
+  TRIM(TO_CHAR(damaged_weight,'999,999,990.00')) ||
+  ' ' ||
+  damaged_weight_uom_code||
+  ' x $' ||
+  TRIM(TO_CHAR(ROUND(price_per_unit/ PKG_UOM.convert_uom ('WEIGHT',price_per_unit_uom_code,damaged_weight_uom_code,1),5),'999,999,990.00000')) ||
+  ' / ' ||
+  damaged_weight_uom_code||
+  ' = $' ||
+  TRIM(TO_CHAR(ROUND(price_per_unit/ PKG_UOM.convert_uom ('WEIGHT',price_per_unit_uom_code,damaged_weight_uom_code,1),5) * damaged_weight,'999,999,990.00'))
+  claim
+FROM (
+SELECT
+  clir.refnum_value,
+  cli.damaged_quantity,
+  cli.damaged_weight,
+  cli.damaged_weight_uom_code,
+  cli.price_per_unit,
+  cli.price_per_unit_uom_code,
+  cli.price_per_unit_currency_gid,
+  cli.damaged_quantity * TO_NUMBER(SUBSTR(clir.refnum_value,1,INSTR(clir.refnum_value,' ',1)-1)) 
+  damaged_weight_by_pkg,
+  SUBSTR(clir.refnum_value,INSTR(clir.refnum_value,' ',1)+1,2) 
+  damaged_weight_by_pkg_uom
+FROM 
+  claim_line_item cli
+INNER JOIN
+  claim_line_item_refnum clir ON cli.claim_gid = clir.claim_gid
+AND 
+  cli.line_item_seq_no = clir.line_item_seq_no
+AND 
+  clir.claim_li_refnum_qual_gid = 'SCOULAR.PACKAGING'
+WHERE
+  cli.claim_gid = :CLAIM_ID) a]]></sqlStatement>
+    <sqlStatement name="Q_ROWS2"><![CDATA[SELECT
+  clic.claim_cost_type_gid || ' = $' || TRIM(TO_CHAR(ROUND(clic.cost,2),'999,999,990.00'))
+  ccost
+FROM
+  claim_cost clic
+WHERE
+  clic.claim_gid = :CLAIM_ID]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+  TRIM(TO_CHAR(NVL((SELECT
+    SUM(ROUND(a.price_per_unit/ PKG_UOM.convert_uom ('WEIGHT',a.price_per_unit_uom_code,a.damaged_weight_uom_code,1),5) * a.damaged_weight)
+    FROM (
+    SELECT
+      cli.damaged_weight,
+      cli.damaged_weight_uom_code,
+      cli.price_per_unit,
+      cli.price_per_unit_uom_code
+    FROM claim_line_item cli
+    INNER JOIN claim_line_item_refnum clir ON cli.claim_gid = clir.claim_gid
+    AND cli.line_item_seq_no = clir.line_item_seq_no
+    AND clir.claim_li_refnum_qual_gid = 'SCOULAR.PACKAGING'
+    WHERE cli.claim_gid = :CLAIM_ID) a),0)
+  +
+  NVL((SELECT
+    SUM(ROUND(clic.cost,2))
+  FROM
+    claim_cost clic
+  WHERE
+    clic.claim_gid = :CLAIM_ID),0),'999,999,990.00'))    
+  amount
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

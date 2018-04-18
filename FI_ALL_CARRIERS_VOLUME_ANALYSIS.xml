@@ -1,0 +1,232 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_ALL_CARRIERS_VOLUME_ANALYSIS" description="All Carriers Volume Analysis" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="BEFORE_DATE" dataType="character"></parameter>
+    <parameter name="DAYS1" dataType="character" />
+    <parameter name="DAYS2" dataType="character"></parameter>
+    <parameter name="DAYS3" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD'),'MM/DD/YYYY') before_dt,
+  TRIM(TO_CHAR(:DAYS1,'999,999,990')) v1days,
+  TRIM(TO_CHAR(:DAYS2,'999,999,990')) v2days,
+  TRIM(TO_CHAR(:DAYS3,'999,999,990')) v3days
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  sp.servprov_xid carrier,
+  loc.location_name carrier_name,
+  (CASE WHEN con.external_system_gid IS NOT NULL THEN 
+    'Yes' 
+  ELSE 
+    'No'
+  END)
+  edi,  
+  v1.cntr_cnt v1_count,
+  v1.cntr_wt v1_weight,
+  v2.cntr_cnt v2_count,
+  v2.cntr_wt v2_weight,
+  v3.cntr_cnt v3_count,
+  v3.cntr_wt v3_weight
+FROM 
+  servprov sp
+LEFT OUTER JOIN  
+  (SELECT 
+    a.servprov_gid,
+    SUM(a.unit_net_weight_base) cntr_wt,
+    COUNT(a.s_ship_unit_gid) cntr_cnt
+  FROM
+    (SELECT DISTINCT 
+      sprov.servprov_gid,
+      ssu.s_ship_unit_gid,
+      ROUND(ssu.unit_net_weight_base) unit_net_weight_base
+    FROM 
+      servprov sprov
+    INNER JOIN
+      shipment s ON s.servprov_gid = sprov.servprov_gid
+    AND
+      s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+    AND
+      TRUNC(s.start_time) >= TRUNC(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD') - :DAYS1)
+    AND
+      s.domain_name = 'SCOULAR/FOOD'
+    AND 
+      s.shipment_type_gid = 'TRANSPORT'  
+    INNER JOIN
+      shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN
+      s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN
+      s_ship_unit ssu ON sessuj.s_ship_unit_gid = ssu.s_ship_unit_gid) a
+  GROUP BY a.servprov_gid) v1 ON sp.servprov_gid = v1.servprov_gid
+LEFT OUTER JOIN  
+  (SELECT 
+    a.servprov_gid,
+    SUM(a.unit_net_weight_base) cntr_wt,
+    COUNT(a.s_ship_unit_gid) cntr_cnt
+  FROM
+    (SELECT DISTINCT 
+      sprov.servprov_gid,
+      ssu.s_ship_unit_gid,
+      ROUND(ssu.unit_net_weight_base) unit_net_weight_base
+    FROM 
+      servprov sprov
+    INNER JOIN
+      shipment s ON s.servprov_gid = sprov.servprov_gid
+    AND
+      s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+    AND
+      TRUNC(s.start_time) >= TRUNC(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD') - :DAYS2)
+    AND
+      s.domain_name = 'SCOULAR/FOOD'
+    AND 
+      s.shipment_type_gid = 'TRANSPORT'  
+    INNER JOIN
+      shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN
+      s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN
+      s_ship_unit ssu ON sessuj.s_ship_unit_gid = ssu.s_ship_unit_gid) a
+  GROUP BY a.servprov_gid) v2 ON sp.servprov_gid = v2.servprov_gid
+INNER JOIN  
+  (SELECT 
+    a.servprov_gid,
+    SUM(a.unit_net_weight_base) cntr_wt,
+    COUNT(a.s_ship_unit_gid) cntr_cnt
+  FROM
+    (SELECT DISTINCT 
+      sprov.servprov_gid,
+      ssu.s_ship_unit_gid,
+      ROUND(ssu.unit_net_weight_base) unit_net_weight_base
+    FROM 
+      servprov sprov
+    INNER JOIN
+      shipment s ON s.servprov_gid = sprov.servprov_gid
+    AND
+      s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+    AND
+      TRUNC(s.start_time) >= TRUNC(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD') - :DAYS3)
+    AND
+      s.domain_name = 'SCOULAR/FOOD'
+    AND 
+      s.shipment_type_gid = 'TRANSPORT'  
+    INNER JOIN
+      shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN
+      s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN
+      s_ship_unit ssu ON sessuj.s_ship_unit_gid = ssu.s_ship_unit_gid) a
+  GROUP BY a.servprov_gid) v3 ON sp.servprov_gid = v3.servprov_gid  
+LEFT OUTER JOIN
+  location loc ON sp.servprov_gid = loc.location_gid
+LEFT OUTER JOIN
+  contact con ON loc.location_gid = con.location_gid
+AND
+  con.is_primary_contact = 'Y'
+ORDER BY 
+  3,1]]></sqlStatement>
+    <sqlStatement name="Q_TOTALS"><![CDATA[SELECT 
+  SUM(v1.cntr_cnt) v1_count_total,
+  SUM(v1.cntr_wt) v1_weight_total,
+  SUM(v2.cntr_cnt) v2_count_total,
+  SUM(v2.cntr_wt) v2_weight_total,
+  SUM(v3.cntr_cnt) v3_count_total,
+  SUM(v3.cntr_wt) v3_weight_total
+FROM 
+  servprov sp
+LEFT OUTER JOIN
+  (SELECT 
+    a.servprov_gid,
+    SUM(a.unit_net_weight_base) cntr_wt,
+    COUNT(a.s_ship_unit_gid) cntr_cnt
+  FROM
+    (SELECT DISTINCT 
+      sprov.servprov_gid,
+      ssu.s_ship_unit_gid,
+      ROUND(ssu.unit_net_weight_base) unit_net_weight_base
+    FROM 
+      servprov sprov
+    INNER JOIN
+      shipment s ON s.servprov_gid = sprov.servprov_gid
+    AND
+      s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+    AND
+      TRUNC(s.start_time) >= TRUNC(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD') - :DAYS1)
+    AND
+      s.domain_name = 'SCOULAR/FOOD'
+    AND 
+      s.shipment_type_gid = 'TRANSPORT'  
+    INNER JOIN
+      shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN
+      s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN
+      s_ship_unit ssu ON sessuj.s_ship_unit_gid = ssu.s_ship_unit_gid) a
+  GROUP BY a.servprov_gid) v1 ON sp.servprov_gid = v1.servprov_gid
+LEFT OUTER JOIN  
+  (SELECT 
+    a.servprov_gid,
+    SUM(a.unit_net_weight_base) cntr_wt,
+    COUNT(a.s_ship_unit_gid) cntr_cnt
+  FROM
+    (SELECT DISTINCT 
+      sprov.servprov_gid,
+      ssu.s_ship_unit_gid,
+      ROUND(ssu.unit_net_weight_base) unit_net_weight_base
+    FROM 
+      servprov sprov
+    INNER JOIN
+      shipment s ON s.servprov_gid = sprov.servprov_gid
+    AND
+      s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+    AND
+      TRUNC(s.start_time) >= TRUNC(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD') - :DAYS2)
+    AND
+      s.domain_name = 'SCOULAR/FOOD'
+    AND 
+      s.shipment_type_gid = 'TRANSPORT'  
+    INNER JOIN
+      shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN
+      s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN
+      s_ship_unit ssu ON sessuj.s_ship_unit_gid = ssu.s_ship_unit_gid) a
+  GROUP BY a.servprov_gid) v2 ON sp.servprov_gid = v2.servprov_gid
+INNER JOIN  
+  (SELECT 
+    a.servprov_gid,
+    SUM(a.unit_net_weight_base) cntr_wt,
+    COUNT(a.s_ship_unit_gid) cntr_cnt
+  FROM
+    (SELECT DISTINCT 
+      sprov.servprov_gid,
+      ssu.s_ship_unit_gid,
+      ROUND(ssu.unit_net_weight_base) unit_net_weight_base
+    FROM 
+      servprov sprov
+    INNER JOIN
+      shipment s ON s.servprov_gid = sprov.servprov_gid
+    AND
+      s.servprov_gid NOT IN ('SCOULAR.SPOT BID CARRIER','SCOULAR.FOBCARR')
+    AND
+      TRUNC(s.start_time) >= TRUNC(TO_DATE(:BEFORE_DATE,'YYYY-MM-DD') - :DAYS3)
+    AND
+      s.domain_name = 'SCOULAR/FOOD'
+    AND 
+      s.shipment_type_gid = 'TRANSPORT'  
+    INNER JOIN
+      shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+    INNER JOIN
+      s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+    INNER JOIN
+      s_ship_unit ssu ON sessuj.s_ship_unit_gid = ssu.s_ship_unit_gid) a
+  GROUP BY a.servprov_gid) v3 ON sp.servprov_gid = v3.servprov_gid
+LEFT OUTER JOIN
+  location loc ON sp.servprov_gid = loc.location_gid
+LEFT OUTER JOIN
+  contact con ON loc.location_gid = con.location_gid
+AND
+  con.is_primary_contact = 'Y']]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

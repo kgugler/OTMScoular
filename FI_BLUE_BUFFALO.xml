@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_BLUE_BUFFALO" description="Blue Buffalo Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="INSERT_FROM" dataType="character" />
+    <parameter name="INSERT_TO" dataType="character" />
+    <parameter name="PO_NUMBER" dataType="character" />
+    <parameter name="PO_RELEASE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  s.start_time,
+  TO_CHAR(s.start_time,'MM/DD/YYYY')
+  ship_dt,
+  (CASE WHEN sref1.shipment_refnum_value = 'I955' THEN
+    '102012'
+  WHEN sref1.shipment_refnum_value = 'SPCS' THEN
+    '1010427'
+  WHEN sref1.shipment_refnum_value = 'SHME' THEN
+    '102017'    
+  ELSE
+    sref1.shipment_refnum_value
+  END)
+  commodity,
+  (CASE WHEN sref1.shipment_refnum_value = 'I955' THEN
+    'Salmon Meal'
+  WHEN sref1.shipment_refnum_value = 'SPCS' THEN
+    'Salmon Hydrolysate'
+  WHEN sref1.shipment_refnum_value = 'SHME' THEN
+    'Shrimp Meal'    
+  ELSE
+    sref1.shipment_refnum_value
+  END)  
+  commodity_name,
+  (SELECT glog_util.remove_domain(ssul.order_base_gid)
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  WHERE ssej.shipment_gid = s.shipment_gid)
+  contract_no,
+  loc1.location_name
+  manufacturer,
+  loc1.city || ', ' || loc1.province_code
+  origin,
+  loc2.city || ', ' || loc2.province_code
+  destination,
+  loc2.location_name
+  destination_name,
+  TRIM(TO_CHAR(ROUND(s.total_net_weight_base,0),'999,999,990'))
+  weight_shipped,
+  TRIM(TO_CHAR(ROUND(s.total_net_weight_base,0),'999,999,990'))
+  adjustment,
+  (SELECT oob.inco_term_gid
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = s.shipment_gid)  
+  inco_term,
+  '$' || TRIM(TO_CHAR(ROUND(s.total_actual_cost_base,0),'999,999,990'))
+  freight,
+  '$' || TRIM(TO_CHAR(ROUND(TO_NUMBER((SELECT oref.ob_refnum_value
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  INNER JOIN ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+  AND ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1)),2),'999,999,990.00'))
+  || ' / ' || 
+  (SELECT oref.ob_refnum_value
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  INNER JOIN ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+  AND ob_refnum_qual_gid = 'SCOULAR.PRICE_UOM'  
+  WHERE ssej.shipment_gid = s.shipment_gid)
+  price,
+  TRIM(TO_CHAR(ROUND(((SELECT oob.total_weight_base
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+  WHERE ssej.shipment_gid = s.shipment_gid)
+  -
+  NVL((SELECT TO_NUMBER(oref.ob_refnum_value)
+  FROM shipment_s_equipment_join ssej
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+  INNER JOIN s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+  INNER JOIN ob_refnum oref ON ssul.order_base_gid = oref.order_base_gid
+  AND oref.ob_refnum_qual_gid = 'SCOULAR.AS400_APPLIED_QTY'
+  WHERE ssej.shipment_gid = s.shipment_gid
+  AND ROWNUM = 1),0)),0),'999,999,990'))
+  remaining
+FROM
+  shipment s
+INNER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'
+INNER JOIN 
+  location loc ON sip.involved_party_contact_gid = loc.location_gid
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO NUMBER'
+LEFT OUTER JOIN
+  shipment_refnum sref3 ON s.shipment_gid = sref3.shipment_gid
+AND
+  sref3.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid    
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid  
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  loc.location_name = 'BLUE BUFFALO COMPANY LTD'
+AND
+  (TO_DATE(s.start_time,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.start_time,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (NVL(:INSERT_FROM,:INSERT_TO) IS NULL
+  OR (NOT NVL(:INSERT_FROM,:INSERT_TO) IS NULL AND
+	(TO_DATE(s.insert_date,'dd-mm-rr') >= TO_DATE(NVL(:INSERT_FROM,:INSERT_TO),'YYYY-MM-DD')))
+AND
+  TO_DATE(s.insert_date,'dd-mm-rr') <= TO_DATE(NVL(:INSERT_TO,:INSERT_FROM),'YYYY-MM-DD'))
+AND
+  (:PO_NUMBER IS NULL
+  OR (NOT :PO_NUMBER IS NULL AND
+  (sref2.shipment_refnum_value LIKE '%' || :PO_NUMBER || '%')))
+AND
+  (:PO_RELEASE IS NULL
+  OR (NOT :PO_RELEASE IS NULL AND
+  (sref3.shipment_refnum_value LIKE '%' || :PO_RELEASE || '%')))  
+ORDER BY
+  s.start_time, contract_no]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

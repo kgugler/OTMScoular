@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="EDI_INVOICES_APPROVED" description="EDI Invoices Approved Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+    <parameter name="LOC" dataType="character"></parameter>
+    <parameter name="SERVPROV" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAM"><![CDATA[SELECT 
+  (CASE WHEN :LOC IS NULL THEN 'All Locs' ELSE :LOC END) locs,
+  (CASE WHEN :SERVPROV IS NULL THEN 'All Service Providers' ELSE REPLACE(:SERVPROV,'SCOULAR.','') END) servprovs,
+  :START_DATE start_dt,
+  :END_DATE end_dt
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  sref1.shipment_refnum_value loc_code,
+  s.shipment_xid shipment_id,
+  TRIM(TO_CHAR(s.start_time, 'MM/DD/YYYY')) start_time,
+  sref2.shipment_refnum_value commodity,
+  loc1.city origin_city,
+  loc2.city dest_city,
+  s.total_weight || ' ' || s.total_weight_uom_code total_weight,
+  TRIM(TO_CHAR(ROUND(s.total_actual_cost,2),'999,999,990.00')) shipment_actual_cost,
+  glog_util.remove_domain(s.servprov_gid) servprov_id,
+  inv.invoice_number,
+  TRIM(TO_CHAR(ROUND(inv.net_amount_due,2),'999,999,990.00')) invoice_amount,
+  TO_CHAR(inv.net_due_date,'MM/DD/YYYY') invoice_due_date
+FROM 
+  shipment s
+INNER JOIN
+	invoice_shipment invship ON s.shipment_gid = invship.shipment_gid
+INNER JOIN
+	invoice inv ON invship.invoice_gid = inv.invoice_gid
+INNER JOIN
+  invoice_status invstat ON inv.invoice_gid = invstat.invoice_gid
+AND
+  invstat.status_type_gid = 'SCOULAR/FOOD.APPROVAL'
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE' 
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'   
+LEFT OUTER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2  ON s.dest_location_gid = loc2.location_gid
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  inv.invoice_source = 'I'
+AND
+  invstat.status_value_gid LIKE '%APPROVAL_APPROVED%'
+AND 
+  (TO_DATE(inv.net_due_date,'dd-mm-rr') >=  TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(inv.net_due_date,'dd-mm-rr') <=  TO_DATE(:END_DATE,'YYYY-MM-DD'))  
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  sref1.shipment_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt)))
+AND
+  (:SERVPROV IS NULL OR (NOT :SERVPROV IS NULL AND
+  s.servprov_gid IN (SELECT REGEXP_SUBSTR(:SERVPROV,'[^,]+', 1, LEVEL) items
+            FROM dual
+            CONNECT BY REGEXP_SUBSTR(:SERVPROV, '[^,]+', 1, LEVEL) IS NOT NULL)))
+ORDER BY
+  sref1.shipment_refnum_value ASC,
+  s.servprov_gid ASC,
+  inv.net_due_date ASC,
+  s.start_time ASC,
+  sref2.shipment_refnum_value ASC]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAM" source="Q_PARAM">
+      <element name="LOCS" value="LOCS" />
+      <element name="SERVPROVS" value="SERVPROVS" />
+      <element name="START_DT" value="START_DT" />
+      <element name="END_DT" value="END_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="START_TIME" value="START_TIME" />
+      <element name="COMMODITY" value="COMMODITY"></element>
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY"></element>
+      <element name="DEST_CITY" value="DEST_CITY"></element>
+      <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT"></element>
+      <element name="SHIPMENT_ACTUAL_COST" value="SHIPMENT_ACTUAL_COST"></element>
+      <element name="SERVPROV_ID" value="SERVPROV_ID"></element>
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER"></element>
+      <element name="INVOICE_AMOUNT" value="INVOICE_AMOUNT"></element>
+      <element name="INVOICE_DUE_DATE" value="INVOICE_DUE_DATE"></element>
+    </group>
+  </dataStructure>
+</dataTemplate>

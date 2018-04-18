@@ -1,0 +1,1268 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="BCO_UPDATE" description="BCO Update" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOCS" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  :YEAR yr
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_MTB"><![CDATA[SELECT
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    a.shipment_gid
+  END) > 0 THEN  
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  jan_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  feb_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  mar_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  apr_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  may_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  jun_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  jul_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    a.shipment_gid
+  END) > 0 THEN    
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  aug_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    a.shipment_gid
+  END) > 0 THEN  
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  sep_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    a.shipment_gid
+  END) > 0 THEN  
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  oct_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    a.shipment_gid
+  END) > 0 THEN  
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)  
+  nov_mtb,
+  (CASE WHEN COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    a.shipment_gid
+  END) > 0 THEN
+  ROUND(ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0) / 
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    a.shipment_gid
+  END), 0)
+  ELSE
+    0
+  END)
+  dec_mtb
+FROM
+(SELECT DISTINCT
+  s.shipment_gid,
+  s.sail_date
+FROM
+  shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid    
+INNER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  oob.order_base_xid like 'S%'    
+AND
+  TO_NUMBER(TO_CHAR(s.sail_date,'YYYY')) = TO_NUMBER(:YEAR)) a]]></sqlStatement>
+    <sqlStatement name="Q_ROWS1"><![CDATA[SELECT
+  a.shp_loc,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  jan_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    (SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  feb_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  mar_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    (SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  apr_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  may_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  jun_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  jul_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  aug_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  sep_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  oct_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  nov_ton,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  dec_ton,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    a.shipment_gid
+  END)
+  jan_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    a.shipment_gid
+  END)
+  feb_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    a.shipment_gid
+  END)
+  mar_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    a.shipment_gid
+  END)
+  apr_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    a.shipment_gid
+  END)
+  may_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    a.shipment_gid
+  END)
+  jun_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    a.shipment_gid
+  END)
+  jul_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    a.shipment_gid
+  END)
+  aug_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    a.shipment_gid
+  END)
+  sep_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    a.shipment_gid
+  END)
+  oct_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    a.shipment_gid
+  END)
+  nov_cnt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    a.shipment_gid
+  END)
+  dec_cnt
+FROM
+(SELECT DISTINCT
+  sref.shipment_refnum_value
+  shp_loc,
+  s.shipment_gid,
+  s.sail_date
+FROM
+  shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid    
+INNER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  oob.order_base_xid like 'S%'  
+AND
+  TO_NUMBER(TO_CHAR(s.sail_date,'YYYY')) = TO_NUMBER(:YEAR)) a
+GROUP BY
+  a.shp_loc
+ORDER BY
+  a.shp_loc]]></sqlStatement>
+    <sqlStatement name="Q_TOT1"><![CDATA[SELECT
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  jan_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  feb_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  mar_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  apr_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  may_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  jun_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  jul_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  aug_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  sep_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  oct_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  nov_tont,
+  ROUND(SUM((CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM shipment_stop_d ssd 
+    INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT ssu.tag_3 IS NULL
+    WHERE ssd.shipment_gid = a.shipment_gid
+    AND ssd.stop_num = 1),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)
+  dec_tont,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 1 THEN
+    a.shipment_gid
+  END)
+  jan_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 2 THEN
+    a.shipment_gid
+  END)
+  feb_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 3 THEN
+    a.shipment_gid
+  END)
+  mar_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 4 THEN
+    a.shipment_gid
+  END)
+  apr_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 5 THEN
+    a.shipment_gid
+  END)
+  may_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 6 THEN
+    a.shipment_gid
+  END)
+  jun_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 7 THEN
+    a.shipment_gid
+  END)
+  jul_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 8 THEN
+    a.shipment_gid
+  END)
+  aug_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 9 THEN
+    a.shipment_gid
+  END)
+  sep_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 10 THEN
+    a.shipment_gid
+  END)
+  oct_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 11 THEN
+    a.shipment_gid
+  END)
+  nov_cntt,
+  COUNT(CASE WHEN TO_NUMBER(TO_CHAR(a.sail_date,'MM')) = 12 THEN
+    a.shipment_gid
+  END)
+  dec_cntt
+FROM
+(SELECT DISTINCT
+  s.shipment_gid,
+  s.sail_date
+FROM
+  shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid      
+INNER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  s.domain_name = 'SCOULAR/BCO'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  oob.order_base_xid like 'S%'    
+AND
+  TO_NUMBER(TO_CHAR(s.sail_date,'YYYY')) = TO_NUMBER(:YEAR)) a]]></sqlStatement>
+    <sqlStatement name="Q_ROWS2"><![CDATA[SELECT
+  oref.ob_refnum_value
+  u_loc,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 1 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jan_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 2 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  feb_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 3 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  mar_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 4 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  apr_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 5 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  may_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 6 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jun_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 7 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jul_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 8 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  aug_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 9 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  sep_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 10 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  oct_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 11 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  nov_uton,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 12 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  dec_uton  
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+INNER JOIN
+  ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+AND
+  oref.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  oob.order_base_xid LIKE 'S%'
+AND
+  TO_NUMBER(TO_CHAR(oline.late_delivery_date,'YYYY')) = TO_NUMBER(:YEAR)
+AND
+  NOT EXISTS
+  (SELECT ob_refnum_value
+  FROM ob_refnum
+  WHERE ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND ob_refnum_value = 'CLOSE'
+  AND order_base_gid = oob.order_base_gid)
+GROUP BY
+  oref.ob_refnum_value
+ORDER BY
+  oref.ob_refnum_value]]></sqlStatement>
+    <sqlStatement name="Q_TOT2"><![CDATA[SELECT
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 1 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jan_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 2 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  feb_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 3 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  mar_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 4 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  apr_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 5 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  may_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 6 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jun_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 7 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jul_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 8 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  aug_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 9 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  sep_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 10 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  oct_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 11 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  nov_utot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 12 THEN
+    oline.weight_base -
+    NVL((SELECT SUM(ssu.unit_net_weight_base)
+    FROM s_ship_unit_line ssul 
+    INNER JOIN s_ship_unit ssu ON ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND NOT tag_3 IS NULL
+    WHERE ssul.order_base_gid = oob.order_base_gid),0)
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  dec_utot  
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+INNER JOIN
+  ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+AND
+  oref.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  oob.order_base_xid LIKE 'S%'  
+AND
+  TO_NUMBER(TO_CHAR(oline.late_delivery_date,'YYYY')) = TO_NUMBER(:YEAR)
+AND
+  NOT EXISTS
+  (SELECT ob_refnum_value
+  FROM ob_refnum
+  WHERE ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND ob_refnum_value = 'CLOSE'
+  AND order_base_gid = oob.order_base_gid)]]></sqlStatement>
+    <sqlStatement name="Q_ROWS3"><![CDATA[SELECT
+  oref.ob_refnum_value
+  s_loc,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 1 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jan_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 2 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  feb_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 3 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  mar_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 4 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  apr_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 5 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  may_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 6 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jun_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 7 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jul_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 8 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  aug_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 9 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  sep_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 10 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  oct_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 11 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  nov_ston,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 12 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)      
+  dec_ston  
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+INNER JOIN
+  ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+AND
+  oref.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  oob.order_base_xid LIKE 'S%'  
+AND
+  TO_NUMBER(TO_CHAR(oline.late_delivery_date,'YYYY')) = TO_NUMBER(:YEAR)
+AND
+  NOT (EXISTS
+  (SELECT ob_refnum_value
+  FROM ob_refnum
+  WHERE ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND ob_refnum_value = 'CLOSE'
+  AND order_base_gid = oob.order_base_gid)
+AND NOT
+  oline.dest_location_gid IN
+  (SELECT location_gid
+  FROM location_refnum
+  WHERE location_refnum_qual_gid = 'SCOULAR.PORT_OR_RAMP'
+  AND location_refnum_value = 'Y'))
+GROUP BY
+  oref.ob_refnum_value
+ORDER BY
+  oref.ob_refnum_value]]></sqlStatement>
+    <sqlStatement name="Q_TOT3"><![CDATA[SELECT
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 1 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jan_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 2 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  feb_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 3 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  mar_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 4 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  apr_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 5 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  may_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 6 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jun_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 7 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  jul_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 8 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  aug_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 9 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  sep_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 10 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  oct_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 11 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)  
+  nov_stot,
+  ROUND(SUM(
+  (CASE WHEN TO_NUMBER(TO_CHAR(oline.late_delivery_date,'MM')) = 12 THEN
+    oline.weight_base
+  ELSE
+    0
+  END)) / 2204.5855379, 0)      
+  dec_stot  
+FROM
+  ob_order_base oob
+INNER JOIN
+  ob_line oline ON oob.order_base_gid = oline.order_base_gid
+INNER JOIN
+  ob_refnum oref ON oob.order_base_gid = oref.order_base_gid
+AND
+  oref.ob_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+WHERE
+  oob.domain_name = 'SCOULAR/BCO'
+AND
+  oob.order_base_xid LIKE 'S%'  
+AND
+  TO_NUMBER(TO_CHAR(oline.late_delivery_date,'YYYY')) = TO_NUMBER(:YEAR)
+AND
+  NOT (EXISTS
+  (SELECT ob_refnum_value
+  FROM ob_refnum
+  WHERE ob_refnum_qual_gid = 'SCOULAR.CLOSE/REOPEN'
+  AND ob_refnum_value = 'CLOSE'
+  AND order_base_gid = oob.order_base_gid)
+AND NOT
+  oline.dest_location_gid IN
+  (SELECT location_gid
+  FROM location_refnum
+  WHERE location_refnum_qual_gid = 'SCOULAR.PORT_OR_RAMP'
+  AND location_refnum_value = 'Y'))]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

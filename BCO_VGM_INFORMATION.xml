@@ -15,7 +15,8 @@
   glog_util.remove_domain(s.servprov_gid) carrier,
   loc1.location_xid source_location,
   loc2.location_xid dest_location,
-  sref1.shipment_refnum_value loc_code
+  sref1.shipment_refnum_value loc_code,
+  loc3.location_xid load_port
 FROM 
   shipment s
 INNER JOIN
@@ -25,9 +26,13 @@ AND
 AND
   ss.status_value_gid = 'SCOULAR/BCO.VGM_INFORMATION_NOT_SUBMITTED'
 INNER JOIN
-	view_shipment_order_base vsob ON s.shipment_gid = vsob.shipment_gid
+	shipment_s_equipment_join ssej ON ss.shipment_gid = ssej.shipment_gid
 INNER JOIN
-	order_release orel ON vsob.order_base_gid = orel.order_base_gid
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	order_release orel ON ssul.order_base_gid = orel.order_base_gid
 AND
   orel.order_release_xid like 'S%'
 LEFT OUTER JOIN
@@ -59,17 +64,21 @@ AND
 LEFT OUTER JOIN
   location loc1 ON s.source_location_gid = loc1.location_gid
 LEFT OUTER JOIN
-  location loc2 ON s.dest_location_gid = loc2.location_gid  
+  location loc2 ON s.dest_location_gid = loc2.location_gid 
+LEFT OUTER JOIN
+  location loc3 ON s.port_of_load_location_gid = loc3.location_gid   
 WHERE
   s.domain_name = 'SCOULAR/BCO'
 AND
   s.shipment_type_gid = 'TRANSPORT'
 AND
+  loc3.country_code3_gid = 'CAN'
+AND
   TO_DATE(s.insert_date,'dd-mm-rr') >= TO_DATE('2016-06-15','YYYY-MM-DD')
 AND
   (cvr1.charter_voyage_refnum_value IS NULL OR
   (NOT cvr1.charter_voyage_refnum_value IS NULL AND
-  (TO_DATE(TRIM(TRIM(cvr1.charter_voyage_refnum_value) || ' ' || TRIM(cvr2.charter_voyage_refnum_value)),'MM/DD/YY HH24:MI') 
+  (TO_DATE(TRIM(TRIM(cvr1.charter_voyage_refnum_value) || ' ' || TRIM(NVL(cvr2.charter_voyage_refnum_value,'00:01'))),'MM/DD/YY HH24:MI') 
   <= TO_DATE(TO_CHAR(SYSDATE+3,'dd-mm-rr HH24:MI'),'DD/MM/YY HH24:MI'))))
 ORDER BY
   TO_DATE(TRIM(TRIM(cvr1.charter_voyage_refnum_value)),'MM/DD/YY') DESC, cvr2.charter_voyage_refnum_value DESC]]></sqlStatement>

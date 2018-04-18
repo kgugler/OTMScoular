@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CHEAPEST_CARRIERS_BY_LANE" description="Top 3 Cheapest Carriers by Lane" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'MM/DD/YY')
+  start_dt,
+  TO_CHAR(TO_DATE(:END_DATE,'YYYY-MM-DD'),'MM/DD/YY')
+  end_dt
+FROM
+DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  x.source_city || x.source_province || x.source_zip || x.dest_city || x.dest_province || x.dest_zip
+  grouper,
+  x.source_city,
+  x.source_province,
+  x.source_zip,
+  x.dest_city,
+  x.dest_province,
+  x.dest_zip,
+  x.carrier_id,
+  x.carrier_name,
+  x.carrier_email,
+  TO_CHAR(ROUND(x.average_rate,2),'999,999,990.00')
+  average_rate,
+  x.ranker
+FROM
+(SELECT
+  a.*, RANK() OVER (PARTITION BY a.source_city || a.source_province || a.source_zip || a.dest_city || a.dest_province || a.dest_zip ORDER BY ROUND(a.average_rate,2) ASC, a.shipments DESC) ranker
+FROM
+(SELECT
+  loc1.city
+  source_city,
+  loc1.province_code
+  source_province,
+  loc1.postal_code
+  source_zip,
+  loc2.city
+  dest_city,
+  loc2.province_code
+  dest_province,
+  loc2.postal_code
+  dest_zip,
+  glog_util.remove_domain(s.servprov_gid)
+  carrier_id,
+  loc2.location_name
+  carrier_name,
+  con.email_address
+  carrier_email,
+  AVG(s.total_actual_cost_base)
+  average_rate,
+  COUNT(s.shipment_gid)
+  shipments
+FROM
+  shipment s
+INNER JOIN
+  location loc1 ON s.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid
+INNER JOIN
+  location loc3 ON s.servprov_gid = loc3.location_gid
+LEFT OUTER JOIN
+  contact con ON s.servprov_gid = con.contact_gid  
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.transport_mode_gid = 'TL'
+AND
+  (TO_DATE(s.start_time,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.start_time,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND NOT
+  s.servprov_gid IN ('SCOULAR.FOBCARR','SCOULAR.SPOT BID CARRIER')
+GROUP BY
+  loc1.city, 
+  loc1.province_code, 
+  loc1.postal_code, 
+  loc2.city, 
+  loc2.province_code, 
+  loc2.postal_code, 
+  glog_util.remove_domain(s.servprov_gid), 
+  loc2.location_name, 
+  con.email_address) a) x
+WHERE
+  x.ranker <= 3]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

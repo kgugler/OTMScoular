@@ -1,0 +1,220 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CONTRACT_LIST" description="Contract Listing" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <properties>
+    <property name="include_parameters" value="true" />
+    <property name="db_fetch_size" value="20" />
+    <property name="debug_mode" value="on" />
+    <property name="scalable_mode" value="on" />
+  </properties>
+  <parameters>
+    <parameter name="P_GL_USER" dataType="character" defaultValue="DBA.ADMIN" />
+    <parameter name="P_FORMAT" dataType="character" defaultValue="PDF" />
+    <parameter name="P_REPORT_CALL" dataType="character" defaultValue=" ?.. " />
+    <parameter name="P_DBCONN_TYPE" dataType="character" defaultValue="OLTP" />
+    <parameter name="P_CUST_NAME" dataType="character" />
+    <parameter name="P_LOC" dataType="character" />
+    <parameter name="P_SHIP_FROM" dataType="character" />
+    <parameter name="P_SHIP_TO" dataType="character" />
+    <parameter name="P_COMMODITY" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  TO_DATE(:P_SHIP_FROM,'RRRR/MM/DD') p_early_date,
+  TO_DATE(:P_SHIP_TO,'RRRR/MM/DD')  p_late_date
+FROM SYS.DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  oob.order_base_gid,
+  ore.ob_refnum_value loc,
+  oob.order_base_xid contract,
+  pi.packaged_item_xid comm,
+  con.contact_xid cust_id,
+  loc.location_name cust_name,
+  TO_CHAR(ol.early_pickup_date,'MM/DD/YYYY') ship_from,
+  TO_CHAR(ol.late_delivery_date,'MM/DD/YYYY')  ship_to,
+  sl.status_value_xid contract_status,
+  NVL(SUM (ol.weight),0) contract_total,
+  NVL(SUM (ol.released_weight),0) applied,
+  NVL(SUM (ol.weight),0)  - NVL(SUM (ol.released_weight),0) Open
+FROM 
+  ob_order_base oob,
+  ob_refnum ore,
+  ob_line ol,
+  location loc,
+  ob_order_base_status oobs,
+  --location_refnum locref,
+  ob_involved_party oip,
+  contact con,
+  packaged_item pi,
+  status_value sl,
+  order_type ot
+WHERE     
+  oob.order_base_gid = ore.order_base_gid
+AND 
+  oob.order_base_gid = ol.order_base_gid
+AND 
+  oob.order_type_gid = ot.order_type_gid
+AND 
+  oip.order_base_gid = oob.order_base_gid
+AND 
+  oip.involved_party_contact_gid  = con.contact_gid
+AND 
+  oip.involved_party_qual_gid LIKE '%CUSTOMER%'
+AND 
+  DECODE(UPPER(ot.order_type_xid),'PURCHASE_ORDER',ol.source_location_gid,'SALES_ORDER',ol.dest_location_gid) = loc.location_gid
+AND 
+  oob.order_base_gid = oobs.order_base_gid
+AND 
+  ore.ob_refnum_qual_gid LIKE '%LOC_CODE%'
+AND 
+  ol.packaged_item_gid=pi.packaged_item_gid
+AND 
+  oobs.status_value_gid = sl.status_value_gid 
+AND  
+  oobs.status_type_gid LIKE '%RELEASE%CONTROL' 
+AND 
+  :P_RUN = 'FINAL'
+AND 
+  NVL(con.contact_gid,-999) IN
+  (SELECT 
+    NVL(SUBSTR (the_string, DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+    DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL) - 
+    DECODE (LEVEL, 1, 0, INSTR (the_string,',',1,LEVEL - 1)) - 1)),NVL(con.contact_gid,-999))
+    the_value
+  FROM 
+  (SELECT :P_CUST_NAME the_string FROM DUAL)
+  CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+  AND TRUNC(NVL(ol.early_pickup_date,SYSDATE)) >= NVL(:P_EARLY_DATE,TRUNC(NVL(ol.early_pickup_date,SYSDATE)))
+  AND TRUNC(NVL(ol.late_delivery_date,SYSDATE)) <= NVL(:P_LATE_DATE,TRUNC(NVL(ol.late_delivery_date,SYSDATE)))     
+  AND NVL(pi.packaged_item_gid,-999) IN 
+  (SELECT 
+  NVL(SUBSTR (the_string, DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+  DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL) - 
+  DECODE (LEVEL,1, 0, INSTR (the_string,',',1,LEVEL - 1)) - 1)),NVL(pi.packaged_item_gid,-999))
+  the_value
+  FROM (SELECT :P_COMMODITY the_string FROM DUAL)
+  CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+GROUP BY 
+  oob.order_base_gid,
+  ore.ob_refnum_value,
+  oob.order_base_xid,
+  pi.packaged_item_xid,
+  sl.status_value_xid,
+  --loc.location_xid,
+  con.contact_xid,
+  loc.location_name,
+  ol.early_pickup_date,
+  ol.late_delivery_date
+UNION
+SELECT  
+  NVL(oob.order_base_gid,'Data Missing in System'),
+  NVL(ore.ob_refnum_value,'Data Missing in System') loc,
+  NVL(oob.order_base_xid,'Data Missing in System') contract,
+  NVL(pi.packaged_item_xid,'Data Missing in System') comm,
+  NVL(con.contact_xid,'Data Missing in System') cust_id,
+  NVL(loc.location_name,'Data Missing in System') cust_name,
+  NVL(TO_CHAR(ol.early_pickup_date,'MM/DD/YYYY'),'Data Missing in System') ship_from,
+  NVL(TO_CHAR(ol.late_delivery_date,'MM/DD/YYYY'),'Data Missing in System')  ship_to,
+  NVL(sl.status_value_xid,'Data Missing in System') contract_status,
+  NVL(SUM (ol.weight),'99999999') contract_total,
+  NVL(SUM (ol.released_weight),0) applied,
+  NVL(NVL(SUM (ol.weight),0)  - NVL(SUM (ol.released_weight),0),'99999999') Open
+FROM 
+  ob_order_base oob,
+  ob_refnum ore,
+  ob_line ol,
+  location loc,
+  ob_order_base_status oobs,
+  --location_refnum locref,
+  ob_involved_party oip,
+  contact con,
+  packaged_item pi,
+  status_value sl,
+  order_type ot
+WHERE     
+  oob.order_base_gid = ore.order_base_gid
+AND 
+  oob.order_base_gid = ol.order_base_gid
+AND 
+  oob.order_type_gid = ot.order_type_gid
+AND 
+  oip.order_base_gid = oob.order_base_gid
+AND 
+  oip.involved_party_contact_gid  = con.contact_gid
+AND 
+  oip.involved_party_qual_gid LIKE '%CUSTOMER%'
+AND 
+  DECODE(UPPER(ot.order_type_xid),'PURCHASE_ORDER',ol.source_location_gid,'SALES_ORDER',ol.dest_location_gid) = loc.location_gid
+AND 
+  oob.order_base_gid = oobs.order_base_gid
+AND 
+  ore.ob_refnum_qual_gid LIKE '%LOC_CODE%'
+AND 
+  ol.packaged_item_gid=pi.packaged_item_gid
+AND 
+  oobs.status_value_gid = sl.status_value_gid 
+AND  
+  oobs.status_type_gid LIKE '%RELEASE%CONTROL' 
+AND 
+  :P_RUN = 'DRAFT'
+AND 
+  NVL(con.contact_gid,-999) IN
+  (SELECT 
+    NVL(SUBSTR (the_string, DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+    DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL) - 
+    DECODE (LEVEL, 1, 0, INSTR (the_string,',',1,LEVEL - 1)) - 1)),NVL(con.contact_gid,-999))
+    the_value
+  FROM 
+  (SELECT :P_CUST_NAME the_string FROM DUAL)
+  CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+  AND TRUNC(NVL(ol.early_pickup_date,SYSDATE)) >= NVL(:P_EARLY_DATE,TRUNC(NVL(ol.early_pickup_date,SYSDATE)))
+  AND TRUNC(NVL(ol.late_delivery_date,SYSDATE)) <= NVL(:P_LATE_DATE,TRUNC(NVL(ol.late_delivery_date,SYSDATE)))     
+  AND NVL(pi.packaged_item_gid,-999) IN 
+  (SELECT 
+  NVL(SUBSTR (the_string, DECODE (LEVEL,1, 1,INSTR (the_string,',',1,LEVEL - 1)+ 1),
+  DECODE (INSTR (the_string, ',',1,LEVEL),0, LENGTH (the_string),INSTR (the_string,',',1,LEVEL) - 
+  DECODE (LEVEL,1, 0, INSTR (the_string,',',1,LEVEL - 1)) - 1)),NVL(pi.packaged_item_gid,-999))
+  the_value
+  FROM (SELECT :P_COMMODITY the_string FROM DUAL)
+  CONNECT BY LEVEL <= LENGTH (the_string) - LENGTH (REPLACE (the_string, ',')) + 1)
+GROUP BY 
+  oob.order_base_gid,
+  ore.ob_refnum_value,
+  oob.order_base_xid,
+  pi.packaged_item_xid,
+  sl.status_value_xid,
+  --loc.location_xid,
+  con.contact_xid,
+  loc.location_name,
+  ol.early_pickup_date,
+  ol.late_delivery_date]]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TRIM(TO_CHAR(SYSDATE,'FMDay, Month DD, yyyy ')) 
+  curr_date
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="P_EARLY_DATE" value="P_EARLY_DATE" />
+      <element name="P_LATE_DATE" value="P_LATE_DATE" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="ORDER_BASE_GID" value="ORDER_BASE_GID" />
+      <element name="LOC" value="LOC" />
+      <element name="CONTRACT" value="CONTRACT" />
+      <element name="COMM" value="COMM" />
+      <element name="CUST_ID" value="CUST_ID" />
+      <element name="CUST_NAME" value="CUST_NAME" />
+      <element name="SHIP_FROM" value="SHIP_FROM" />
+      <element name="SHIP_TO" value="SHIP_TO" />
+      <element name="CONTRACT_STATUS" value="CONTRACT_STATUS" />
+      <element name="CONTRACT_TOTAL" value="CONTRACT_TOTAL" />
+      <element name="APPLIED" value="APPLIED" />
+      <element name="OPEN" value="OPEN" />
+    </group>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+  </dataStructure>
+</dataTemplate>

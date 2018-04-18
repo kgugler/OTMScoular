@@ -1,0 +1,364 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_COMMERCIAL_INVOICE" description="FI Commercial Invoice" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="SHIPMENT_ID" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
+  (CASE WHEN sref1.shipment_refnum_value IS NULL THEN
+    s.shipment_xid || '-001'
+  ELSE
+    s.shipment_xid || '-' || sref1.shipment_refnum_value
+  END)
+  invoice_number,
+	TO_CHAR(SYSDATE,'MM/DD/YYYY') invoice_date,
+  (CASE WHEN sref2.shipment_refnum_value IS NULL THEN
+    ''
+  ELSE
+    'Customer PO Release #'
+  END) shipper_order_label,
+	sref2.shipment_refnum_value 
+  shipper_order_num, 
+  (CASE WHEN srem1.remark_text IS NULL THEN
+    ''
+  ELSE
+    'FREIGHT'
+  END)
+  freight_label,  
+  (CASE WHEN srem1.remark_text IS NULL THEN
+    ''
+  ELSE
+    TRIM(TO_CHAR(TO_NUMBER(srem1.remark_text),'$999,999,990.00'))
+  END)
+  freight,
+  (CASE WHEN srem2.remark_text IS NULL THEN
+    ''
+  ELSE
+    'MISC COSTS'
+  END)
+  misc_costs_label,
+  (CASE WHEN srem2.remark_text IS NULL THEN
+    ''
+  ELSE
+    TRIM(TO_CHAR(TO_NUMBER(srem2.remark_text),'$999,999,990.00'))
+  END)
+  misc_costs,
+  (CASE WHEN srem3.remark_text IS NULL THEN
+    ''
+  ELSE
+    'NOTES'
+  END)
+  notes_label,
+  (CASE WHEN srem3.remark_text IS NULL THEN
+    ''
+  ELSE
+    srem3.remark_text
+  END)
+  notes  
+FROM 
+	shipment s
+LEFT OUTER JOIN
+  shipment_remark srem1 ON s.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR.FREIGHT_FI COMMERCIAL INVOICE'
+LEFT OUTER JOIN
+  shipment_remark srem2 ON s.shipment_gid = srem2.shipment_gid
+AND
+  srem2.remark_qual_gid = 'SCOULAR.MISC COSTS_FI COMMERCIAL INVOICE'
+LEFT OUTER JOIN
+  shipment_remark srem3 ON s.shipment_gid = srem3.shipment_gid
+AND
+  srem3.remark_qual_gid = 'SCOULAR.MISC NOTES_FI COMMERCIAL INVOICE' 
+LEFT OUTER JOIN
+  shipment_refnum sref1 ON s.shipment_gid = sref1.shipment_gid
+AND
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.INVOICE REV_FI COMMERCIAL INVOICE'  
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON s.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER' 
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ORDER"><![CDATA[SELECT DISTINCT
+	oob.order_base_xid 
+  scoular_order_num,
+	loc1.location_name,
+	(SELECT listagg (la1.address_line, ' ') 
+	WITHIN GROUP (ORDER BY la1.line_sequence) FROM location_address la1 
+	WHERE la1.location_gid = loc1.location_gid) 
+  address_line,
+	loc1.city || ', ' || loc1.province_code || ' ' || loc1.postal_code 
+  city_state_zip,
+	cc1.country_name,
+	TRIM(oob.inco_term_gid || ' ' || loc2.location_name) 
+  inco_location_name,
+	(SELECT listagg (la2.address_line, ' ') 
+	WITHIN GROUP (ORDER BY la2.line_sequence) FROM location_address la2
+	WHERE la2.location_gid = loc2.location_gid) 
+  inco_address_line,
+	loc2.city || ', ' || loc2.province_code || ' ' || loc2.postal_code 
+  inco_city_state_zip,
+	cc2.country_name 
+  inco_country_name
+FROM
+	shipment s
+INNER JOIN
+	shipment_s_equipment_join ssej ON s.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+LEFT OUTER JOIN
+  ob_involved_party obip ON oob.order_base_gid = obip.order_base_gid
+AND
+  obip.involved_party_qual_gid = 'CUSTOMER'
+LEFT OUTER JOIN
+	location loc1 ON obip.involved_party_contact_gid = loc1.location_gid
+LEFT OUTER JOIN
+	country_code cc1 ON loc1.country_code3_gid = cc1.country_code3_gid
+LEFT OUTER JOIN
+	location loc2 ON 'SCOULAR.' || oob.term_location_text = loc2.location_gid
+LEFT OUTER JOIN
+	country_code cc2 ON loc2.country_code3_gid = cc2.country_code3_gid   
+WHERE
+	s.shipment_gid = :SHIPMENT_ID]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  (CASE WHEN ssu.received_net_weight > 0 THEN
+    TRIM(TO_CHAR(ssu.received_net_weight) || ' ' || ssu.received_net_weight_uom_code)
+  ELSE
+    TRIM(TO_CHAR(ssu.unit_net_weight) || ' ' || ssu.unit_net_weight_uom_code)
+  END)
+  quantity,
+	it.description,
+	'USD$' || TRIM(TO_CHAR(oref1.ob_refnum_value, '999,999,990.00')) price,
+ 	'PER ' || oref2.ob_refnum_value price_uom,
+  TRIM(TO_CHAR(ROUND(
+  (CASE WHEN ssu.received_net_weight > 0 THEN
+    (CASE WHEN ssu.received_net_weight_uom_code = 'LB' OR ssu.received_net_weight_uom_code = 'LBS' THEN
+      ssu.received_net_weight
+    WHEN ssu.received_net_weight_uom_code = 'KG' OR ssu.received_net_weight_uom_code = 'KGS' THEN
+      ssu.received_net_weight * 2.20462262
+    WHEN ssu.received_net_weight_uom_code = 'ST' OR ssu.received_net_weight_uom_code = 'STON' THEN
+      ssu.received_net_weight * 2000
+    WHEN ssu.received_net_weight_uom_code = 'MT' OR ssu.received_net_weight_uom_code = 'MTON' THEN
+      ssu.received_net_weight * 2204.62262
+    WHEN ssu.received_net_weight_uom_code = 'BU' THEN
+      ssu.received_net_weight * 
+      (SELECT TO_NUMBER(ir.remark_text)
+      FROM item_remark ir 
+      WHERE ir.item_gid = it.item_gid
+      AND ir.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE')
+    ELSE
+      ssu.received_net_weight
+    END)
+  ELSE
+    (CASE WHEN ssu.unit_net_weight_uom_code = 'LB' OR ssu.unit_net_weight_uom_code = 'LBS' THEN
+      ssu.unit_net_weight
+    WHEN ssu.unit_net_weight_uom_code = 'KG' OR ssu.unit_net_weight_uom_code = 'KGS' THEN
+      ssu.unit_net_weight * 2.20462262
+    WHEN ssu.unit_net_weight_uom_code = 'ST' OR ssu.unit_net_weight_uom_code = 'STON' THEN
+      ssu.unit_net_weight * 2000
+    WHEN ssu.unit_net_weight_uom_code = 'MT' OR ssu.unit_net_weight_uom_code = 'MTON' THEN
+      ssu.unit_net_weight * 2204.62262
+    WHEN ssu.unit_net_weight_uom_code = 'BU' THEN
+      ssu.unit_net_weight * 
+      (SELECT TO_NUMBER(ir.remark_text)
+      FROM item_remark ir 
+      WHERE ir.item_gid = it.item_gid
+      AND ir.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE')
+    ELSE
+      ssu.unit_net_weight
+    END)  
+  END)
+  *
+  (CASE WHEN oref2.ob_refnum_value = 'LB' OR oref2.ob_refnum_value = 'LBS' THEN
+    TO_NUMBER(oref1.ob_refnum_value)
+  WHEN oref2.ob_refnum_value = 'KG' OR oref2.ob_refnum_value = 'KGS' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 2.20462262
+  WHEN oref2.ob_refnum_value = 'ST' OR oref2.ob_refnum_value = 'STON' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 2000
+  WHEN oref2.ob_refnum_value = 'MT' OR oref2.ob_refnum_value = 'MTON' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 2204.62262
+  WHEN oref2.ob_refnum_value = 'BU' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 
+    (SELECT TO_NUMBER(ir.remark_text)
+    FROM item_remark ir 
+    WHERE ir.item_gid = it.item_gid
+    AND ir.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE')
+  ELSE
+    TO_NUMBER(oref1.ob_refnum_value)
+  END),2),'$999,999,990.00'))
+  amount
+FROM
+	shipment_stop_d sstopd
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+	s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+INNER JOIN
+	item it ON pi.item_gid = it.item_gid
+INNER JOIN
+	ship_unit su ON ssu.ship_unit_gid = su.ship_unit_gid
+INNER JOIN
+	order_release orel ON su.order_release_gid = orel.order_release_gid
+LEFT OUTER JOIN
+	ob_refnum oref1 ON orel.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+LEFT OUTER JOIN  
+	ob_refnum oref2 ON orel.order_base_gid = oref2.order_base_gid
+AND 
+	oref2.ob_refnum_qual_gid = 'SCOULAR.PRICE_UOM'  
+WHERE
+	sstopd.shipment_gid = :SHIPMENT_ID
+AND 
+	sstopd.stop_num = 1]]></sqlStatement>
+    <sqlStatement name="Q_TOTAL"><![CDATA[SELECT
+  TRIM(TO_CHAR(SUM(ROUND(
+  (CASE WHEN ssu.received_net_weight > 0 THEN
+    (CASE WHEN ssu.received_net_weight_uom_code = 'LB' OR ssu.received_net_weight_uom_code = 'LBS' THEN
+      ssu.received_net_weight
+    WHEN ssu.received_net_weight_uom_code = 'KG' OR ssu.received_net_weight_uom_code = 'KGS' THEN
+      ssu.received_net_weight * 2.20462262
+    WHEN ssu.received_net_weight_uom_code = 'ST' OR ssu.received_net_weight_uom_code = 'STON' THEN
+      ssu.received_net_weight * 2000
+    WHEN ssu.received_net_weight_uom_code = 'MT' OR ssu.received_net_weight_uom_code = 'MTON' THEN
+      ssu.received_net_weight * 2204.62262
+    WHEN ssu.received_net_weight_uom_code = 'BU' THEN
+      ssu.received_net_weight * 
+      (SELECT TO_NUMBER(ir.remark_text)
+      FROM item_remark ir 
+      WHERE ir.item_gid = it.item_gid
+      AND ir.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE')
+    ELSE
+      ssu.received_net_weight
+    END)
+  ELSE
+    (CASE WHEN ssu.unit_net_weight_uom_code = 'LB' OR ssu.unit_net_weight_uom_code = 'LBS' THEN
+      ssu.unit_net_weight
+    WHEN ssu.unit_net_weight_uom_code = 'KG' OR ssu.unit_net_weight_uom_code = 'KGS' THEN
+      ssu.unit_net_weight * 2.20462262
+    WHEN ssu.unit_net_weight_uom_code = 'ST' OR ssu.unit_net_weight_uom_code = 'STON' THEN
+      ssu.unit_net_weight * 2000
+    WHEN ssu.unit_net_weight_uom_code = 'MT' OR ssu.unit_net_weight_uom_code = 'MTON' THEN
+      ssu.unit_net_weight * 2204.62262
+    WHEN ssu.unit_net_weight_uom_code = 'BU' THEN
+      ssu.unit_net_weight * 
+      (SELECT TO_NUMBER(ir.remark_text)
+      FROM item_remark ir 
+      WHERE ir.item_gid = it.item_gid
+      AND ir.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE')
+    ELSE
+      ssu.unit_net_weight
+    END)  
+  END)
+  *
+  (CASE WHEN oref2.ob_refnum_value = 'LB' OR oref2.ob_refnum_value = 'LBS' THEN
+    TO_NUMBER(oref1.ob_refnum_value)
+  WHEN oref2.ob_refnum_value = 'KG' OR oref2.ob_refnum_value = 'KGS' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 2.20462262
+  WHEN oref2.ob_refnum_value = 'ST' OR oref2.ob_refnum_value = 'STON' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 2000
+  WHEN oref2.ob_refnum_value = 'MT' OR oref2.ob_refnum_value = 'MTON' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 2204.62262
+  WHEN oref2.ob_refnum_value = 'BU' THEN
+    TO_NUMBER(oref1.ob_refnum_value) / 
+    (SELECT TO_NUMBER(ir.remark_text)
+    FROM item_remark ir 
+    WHERE ir.item_gid = it.item_gid
+    AND ir.remark_qual_gid = 'SCOULAR.POUNDS PER STANDARD UNIT OF MEASURE')
+  ELSE
+    TO_NUMBER(oref1.ob_refnum_value)
+  END),2))
+  +
+  (CASE WHEN srem1.remark_text IS NULL THEN
+    0
+  ELSE
+    TO_NUMBER(srem1.remark_text)
+  END)
+  +
+  (CASE WHEN srem2.remark_text IS NULL THEN
+    0
+  ELSE
+    TO_NUMBER(srem2.remark_text)
+  END),'$999,999,990.99'))
+  total
+FROM
+	shipment_stop_d sstopd
+INNER JOIN
+	s_ship_unit ssu ON sstopd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+	s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+INNER JOIN
+	item it ON pi.item_gid = it.item_gid
+INNER JOIN
+	ship_unit su ON ssu.ship_unit_gid = su.ship_unit_gid
+INNER JOIN
+	order_release orel ON su.order_release_gid = orel.order_release_gid
+LEFT OUTER JOIN
+	ob_refnum oref1 ON orel.order_base_gid = oref1.order_base_gid
+AND
+  oref1.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+LEFT OUTER JOIN  
+	ob_refnum oref2 ON orel.order_base_gid = oref2.order_base_gid
+AND 
+	oref2.ob_refnum_qual_gid = 'SCOULAR.PRICE_UOM'
+LEFT OUTER JOIN
+  shipment_remark srem1 ON sstopd.shipment_gid = srem1.shipment_gid
+AND
+  srem1.remark_qual_gid = 'SCOULAR.FREIGHT_FI COMMERCIAL INVOICE'
+LEFT OUTER JOIN
+  shipment_remark srem2 ON sstopd.shipment_gid = srem2.shipment_gid
+AND
+  srem2.remark_qual_gid = 'SCOULAR.MISC COSTS_FI COMMERCIAL INVOICE'   
+WHERE
+	sstopd.shipment_gid = :SHIPMENT_ID
+AND 
+	sstopd.stop_num = 1
+GROUP BY
+  srem1.remark_text,
+  srem2.remark_text]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_MAIN" source="Q_MAIN">
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
+      <element name="INVOICE_DATE" value="INVOICE_DATE"></element>
+      <element name="SHIPPER_ORDER_LABEL" value="SHIPPER_ORDER_LABEL" />
+      <element name="SHIPPER_ORDER_NUM" value="SHIPPER_ORDER_NUM"></element>
+      <element name="FREIGHT_LABEL" value="FREIGHT_LABEL"></element>
+      <element name="FREIGHT" value="FREIGHT"></element>
+      <element name="MISC_COSTS_LABEL" value="MISC_COSTS_LABEL"></element>
+      <element name="MISC_COSTS" value="MISC_COSTS"></element>
+      <element name="NOTES_LABEL" value="NOTES_LABEL"></element>
+      <element name="NOTES" value="NOTES"></element>
+    </group>
+    <group name="G_ORDER" source="Q_ORDER">
+      <element name="SCOULAR_ORDER_NUM" value="SCOULAR_ORDER_NUM" />
+      <element name="LOCATION_NAME" value="LOCATION_NAME" />
+      <element name="ADDRESS_LINE" value="ADDRESS_LINE" />
+      <element name="CITY_STATE_ZIP" value="CITY_STATE_ZIP" />
+      <element name="COUNTRY_NAME" value="COUNTRY_NAME" />
+      <element name="INCO_LOCATION_NAME" value="INCO_LOCATION_NAME"></element>
+      <element name="INCO_ADDRESS_LINE" value="INCO_ADDRESS_LINE" />
+      <element name="INCO_CITY_STATE_ZIP" value="INCO_CITY_STATE_ZIP" />
+      <element name="INCO_COUNTRY_NAME" value="INCO_COUNTRY_NAME" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="QUANTITY" value="QUANTITY" />
+      <element name="DESCRIPTION" value="DESCRIPTION" />
+      <element name="PRICE" value="PRICE" />
+      <element name="AMOUNT" value="AMOUNT" />
+      <element name="PRICE_UOM" value="PRICE_UOM" />
+    </group>
+    <group name="G_TOTAL" source="Q_TOTAL">
+      <element name="TOTAL" value="TOTAL" />
+    </group>
+  </dataStructure>
+</dataTemplate>

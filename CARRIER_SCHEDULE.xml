@@ -1,0 +1,146 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="CARRIER_SCHEDULE" description="Carrier Schedule next 4 days" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_CARRIER_SCHEDULE" version="1.0">
+  <parameters>
+    <parameter name="CARRIER_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  sprov.servprov_xid carrier,
+  sh.shipment_xid shipment_id,
+  it.item_name,
+  (CASE WHEN sh.source_location_gid IS NULL THEN
+    TO_CHAR(TO_DATE(sh.start_time,'dd-mm-rr'), 'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(TO_DATE(glogowner.utc.get_local_date(sh.start_time,sh.source_location_gid),'dd-mm-rr'), 'MM/DD/YYYY')
+  END)
+  pickup_date,
+  loc1.location_name origin_name,
+  loc1.city origin_city,
+  loc1.province_code origin_state,
+  (CASE WHEN sh.dest_location_gid IS NULL THEN
+    TO_CHAR(TO_DATE(sh.end_time,'dd-mm-rr'), 'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(TO_DATE(glogowner.utc.get_local_date(sh.end_time,sh.dest_location_gid),'dd-mm-rr'), 'MM/DD/YYYY')
+  END)
+  delivery_date,
+  loc2.location_name delivery_name,
+  loc2.province_code delivery_state,  
+  tm.transport_mode_xid trans_mode,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') planner
+FROM
+(SELECT
+  a.shipment_gid, LISTAGG(a.shipstat, ', ') WITHIN GROUP (ORDER BY a.shipstat) stat_name
+FROM
+(SELECT 
+  s.shipment_gid,
+  'Pickup Late' shipstat
+FROM 
+  shipment s
+INNER JOIN
+  servprov sp ON s.servprov_gid = sp.servprov_gid
+AND
+  sp.servprov_xid NOT IN ('FOBCARR','SPOT BID CARRIER') 
+INNER JOIN
+  shipment_type st ON s.shipment_type_gid = st.shipment_type_gid
+AND 
+  st.shipment_type_xid = 'TRANSPORT' 
+AND NOT
+  st.shipment_type_xid = 'NON FREIGHT RELATED CHARGE' 
+WHERE 
+  (CASE WHEN s.source_location_gid IS NULL THEN TO_DATE(s.start_time,'dd-mm-rr')
+  ELSE TO_DATE(glogowner.utc.get_local_date(s.start_time,s.source_location_gid),'dd-mm-rr') END)
+  BETWEEN (TO_DATE(SYSDATE,'dd-mm-rr') + (0)) AND (TO_DATE(SYSDATE,'dd-mm-rr') + (4.0))
+AND 
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.perspective = 'B'
+AND 
+  (s.shipment_gid IN 
+(SELECT 
+  sstat.shipment_gid 
+FROM 
+  status_value sv 
+INNER JOIN
+  shipment_status sstat ON sv.status_value_gid = sstat.status_value_gid
+WHERE  
+  sv.status_value_xid = 'ENROUTE_NOT STARTED'))
+UNION
+SELECT 
+  s.shipment_gid,
+  'Delivery Late' shipstat
+FROM 
+  shipment s
+INNER JOIN
+  servprov sp ON s.servprov_gid = sp.servprov_gid
+AND
+  sp.servprov_xid NOT IN ('FOBCARR','SPOT BID CARRIER') 
+INNER JOIN
+  shipment_type st ON s.shipment_type_gid = st.shipment_type_gid
+AND 
+  st.shipment_type_xid = 'TRANSPORT' 
+AND NOT
+  st.shipment_type_xid = 'NON FREIGHT RELATED CHARGE'  
+WHERE 
+  (CASE WHEN s.source_location_gid IS NULL THEN TO_DATE(s.start_time,'dd-mm-rr')
+  ELSE TO_DATE(glogowner.utc.get_local_date(s.start_time,s.source_location_gid),'dd-mm-rr') END)
+  BETWEEN (TO_DATE(SYSDATE,'dd-mm-rr') + (0)) AND (TO_DATE(SYSDATE,'dd-mm-rr') + (4.0))
+AND 
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.perspective = 'B'  
+AND 
+  (s.shipment_gid IN 
+(SELECT 
+  sstat.shipment_gid 
+FROM 
+  status_value statv 
+INNER JOIN
+  shipment_status sstat ON statv.status_value_gid = sstat.status_value_gid
+WHERE  
+  statv.status_value_xid IN ('ENROUTE_DELAYED','ENROUTE_DIVERTED','ENROUTE_ENROUTE','ENROUTE_MERGED','ENROUTE_NOT STARTED','ENROUTE_PARTIAL','ENROUTE_UNLOADED - FULL','ENROUTE_UNLOADED - PARTIAL')))) a
+GROUP BY
+  a.shipment_gid) b
+INNER JOIN
+  shipment sh ON b.shipment_gid = sh.shipment_gid
+LEFT OUTER JOIN
+  servprov sprov ON sh.servprov_gid = sprov.servprov_gid
+LEFT OUTER JOIN
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY' 
+LEFT OUTER JOIN
+  item it ON sref2.shipment_refnum_value = it.item_xid
+LEFT OUTER JOIN
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON sh.dest_location_gid = loc2.location_gid  
+LEFT OUTER JOIN
+  transport_mode tm ON sh.transport_mode_gid = tm.transport_mode_gid
+WHERE
+  (:CARRIER_ID IS NULL
+OR
+  (NOT :CARRIER_ID IS NULL
+AND
+  sh.servprov_gid = :CARRIER_ID))
+ORDER BY
+  sh.start_time]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_CARRIER_SCHEDULE.before_report" />
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="CARRIER" value="CARRIER" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID"></element>
+      <element name="ITEM_NAME" value="ITEM_NAME" />
+      <element name="PICKUP_DATE" value="PICKUP_DATE" />
+      <element name="ORIGIN_NAME" value="ORIGIN_NAME" />
+      <element name="ORIGIN_CITY" value="ORIGIN_CITY" />
+      <element name="ORIGIN_STATE" value="ORIGIN_STATE" />
+      <element name="DELIVERY_DATE" value="DELIVERY_DATE" />
+      <element name="DELIVERY_NAME" value="DELIVERY_NAME" />
+      <element name="DELIVERY_STATE" value="DELIVERY_STATE"></element>
+      <element name="TRANS_MODE" value="TRANS_MODE"></element>
+      <element name="PLANNER" value="PLANNER" />
+    </group>
+  </dataStructure>
+</dataTemplate>

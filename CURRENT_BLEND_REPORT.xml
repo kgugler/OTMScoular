@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="CURRENT_BLEND_REPORT" description="Current Blend Report" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+	it_feat.item_gid commodity,
+  it.description commodity_description,
+  it_feat.item_feature_value blend,
+  it_feat.item_feature_qual_gid warehouse, 
+ 	to_char(from_tz(CAST(it_feat.effective_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY') start_date,
+ 	to_char(from_tz(CAST(it_feat.expiration_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY') end_date,
+  COALESCE(it_feat.update_user, it_feat.insert_user) blend_creator,
+  to_char(from_tz(COALESCE(CAST(it_feat.update_date AS TIMESTAMP), CAST(it_feat.insert_date AS TIMESTAMP)), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY') date_entered
+FROM 
+	item_feature it_feat 
+LEFT JOIN
+	item it ON it_feat.item_gid = it.item_gid
+WHERE 
+NOT it_feat.item_feature_qual_gid IN ('DESCRIPTION','REVISION','SUPPLIER_CONFIG_ID','SUPPLIER_ITEM','TYPE') 
+AND NOT it_feat.item_feature_qual_gid LIKE '%CERT%'
+ORDER BY it_feat.item_feature_qual_gid, it_feat.item_gid]]></sqlStatement>
+    <sqlStatement name="Q_ROW_COUNT"><![CDATA[SELECT COUNT(1) "ROW_COUNT" FROM (SELECT 
+	it_feat.item_gid commodity,
+  it.description commodity_description,
+  it_feat.item_feature_value blend,
+  it_feat.item_feature_qual_gid warehouse, 
+ 	to_char(from_tz(CAST(it_feat.effective_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY') start_date,
+ 	to_char(from_tz(CAST(it_feat.expiration_date AS TIMESTAMP), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY') end_date,
+  COALESCE(it_feat.update_user, it_feat.insert_user) blend_creator,
+  to_char(from_tz(COALESCE(CAST(it_feat.update_date AS TIMESTAMP), CAST(it_feat.insert_date AS TIMESTAMP)), 'GMT') AT TIME ZONE 'US/Central', 'MM/DD/YY') date_entered
+FROM 
+	item_feature it_feat 
+LEFT JOIN
+	item it ON it_feat.item_gid = it.item_gid
+WHERE 
+NOT it_feat.item_feature_qual_gid IN ('DESCRIPTION','REVISION','SUPPLIER_CONFIG_ID','SUPPLIER_ITEM','TYPE') 
+AND NOT it_feat.item_feature_qual_gid LIKE '%CERT%' )]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="COMMODITY_DESCRIPTION" value="COMMODITY_DESCRIPTION" />
+      <element name="BLEND" value="BLEND" />
+      <element name="WAREHOUSE" value="WAREHOUSE" />
+      <element name="START_DATE" value="START_DATE" />
+      <element name="END_DATE" value="END_DATE" />
+      <element name="BLEND_CREATOR" value="BLEND_CREATOR" />
+      <element name="DATE_ENTERED" value="DATE_ENTERED" />
+    </group>
+    <group name="G_ROW_COUNT" source="Q_ROW_COUNT">
+      <element name="ROW_COUNT" value="ROW_COUNT" />
+    </group>
+  </dataStructure>
+</dataTemplate>

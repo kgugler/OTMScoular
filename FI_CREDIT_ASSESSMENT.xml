@@ -1,0 +1,178 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CREDIT_ASSESSMENT" description="FI Customer Credit Line Assessment" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_UTILITY_PKG_FOOD" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character" />
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="CUSTOMER_ID" dataType="character" />
+    <parameter name="CUSTOMER_COUNTRY" dataType="character" />
+  </parameters>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT :START_DATE from_dt, :END_DATE to_dt FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  a.sort_date,
+  a.s_ship_unit_gid,
+  a.loc_code,
+  a.cust_id,
+  a.cust_name,
+  a.cust_country,
+  a.contract_id,
+  a.shipment_id,
+  TRIM(a.transport_id) transport_id,
+  a.bl_date,
+  a.commodity,
+  a.etd,
+  a.eta,
+  a.weight,
+  a.contract_price,
+  a.total_cost,
+  TO_CHAR((SELECT MIN(payment_date)
+  FROM glogowner.XXSCOU_AS400_PAY_RECEIPTS_TSC 
+  WHERE (tran_id = a.transport_id
+  OR (tran_id = SUBSTR(a.transport_id, 0, LENGTH(a.transport_id) - 1)))
+  AND TO_DATE(bl_date,'DD-MON-YY') = TO_DATE(a.bl_date, 'YYYY-MM-DD')
+  AND loc_code IN ('5025','5035','5037','5332','5334','5432','5444','5333','5433','5022','5335','5038','5036','5136')),'MM/DD/YYYY')
+  payment_date,
+  (SELECT inv.invoice_id
+  FROM
+  (SELECT invoice_id, MIN(payment_date)
+  FROM glogowner.XXSCOU_AS400_PAY_RECEIPTS_TSC 
+  WHERE (tran_id = a.transport_id
+  OR (tran_id = SUBSTR(a.transport_id, 0, LENGTH(a.transport_id) - 1))) 
+  AND TO_DATE(bl_date,'DD-MON-YY') = TO_DATE(a.bl_date, 'YYYY-MM-DD')
+  AND loc_code IN ('5025','5035','5037','5332','5334','5432','5444','5333','5433','5022','5335','5038','5036','5136')
+  GROUP BY invoice_id) inv
+  WHERE ROWNUM = 1)
+  invoice_number
+FROM
+(SELECT DISTINCT
+  TO_DATE(ssurem1.remark_text, 'YYYY-MM-DD') sort_date,
+  ssu.s_ship_unit_gid,
+  ssur1.refnum_value loc_code,
+  loc.location_xid cust_id,
+  loc.location_name cust_name,
+  loc.country_code3_gid cust_country,  
+  oob.order_base_xid contract_id,
+  s.shipment_xid shipment_id,
+  (CASE WHEN NOT ssur2.refnum_value IS NULL THEN
+    ssur2.refnum_value
+  WHEN NOT ssur3.refnum_value IS NULL THEN
+    ssur3.refnum_value
+  WHEN NOT ssur4.refnum_value IS NULL THEN
+    ssur4.refnum_value
+  ELSE
+    ' '
+  END)
+  transport_id,
+  ssurem1.remark_text bl_date,
+  (SELECT LISTAGG(itm.packaged_item_xid, ',')
+  WITHIN GROUP (ORDER BY itm.packaged_item_xid)
+  FROM
+  (SELECT DISTINCT pi.packaged_item_xid
+  FROM s_ship_unit_line ssul
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid) itm)
+  commodity,
+  (CASE WHEN s.source_location_gid IS NULL THEN
+    TO_CHAR(s.start_time,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(utc.get_local_date(s.start_time,s.source_location_gid),'MM/DD/YYYY')
+  END) 
+  etd,  
+  (CASE WHEN s.dest_location_gid IS NULL THEN
+    TO_CHAR(s.end_time,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(utc.get_local_date(s.end_time,s.dest_location_gid),'MM/DD/YYYY')
+  END) 
+  eta, 
+  ROUND(ssu.unit_weight_base / 2204.62262,3) weight,
+  ROUND(TO_NUMBER(obref.ob_refnum_value),2) contract_price,
+  ROUND(ROUND(ssu.unit_weight_base / 2204.62262,3) * TO_NUMBER(ROUND(obref.ob_refnum_value,2)),2) total_cost
+FROM
+	shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+	s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid  
+LEFT OUTER JOIN
+  shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'CUSTOMER'  
+LEFT OUTER JOIN
+  location loc ON sip.involved_party_contact_gid = loc.location_gid    
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur1 ON ssu.s_ship_unit_gid = ssur1.s_ship_unit_gid
+AND
+  ssur1.s_ship_unit_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur2 ON ssu.s_ship_unit_gid = ssur2.s_ship_unit_gid
+AND
+  ssur2.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.TRUCK ID'
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur3 ON ssu.s_ship_unit_gid = ssur3.s_ship_unit_gid
+AND
+  ssur3.s_ship_unit_refnum_qual_gid IN ('SCOULAR.CONTAINER ID','SCOULAR/FOOD.CONTAINER ID')
+LEFT OUTER JOIN
+  s_ship_unit_refnum ssur4 ON ssu.s_ship_unit_gid = ssur4.s_ship_unit_gid
+AND
+  ssur4.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.RAIL CAR ID'  
+LEFT OUTER JOIN
+  s_ship_unit_remark ssurem1 ON ssu.s_ship_unit_gid = ssurem1.s_ship_unit_gid
+AND
+  ssurem1.remark_qual_gid = 'SCOULAR.TRAN ID DATE'  
+LEFT OUTER JOIN
+  ob_refnum obref ON oob.order_base_gid = obref.order_base_gid
+AND
+  obref.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (TO_DATE(s.start_time,'dd-mm-rr') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(s.start_time,'dd-mm-rr') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:CUSTOMER_ID IS NULL OR (NOT :CUSTOMER_ID IS NULL AND
+  sip.involved_party_contact_gid
+          IN (SELECT REGEXP_SUBSTR(:CUSTOMER_ID,'[^,]+', 1, LEVEL) items
+          FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_ID, '[^,]+', 1, LEVEL) IS NOT NULL)))   
+AND
+  (:CUSTOMER_COUNTRY IS NULL OR (NOT :CUSTOMER_COUNTRY IS NULL AND
+  loc.country_code3_gid
+          IN (SELECT REGEXP_SUBSTR(:CUSTOMER_COUNTRY,'[^,]+', 1, LEVEL) items
+          FROM DUAL CONNECT BY REGEXP_SUBSTR(:CUSTOMER_COUNTRY, '[^,]+', 1, LEVEL) IS NOT NULL)))) a
+ORDER BY
+  a.cust_id, a.sort_date]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_UTILITY_PKG_FOOD.GET_AS400_CR_RECORDS_TSC" />
+  <dataStructure>
+    <group name="G_PARAMS" source="Q_PARAMS">
+      <element name="FROM_DT" value="FROM_DT" />
+      <element name="TO_DT" value="TO_DT" />
+    </group>
+    <group name="G_ROWS" source="Q_ROWS">
+      <element name="LOC_CODE" value="LOC_CODE" />
+      <element name="CUST_ID" value="CUST_ID" />
+      <element name="CUST_NAME" value="CUST_NAME" />
+      <element name="CUST_COUNTRY" value="CUST_COUNTRY"></element>
+      <element name="CONTRACT_ID" value="CONTRACT_ID" />
+      <element name="SHIPMENT_ID" value="SHIPMENT_ID" />
+      <element name="TRANSPORT_ID" value="TRANSPORT_ID" />
+      <element name="BL_DATE" value="BL_DATE" />
+      <element name="COMMODITY" value="COMMODITY" />
+      <element name="ETD" value="ETD" />
+      <element name="ETA" value="ETA" />
+      <element name="PAYMENT_DATE" value="PAYMENT_DATE" />
+      <element name="WEIGHT" value="WEIGHT" />
+      <element name="CONTRACT_PRICE" value="CONTRACT_PRICE" />
+      <element name="TOTAL_COST" value="TOTAL_COST" />
+      <element name="INVOICE_NUMBER" value="INVOICE_NUMBER" />
+    </group>
+  </dataStructure>
+</dataTemplate>

@@ -1,0 +1,116 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CUST_SHIPMENT_LOT_DETAILS" description="Customer Shipment Lot Details" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="DEST" dataType="character"></parameter>
+    <parameter name="START_DATE" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'MM/DD/YYYY')
+  start_dt,
+  (SELECT LISTAGG (TRIM(a.location_name), ', ')
+  WITHIN GROUP (ORDER BY TRIM(a.location_name))
+  FROM (SELECT DISTINCT loc.location_name
+  FROM location loc
+  WHERE loc.location_gid IN (SELECT REGEXP_SUBSTR('SCOULAR.' || REPLACE(:DEST,',',',SCOULAR.'), '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR('SCOULAR.' || REPLACE(:DEST,',',',SCOULAR.'), ',', 1, LEVEL - 1) > 0)) a)
+  dest_locs
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  ssu.s_ship_unit_gid,
+  s.dest_location_gid,
+  (SELECT DISTINCT ifeat.item_feature_value
+  FROM s_ship_unit_line ssul
+  INNER JOIN packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+  INNER JOIN item itm ON pi.item_gid = itm.item_gid
+  INNER JOIN item_feature ifeat ON itm.item_gid = ifeat.item_gid
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ifeat.item_feature_qual_gid = s.dest_location_gid
+  AND ROWNUM = 1)
+  product,
+  (SELECT DISTINCT oref.order_release_refnum_value
+  FROM s_ship_unit_line ssul
+  INNER JOIN order_release_refnum oref ON ssul.order_release_gid = oref.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+  AND ROWNUM = 1)
+  po_num,
+  (SELECT loc.city
+  FROM location loc
+  WHERE loc.location_gid = s.dest_location_gid)
+  plant,
+  TO_CHAR(s.end_time,'MM/DD/YYYY')
+  end_date,
+  (SELECT LISTAGG(ssref.refnum_value, ',')
+  WITHIN GROUP (ORDER BY ssref.refnum_value)
+  FROM s_ship_unit_line ssul
+  INNER JOIN s_ship_unit_line_refnum ssref ON ssul.s_ship_unit_gid = ssref.s_ship_unit_gid
+  AND ssref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+  AND ssref.s_sul_refnum_qual_gid = 'SCOULAR.LOT MOISTURE'
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid)
+  moisture,
+  (SELECT LISTAGG(ssref.refnum_value, ',')
+  WITHIN GROUP (ORDER BY ssref.refnum_value)
+  FROM s_ship_unit_line ssul
+  INNER JOIN s_ship_unit_line_refnum ssref ON ssul.s_ship_unit_gid = ssref.s_ship_unit_gid
+  AND ssref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+  AND ssref.s_sul_refnum_qual_gid = 'SCOULAR.LOT PROTEIN'
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid)
+  protein,
+  (SELECT LISTAGG(ssref.refnum_value, ',')
+  WITHIN GROUP (ORDER BY ssref.refnum_value)
+  FROM s_ship_unit_line ssul
+  INNER JOIN s_ship_unit_line_refnum ssref ON ssul.s_ship_unit_gid = ssref.s_ship_unit_gid
+  AND ssref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+  AND ssref.s_sul_refnum_qual_gid = 'SCOULAR.LOT FAT'
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid)
+  fat,  
+  (SELECT LISTAGG(ssref.refnum_value, ',')
+  WITHIN GROUP (ORDER BY ssref.refnum_value)
+  FROM s_ship_unit_line ssul
+  INNER JOIN s_ship_unit_line_refnum ssref ON ssul.s_ship_unit_gid = ssref.s_ship_unit_gid
+  AND ssref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+  AND ssref.s_sul_refnum_qual_gid = 'SCOULAR.LOT ASH'
+  WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid)
+  ash,
+  glog_util.remove_domain(s.source_location_gid)
+  origin,
+  sref.shipment_refnum_value
+  commodity,  
+  ssuref.refnum_value
+  lot_notes
+FROM 
+  shipment s
+INNER JOIN
+  shipment_stop_d ssd ON s.shipment_gid = ssd.shipment_gid
+AND
+  ssd.stop_num = 1
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+LEFT OUTER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+LEFT OUTER JOIN
+  s_ship_unit_line_refnum ssuref ON ssul.s_ship_unit_gid = ssuref.s_ship_unit_gid
+AND
+  ssuref.s_ship_unit_line_no = ssul.s_ship_unit_line_no
+AND
+  ssuref.s_sul_refnum_qual_gid = 'SCOULAR.LOT NOTES'  
+LEFT OUTER JOIN
+  shipment_refnum sref ON s.shipment_gid = sref.shipment_gid
+AND
+  sref.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'  
+WHERE
+  s.domain_name = 'SCOULAR/FOOD'
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  (:DEST IS NULL OR (NOT :DEST IS NULL AND
+  s.dest_location_gid IN (SELECT REGEXP_SUBSTR('SCOULAR.' || REPLACE(:DEST,',',',SCOULAR.'), '[^,]+', 1, LEVEL) FROM DUAL
+  CONNECT BY INSTR('SCOULAR.' || REPLACE(:DEST,',',',SCOULAR.'), ',', 1, LEVEL - 1) > 0)))
+AND
+  s.end_time >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+ORDER BY
+  3, 4, 5, 6]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

@@ -1,0 +1,386 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CANADA_INVOICE" description="NAP Canada Invoice" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="P_SHIPMENT_GID" dataType="character" />
+    <parameter name="P_RUN" dataType="character" />
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_HEADER"><![CDATA[SELECT 
+  shipment_gid,TO_CHAR(start_time,'yyyy/mm/dd') 
+  sdate,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_ref_num_fcn(sh.shipment_gid)
+  purchase,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_coo_num_fcn(sh.shipment_gid)
+  country_of_origin,
+  (SELECT trm.transport_mode_xid
+  FROM transport_mode trm
+  WHERE trm.transport_mode_gid = sh.transport_mode_gid)
+  transport_mode,
+  GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_pmc_num_fcn(sh.shipment_gid)
+  payment_terms,
+  'USD' currency
+FROM 
+  shipment sh
+INNER JOIN 
+  location loca ON sh.dest_location_gid = loca.location_gid
+AND 
+  loca.country_code3_gid = 'CAN'
+WHERE
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'FINAL'
+UNION
+SELECT 
+  shipment_gid,NVL(TO_CHAR(start_time,'yyyy/mm/dd'),'Data Missing in System') 
+  sdate,
+  NVL(GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_ref_num_fcn(sh.shipment_gid),'Data Missing in System')
+  purchase,
+  NVL(GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_coo_num_fcn(sh.shipment_gid),'Data Missing in System')
+  country_of_origin,
+  NVL((SELECT trm.transport_mode_xid
+  FROM transport_mode trm
+  WHERE trm.transport_mode_gid = sh.transport_mode_gid),'Data Missing in System')
+  transport_mode,
+  NVL(GLOGOWNER.XXSCOU_UTILITY_PKG.xxscou_get_pmc_num_fcn(sh.shipment_gid),'Data Missing in System')
+  payment_terms,
+  'USD' currency
+FROM 
+  shipment sh
+INNER JOIN 
+  location loca ON sh.dest_location_gid = loca.location_gid
+AND 
+  loca.country_code3_gid = 'CAN'
+WHERE
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_CONSIGNEE"><![CDATA[SELECT
+  sh.shipment_gid,
+  loc.location_name 
+  con_locname,
+  locadd.address_line 
+  con_add,
+  loc.city 
+  con_city,
+  loc.province_code 
+  con_state
+FROM 
+  shipment sh
+INNER JOIN 
+  location loc ON sh.dest_location_gid = loc.location_gid
+AND 
+  loc.country_code3_gid = 'CAN'  
+INNER JOIN 
+  location_address locadd ON loc.location_gid = locadd.location_gid
+AND 
+  locadd.line_sequence = 1
+WHERE
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'FINAL'       
+UNION
+SELECT 
+  sh.shipment_gid,
+  NVL(loc.location_name,'Data Missing in System')
+  con_locname,
+  locadd.address_line 
+  con_add,
+  loc.city 
+  con_city,
+  loc.province_code 
+  con_state
+FROM 
+  shipment sh
+LEFT OUTER JOIN 
+  location loc ON sh.dest_location_gid = loc.location_gid
+AND 
+  loc.country_code3_gid = 'CAN'  
+LEFT OUTER JOIN 
+  location_address locadd ON loc.location_gid = locadd.location_gid
+AND 
+  locadd.line_sequence = 1
+WHERE
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_PURCHASE"><![CDATA[SELECT
+  sh.shipment_gid,
+  loc.location_name 
+  pur_locname,
+  locadd.address_line 
+  pur_add,
+  loc.city 
+  pur_city,
+  loc.province_code 
+  pur_state
+FROM 
+  shipment sh
+INNER JOIN
+	shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+INNER JOIN
+  ob_line ol ON oob.order_base_gid = ol.order_base_gid
+INNER JOIN  
+  location loc ON ol.dest_location_gid = loc.location_gid
+AND 
+  loc.country_code3_gid = 'CAN'
+INNER JOIN  
+  location_address locadd ON loc.location_gid = locadd.location_gid
+AND 
+  locadd.line_sequence = 1
+WHERE
+  1 = 1
+AND
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  ROWNUM = 1 
+AND 
+  :P_RUN = 'FINAL'  
+UNION
+SELECT
+  sh.shipment_gid,
+  NVL(loc.location_name,'Data Missing in System') 
+  pur_locname,
+  locadd.address_line 
+  pur_add,
+  loc.city 
+  pur_city,
+  loc.province_code 
+  pur_state                                                          
+FROM 
+  shipment sh
+INNER JOIN
+	shipment_s_equipment_join ssej ON sh.shipment_gid = ssej.shipment_gid
+INNER JOIN
+	s_equipment_s_ship_unit_join sessuj ON ssej.s_equipment_gid = sessuj.s_equipment_gid
+INNER JOIN
+	s_ship_unit_line ssul ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+	ob_order_base oob ON ssul.order_base_gid = oob.order_base_gid
+INNER JOIN
+  ob_line ol ON oob.order_base_gid = ol.order_base_gid
+LEFT OUTER JOIN  
+  location loc ON ol.dest_location_gid = loc.location_gid
+AND 
+  loc.country_code3_gid = 'CAN'
+LEFT OUTER JOIN  
+  location_address locadd ON loc.location_gid = locadd.location_gid
+AND 
+  locadd.line_sequence = 1
+WHERE
+  1 = 1
+AND
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  ROWNUM = 1 
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ORIGINATOR"><![CDATA[SELECT
+  sh.shipment_gid,
+  loc.location_name 
+  org_locname,
+  locadd.address_line 
+  org_add,
+  loc.city 
+  org_city,
+  loc.province_code 
+  org_state
+FROM 
+  shipment sh
+INNER JOIN 
+  location loc ON sh.source_location_gid = loc.location_gid
+INNER JOIN 
+  location_address locadd ON loc.location_gid = locadd.location_gid
+AND 
+  locadd.line_sequence = 1
+WHERE
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'FINAL' 
+UNION
+SELECT 
+  sh.shipment_gid,
+  NVL(loc.location_name,'Data Missing in System') 
+  org_locname,
+  locadd.address_line 
+  org_add,
+  loc.city 
+  org_city,
+  loc.province_code 
+  org_state
+FROM 
+  shipment sh
+LEFT OUTER JOIN 
+  location loc ON sh.source_location_gid = loc.location_gid
+LEFT OUTER JOIN 
+  location_address locadd ON loc.location_gid = locadd.location_gid
+AND 
+  locadd.line_sequence = 1
+WHERE
+  1 = 1
+AND 
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  DECODE((:transport_mode),'BULK',1,'HOPPER',1,ssul.packaging_unit_count) 
+  packages,
+  itm.description,
+  NVL((SELECT ssuref.refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN s_ship_unit_refnum ssuref ON ssuref.s_ship_unit_gid = ssul.s_ship_unit_gid
+    AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.NUM_PACKAGES'
+    WHERE 1 = 1
+    AND ssul.s_ship_unit_gid = ssu.s_ship_unit_gid),0)
+  quantity,
+  NVL((SELECT obr.ob_refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+    INNER JOIN ob_refnum obr ON orel.order_base_gid = obr.order_base_gid
+    AND obr.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+    WHERE 1 = 1
+    AND ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND ROWNUM = 1),0)
+  price,
+  (NVL((SELECT ssuref.refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN s_ship_unit_refnum ssuref ON ssuref.s_ship_unit_gid = ssul.s_ship_unit_gid
+    AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.NUM_PACKAGES'
+    WHERE 1 = 1
+    AND ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND ROWNUM = 1),0)) * 
+  (NVL((SELECT obr.ob_refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+    INNER JOIN ob_refnum obr ON orel.order_base_gid = obr.order_base_gid
+    AND obr.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+    WHERE 1 = 1
+    AND ssul.s_ship_unit_gid = ssu.s_ship_unit_gid
+    AND ROWNUM = 1),0))
+  total
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1  
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+INNER JOIN
+  item itm ON pi.item_gid = itm.item_gid
+WHERE     
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'FINAL'
+UNION
+SELECT
+  DECODE((:transport_mode),'BULK',1,'HOPPER',1,ssul.packaging_unit_count) 
+  packages,
+  NVL(itm.description,'Data Missing in System')
+  description,
+  NVL((SELECT ssuref.refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN s_ship_unit_refnum ssuref ON ssuref.s_ship_unit_gid = ssul.s_ship_unit_gid
+    AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.NUM_PACKAGES'
+    WHERE 1 = 1
+    AND ssul.s_ship_unit_gid = ssu.s_ship_unit_gid),0)
+  quantity,
+  NVL((SELECT obr.ob_refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+    INNER JOIN ob_refnum obr ON orel.order_base_gid = obr.order_base_gid
+    AND obr.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+    WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid),0)
+  price,
+  (NVL((SELECT ssuref.refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN s_ship_unit_refnum ssuref ON ssuref.s_ship_unit_gid = ssul.s_ship_unit_gid
+    AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.NUM_PACKAGES'
+    WHERE 1 = 1
+    AND ssul.s_ship_unit_gid = ssu.s_ship_unit_gid),0)) * 
+  (NVL((SELECT obr.ob_refnum_value
+    FROM s_ship_unit_line ssul
+    INNER JOIN order_release orel ON ssul.order_release_gid = orel.order_release_gid
+    INNER JOIN ob_refnum obr ON orel.order_base_gid = obr.order_base_gid
+    AND obr.ob_refnum_qual_gid = 'SCOULAR.CONTRACT_PRICE'
+    WHERE ssul.s_ship_unit_gid = ssu.s_ship_unit_gid),0))
+  total
+FROM 
+  shipment sh
+INNER JOIN
+  shipment_stop_d ssd ON sh.shipment_gid = ssd.shipment_gid
+AND 
+  ssd.stop_num = 1  
+INNER JOIN
+  s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+INNER JOIN
+  s_ship_unit_line ssul ON ssu.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN
+  packaged_item pi ON ssul.packaged_item_gid = pi.packaged_item_gid
+INNER JOIN
+  item itm ON pi.item_gid = itm.item_gid
+WHERE     
+  sh.shipment_gid = :P_SHIPMENT_GID
+AND 
+  :P_RUN = 'DRAFT']]></sqlStatement>
+    <sqlStatement name="Q_DATE"><![CDATA[SELECT 
+  TRIM(TO_CHAR(SYSDATE,'FMDay, Month DD, yyyy ')) 
+  curr_date
+FROM DUAL]]></sqlStatement>
+  </dataQuery>
+  <dataStructure>
+    <group name="G_DATE" source="Q_DATE">
+      <element name="CURR_DATE" value="CURR_DATE" />
+    </group>
+    <group name="G_HEADER" source="Q_HEADER">
+      <element name="SHIPMENT_GID" value="SHIPMENT_GID" />
+      <element name="SDATE" value="SDATE" />
+      <element name="PURCHASE" value="PURCHASE" />
+      <element name="COUNTRY_OF_ORIGIN" value="COUNTRY_OF_ORIGIN" />
+      <element name="TRANSPORT_MODE" value="TRANSPORT_MODE" />
+      <element name="PAYMENT_TERMS" value="PAYMENT_TERMS" />
+      <element name="CURRENCY" value="CURRENCY" />
+      <group name="G_CONSIGNEE" source="Q_CONSIGNEE">
+        <element name="CON_LOCNAME" value="CON_LOCNAME" />
+        <element name="CON_ADD" value="CON_ADD" />
+        <element name="CON_CITY" value="CON_CITY" />
+        <element name="CON_STATE" value="CON_STATE" />
+      </group>
+      <group name="G_PURCHASE" source="Q_PURCHASE">
+        <element name="PUR_LOCNAME" value="PUR_LOCNAME" />
+        <element name="PUR_ADD" value="PUR_ADD" />
+        <element name="PUR_CITY" value="PUR_CITY" />
+        <element name="PUR_STATE" value="PUR_STATE" />
+      </group>
+      <group name="G_ORIGINATOR" source="Q_ORIGINATOR">
+        <element name="ORG_LOCNAME" value="ORG_LOCNAME" />
+        <element name="ORG_ADD" value="ORG_ADD" />
+        <element name="ORG_CITY" value="ORG_CITY" />
+        <element name="ORG_STATE" value="ORG_STATE" />
+      </group>
+      <group name="G_ROWS" source="Q_ROWS">
+        <element name="PACKAGES" value="PACKAGES" />
+        <element name="DESCRIPTION" value="DESCRIPTION" />
+        <element name="QUANTITY" value="QUANTITY" />
+        <element name="PRICE" value="PRICE" />
+        <element name="TOTAL" value="TOTAL" />
+      </group>
+    </group>
+  </dataStructure>
+</dataTemplate>

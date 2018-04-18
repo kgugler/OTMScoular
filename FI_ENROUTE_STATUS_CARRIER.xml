@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_ENROUTE_STATUS_CARRIER" description="Enroute Status Report - Carrier" dataSourceRef="ORCL" defaultPackage="GLOGOWNER.XXSCOU_ENROUTE_STATUS_SUMMARY" version="1.0">
+  <parameters>
+    <parameter name="CARRIER_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  (CASE WHEN :CARRIER_ID IS NULL THEN
+    'All Carriers'
+  ELSE
+    glog_util.remove_domain(:CARRIER_ID) || ' - ' || (SELECT location_name FROM location WHERE location_gid = :CARRIER_ID)
+  END)
+  carrier_name,
+  TO_CHAR(SYSDATE,'MM-DD-YYYY HH:MI:SS AM')
+  time_stamp
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  sh.insert_user,
+  tm.transport_mode_xid,
+  TO_DATE(glogowner.utc.get_local_date(sh.end_time,sh.dest_location_gid),'dd-mm-rr')
+  dest_date,
+  REPLACE(sh.insert_user,'SCOULAR/FOOD.','') 
+  planner,
+  TO_CHAR(TO_DATE(glogowner.utc.get_local_date(sh.start_time,sh.source_location_gid),'dd-mm-rr'), 'MM/DD/YYYY') 
+  pickup_date,  
+  TO_CHAR(TO_DATE(glogowner.utc.get_local_date(sh.end_time,sh.dest_location_gid),'dd-mm-rr'), 'MM/DD/YYYY') 
+  delivery_date,  
+  sh.shipment_xid 
+  shipment_id,
+  REPLACE(TRIM((CASE WHEN ss.status_value_gid = 'SCOULAR/FOOD.ENROUTE_NOT STARTED' AND sh.start_time BETWEEN (SYSDATE -365) AND (SYSDATE -0.75) THEN
+    'Pickup Late'
+  END) || '  ' ||
+  (CASE WHEN sh.end_time BETWEEN (SYSDATE -365) AND (SYSDATE -0.75) THEN
+    'Delivery Late'
+  END)),'  ',', ')
+  ship_status,
+  it.item_name,
+  loc1.location_name 
+  origin_name,
+  loc1.city 
+  origin_city,
+  loc1.province_code 
+  origin_state,
+  loc2.location_name 
+  delivery_name,
+  loc2.province_code 
+  delivery_state
+FROM
+  shipment sh
+INNER JOIN 
+  servprov sprov ON sh.servprov_gid = sprov.servprov_gid
+INNER JOIN 
+  shipment_refnum sref1 ON sh.shipment_gid = sref1.shipment_gid
+AND 
+  sref1.shipment_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+INNER JOIN 
+  shipment_refnum sref2 ON sh.shipment_gid = sref2.shipment_gid
+AND 
+  sref2.shipment_refnum_qual_gid = 'SCOULAR.COMMODITY'
+INNER JOIN 
+  item it ON sref2.shipment_refnum_value = it.item_xid
+INNER JOIN 
+  location loc1 ON sh.source_location_gid = loc1.location_gid
+INNER JOIN 
+  location loc2 ON sh.dest_location_gid = loc2.location_gid
+INNER JOIN 
+  transport_mode tm ON sh.transport_mode_gid = tm.transport_mode_gid
+INNER JOIN 
+  shipment_status ss ON sh.shipment_gid = ss.shipment_gid
+AND 
+  ss.status_type_gid = 'SCOULAR/FOOD.ENROUTE'
+INNER JOIN 
+  status_value sv ON ss.status_value_gid = sv.status_value_gid
+INNER JOIN 
+  location loc3 ON sh.servprov_gid = loc3.location_gid
+LEFT OUTER JOIN
+  contact con ON loc3.location_gid = con.location_gid
+AND 
+  con.is_primary_contact = 'Y'
+WHERE 
+  sh.servprov_gid NOT IN ('SCOULAR.FOBCARR','SCOULAR.SPOT BID CARRIER')
+AND 
+  sh.shipment_type_gid = 'TRANSPORT'
+AND 
+  ((sh.start_time BETWEEN (SYSDATE -365) AND (SYSDATE -0.75)
+AND 
+  ss.status_value_gid = 'SCOULAR/FOOD.ENROUTE_NOT STARTED')
+OR 
+  (sh.end_time BETWEEN (SYSDATE -365) AND (SYSDATE -0.75)
+AND 
+  ss.status_value_gid IN ('SCOULAR/FOOD.ENROUTE_DELAYED', 'SCOULAR/FOOD.ENROUTE_DIVERTED', 'SCOULAR/FOOD.ENROUTE_ENROUTE', 'SCOULAR/FOOD.ENROUTE_MERGED', 'SCOULAR/FOOD.ENROUTE_NOT STARTED', 'SCOULAR/FOOD.ENROUTE_PARTIAL', 'SCOULAR/FOOD.ENROUTE_UNLOADED - FULL', 'SCOULAR/FOOD.ENROUTE_UNLOADED - PARTIAL')))  
+AND 
+  sh.domain_name = 'SCOULAR/FOOD'
+AND 
+  sh.perspective = 'B'
+AND
+  (:CARRIER_ID IS NULL
+OR 
+  (NOT :CARRIER_ID IS NULL
+AND 
+  sh.servprov_gid = :CARRIER_ID))
+ORDER BY 
+  sh.insert_user,
+  tm.transport_mode_xid,
+  TO_DATE(glogowner.utc.get_local_date(sh.end_time,sh.dest_location_gid),'dd-mm-rr')]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="beforeReport" source="GLOGOWNER.XXSCOU_ENROUTE_STATUS_SUMMARY.before_report" />
+</dataTemplate>

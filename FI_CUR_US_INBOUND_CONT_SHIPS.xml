@@ -1,0 +1,212 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="FI_CUR_US_INBOUND_CONT_SHIPS" description="Current U.S. Inbound Container Shipments" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="LOC" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+  TO_CHAR(SYSDATE,'fmMM/DD/YY HH24:MI:SS') sys_date,
+  NVL(:LOC,'ALL') loc_string
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT 
+  oref1.order_release_refnum_value
+  loc_code,
+  oref2.order_release_refnum_value
+  commodity,
+  a.shipment_xid
+  shipment_id,
+  a.origin,
+  a.warehouse,
+  a.release_no,
+  oref3.order_release_refnum_value
+  cust_po_release_no,
+  NVL((SELECT ssref1.refnum_value
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssref1 ON ssref1.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssref1.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER ID'
+  INNER JOIN s_ship_unit_line sul ON ssd.s_ship_unit_gid = sul.s_ship_unit_gid
+  AND sul.order_release_gid = a.order_release_gid    
+  WHERE ssd.shipment_gid = a.shipment_gid 
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1),
+  (SELECT ssref1.refnum_value
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssref1 ON ssref1.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssref1.s_ship_unit_refnum_qual_gid = 'SCOULAR/FOOD.CONTAINER ID'  
+  INNER JOIN s_ship_unit_line sul ON ssd.s_ship_unit_gid = sul.s_ship_unit_gid
+  AND sul.order_release_gid = a.order_release_gid  
+  WHERE ssd.shipment_gid = a.shipment_gid 
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1))
+  container_no,
+  TO_CHAR((SELECT ss.update_date
+  FROM shipment_status ss 
+  WHERE ss.shipment_gid = a.shipment_gid
+  AND ss.status_type_gid = 'SCOULAR/FOOD.SAR_AS400'
+  AND ss.status_value_gid = 'SCOULAR/FOOD.SAR_AS400_YES'
+  AND ROWNUM = 1),'fmMM/DD/YY')
+  as400_date,
+  TO_CHAR(NVL(a.start_time,a.early_pickup_date),'fmMM/DD/YY')
+  ets_date,
+  TO_CHAR(NVL(a.end_time,a.late_delivery_date),'fmMM/DD/YY')
+  eta_date,
+  ROUND(NVL((SELECT ssu.unit_net_weight_base
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  INNER JOIN s_ship_unit_line sul ON ssu.s_ship_unit_gid = sul.s_ship_unit_gid
+  AND sul.order_release_gid = a.order_release_gid
+  WHERE ssd.shipment_gid = a.shipment_gid 
+  AND ssd.stop_num = 1   
+  AND ROWNUM = 1),a.total_weight_base),2)
+  weight_lbs,
+  orem.remark_text
+  comments,
+  a.vessel,
+  TO_CHAR((SELECT NVL(ssuref.update_date, ssuref.insert_date)
+  FROM  shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssuref ON ssuref.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER DRAYED'
+  AND ssuref.refnum_value = 'YES'  
+  INNER JOIN s_ship_unit_line sul ON ssd.s_ship_unit_gid = sul.s_ship_unit_gid
+  AND sul.order_release_gid = a.order_release_gid    
+  WHERE ssd.shipment_gid = a.shipment_gid 
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1),'fmMM/DD/YY')
+  dray_date,
+  TO_CHAR((SELECT NVL(ssuref.update_date, ssuref.insert_date)
+  FROM  shipment_stop_d ssd
+  INNER JOIN s_ship_unit_refnum ssuref ON ssuref.s_ship_unit_gid = ssd.s_ship_unit_gid
+  AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.DESTINATION WEIGHT'  
+  INNER JOIN s_ship_unit_line sul ON ssd.s_ship_unit_gid = sul.s_ship_unit_gid
+  AND sul.order_release_gid = a.order_release_gid    
+  WHERE ssd.shipment_gid = a.shipment_gid 
+  AND ssd.stop_num = 1
+  AND ROWNUM = 1),'fmMM/DD/YY')
+  emptied_date
+FROM
+(SELECT DISTINCT
+  orel.order_release_gid,
+  orel.early_pickup_date,
+  orel.late_delivery_date,
+  NVL(loc1.location_name, loc1.location_xid)
+  origin,
+  NVL(loc2.location_name, loc2.location_xid)
+  warehouse,
+  orel.order_release_xid
+  release_no,
+  orel.order_release_name
+  vessel,
+  orel.total_weight_base,
+  NULL shipment_xid,
+  NULL shipment_gid,
+  NULL start_time,
+  NULL end_time
+FROM
+  order_release orel
+INNER JOIN
+  location loc1 ON orel.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON orel.dest_location_gid = loc2.location_gid
+WHERE
+  orel.domain_name = 'SCOULAR/FOOD'
+AND
+  NOT loc1.country_code3_gid IN ('CAN','MEX')
+AND
+  (NOT loc1.country_code3_gid = 'USA'
+AND
+  loc2.country_code3_gid = 'USA')
+AND
+  NOT EXISTS
+  (SELECT oref.order_release_refnum_value
+  FROM order_release_refnum oref
+  WHERE oref.order_release_gid = orel.order_release_gid
+  AND oref.order_release_refnum_qual_gid = 'SCOULAR.PREADVISE'
+  AND oref.order_release_refnum_value = 'YES')
+AND
+  NOT EXISTS
+  (SELECT s.shipment_gid
+  FROM s_ship_unit_line ssul 
+  INNER JOIN shipment_stop_d ssd ON ssd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND ssd.stop_num = 1  
+  INNER JOIN shipment s ON ssd.shipment_gid = s.shipment_gid
+  WHERE ssul.order_release_gid = orel.order_release_gid)
+UNION
+SELECT DISTINCT
+  orel.order_release_gid,
+  orel.early_pickup_date,
+  orel.late_delivery_date,
+  NVL(loc1.location_name, loc1.location_xid)
+  origin,
+  NVL(loc2.location_name, loc2.location_xid)
+  warehouse,
+  orel.order_release_xid
+  release_no,
+  s.shipment_name
+  vessel,
+  orel.total_weight_base,
+  s.shipment_xid,
+  s.shipment_gid,
+  s.start_time,
+  s.end_time
+FROM
+  order_release orel
+INNER JOIN
+  location loc1 ON orel.source_location_gid = loc1.location_gid
+INNER JOIN
+  location loc2 ON orel.dest_location_gid = loc2.location_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON orel.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  shipment_stop_d sstopd ON sstopd.s_ship_unit_gid = ssul.s_ship_unit_gid
+AND 
+  sstopd.stop_num = 1  
+INNER JOIN 
+  shipment s ON sstopd.shipment_gid = s.shipment_gid
+AND
+  s.shipment_type_gid = 'TRANSPORT'
+AND
+  s.transport_mode_gid = 'VESSEL-CO'   
+WHERE
+  orel.domain_name = 'SCOULAR/FOOD'
+AND
+  (NOT loc1.country_code3_gid = 'USA'
+AND
+  loc2.country_code3_gid = 'USA')
+AND
+  NOT EXISTS
+  (SELECT s.shipment_gid
+  FROM shipment sh
+  INNER JOIN shipment_stop_d ssdd ON ssdd.s_ship_unit_gid = ssul.s_ship_unit_gid
+  AND ssdd.stop_num = 1    
+  INNER JOIN s_ship_unit_refnum ssuref ON ssdd.s_ship_unit_gid = ssuref.s_ship_unit_gid
+  AND ssuref.s_ship_unit_refnum_qual_gid = 'SCOULAR.CONTAINER DRAYED'
+  AND ssuref.refnum_value = 'YES'
+  INNER JOIN s_ship_unit_line sul ON ssdd.s_ship_unit_gid = sul.s_ship_unit_gid
+  AND sul.order_release_gid = orel.order_release_gid
+  WHERE sh.shipment_gid = s.shipment_gid
+  AND TO_DATE(TO_CHAR(NVL(ssuref.update_date,ssuref.insert_date),'MM-DD-YYYY'),'mm-dd-rrrr') <= TO_DATE(TO_CHAR(SYSDATE,'MM/DD/YYYY'),'mm-dd-rrrr') - 31)) a
+LEFT OUTER JOIN
+  order_release_refnum oref1 ON a.order_release_gid = oref1.order_release_gid
+AND
+  oref1.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  order_release_refnum oref2 ON a.order_release_gid = oref2.order_release_gid
+AND
+  oref2.order_release_refnum_qual_gid = 'SCOULAR.COMMODITY'
+LEFT OUTER JOIN
+  order_release_refnum oref3 ON a.order_release_gid = oref3.order_release_gid
+AND
+  oref3.order_release_refnum_qual_gid = 'SCOULAR.CUSTOMER PO RELEASE NUMBER'
+LEFT OUTER JOIN
+  order_release_remark orem ON a.order_release_gid = orem.order_release_gid
+AND
+  orem.remark_qual_gid = 'SCOULAR/FOOD.CONTAINER NOTES'
+WHERE
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  oref1.order_release_refnum_value IN (SELECT TO_NUMBER(xt.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt))) 
+ORDER BY 
+  oref1.order_release_refnum_value, a.warehouse, oref2.order_release_refnum_value, a.release_no]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>
