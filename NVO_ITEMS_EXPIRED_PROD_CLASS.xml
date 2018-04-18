@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_ITEMS_EXPIRED_PROD_CLASS" description="NVO Items With Expired Product Classification" dataSourceRef="ORCL" defaultPackage="REPORTOWNER.XXSCOU_NVO_ITEMS_EXPIRED" version="1.0">
+  <parameters></parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  itm.item_xid
+  item_id,
+  itm.description,
+  gic.gtm_prod_class_type_gid
+  class_type_id,
+  itm.item_name,
+  glog_util.remove_domain(itm.commodity_gid) commodity_id,
+  TO_CHAR((SELECT gdv.source_date
+          FROM gtm_data_version gdv
+          WHERE gdv.gtm_data_version_gid =
+          (SELECT gpcc.gtm_data_version_gid
+          FROM gtm_prod_class_code gpcc
+          WHERE gpcc.gtm_prod_class_code_gid = gic.gtm_prod_class_code_gid)),'MM/DD/YYYY')
+  expired_on
+FROM
+  item itm
+INNER JOIN
+  gtm_item_classification gic ON itm.item_gid = gic.gtm_item_gid
+WHERE
+  gic.domain_name = 'SCOULAR/NVO'
+AND
+  gic.classification_status = 'Classification Invalid'
+ORDER BY
+  TO_DATE(expired_on,'MM/DD/YYYY')]]></sqlStatement>
+  </dataQuery>
+  <dataTrigger name="before_report" source="GLOGOWNER.XXSCOU_NVO_ITEMS_EXPIRED.before_report" />
+</dataTemplate>

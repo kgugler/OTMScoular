@@ -1,0 +1,204 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_METRICS_ACCOUNT_DATE_EXPORT" description="NVO Metrics - Accounting Date (Export)" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character" />
+    <parameter name="LOC" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
+TO_CHAR(TO_DATE(SYSDATE,'dd-mm-rr'),'MM/DD/YYYY') s_date,
+:START_DATE start_dt,
+:END_DATE end_dt,
+:LOC loc_string
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  j.job_xid job_id,
+  j.attribute4 loc_num,
+  con1.contact_xid bill_to,
+  loc3.location_xid shipper,
+  loc3.location_name shipper_name,
+  (CASE WHEN js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED' THEN
+    TO_CHAR(js.update_date,'MM/DD/YYYY')
+  ELSE
+    TO_CHAR(j.attribute_date1,'MM/DD/YYYY')
+  END)
+  close_date,
+  (CASE WHEN js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED' THEN
+    'YES'
+  ELSE
+    'NO'
+  END)
+  is_cancelled,
+  (SELECT 
+    (CASE WHEN a.cnt > 0 THEN 
+      1 
+    ELSE 
+      0 
+    END)
+  FROM
+  (SELECT COUNT(DISTINCT sh.shipment_gid) cnt
+  FROM job_order_release_join jorjoin
+  INNER JOIN s_ship_unit_line ssuline ON jorjoin.order_release_gid = ssuline.order_release_gid
+  INNER JOIN shipment_stop_d ssd ON ssuline.s_ship_unit_gid = ssd.s_ship_unit_gid
+  INNER JOIN shipment_stop ss ON ssd.shipment_gid = ss.shipment_gid
+  AND ss.stop_num = '1'
+  INNER JOIN shipment sh ON ss.shipment_gid = sh.shipment_gid
+  AND sh.perspective = 'B'
+  AND sh.transport_mode_gid = 'DRAYAGE'
+  WHERE jorjoin.job_gid = j.job_gid) a)
+  drayage,
+  NVL(TO_CHAR(brt.r_version), '0')
+  booking_count,
+  TO_CHAR((SELECT COUNT(rlp.file_name) 
+  FROM reportowner.report_log rl
+  INNER JOIN reportowner.report_log_parameter rlp ON rl.file_name = rlp.file_name
+  AND rlp.parameter_name = 'JOB_ID'
+  WHERE rlp.parameter_value = j.job_gid))
+  document_count,
+  TO_CHAR((SELECT COUNT(ssu.s_ship_unit_gid)
+  FROM shipment_stop_d ssd
+  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
+  WHERE ssd.shipment_gid = s.shipment_gid
+  AND ssd.stop_num = 1))
+  container_count,
+  TO_CHAR(((SELECT COUNT(DISTINCT v1.voucher_gid)
+  FROM job_order_release_join jorj1
+  INNER JOIN s_ship_unit_line ssul1 ON jorj1.order_release_gid = ssul1.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid
+  INNER JOIN shipment s1 ON ssej1.shipment_gid = s1.shipment_gid
+  INNER JOIN invoice_shipment ish1 ON s1.shipment_gid = ish1.shipment_gid
+  INNER JOIN voucher v1 ON ish1.invoice_gid = v1.invoice_gid
+  WHERE jorj1.job_gid = j.job_gid
+  ) +
+  (SELECT COUNT(DISTINCT inv2.invoice_gid)
+  FROM job_order_release_join jorj2
+  INNER JOIN s_ship_unit_line ssul2 ON jorj2.order_release_gid = ssul2.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid
+  INNER JOIN shipment s2 ON ssej2.shipment_gid = s2.shipment_gid
+  INNER JOIN shipment_bill sbill2 ON s2.shipment_gid = sbill2.shipment_gid
+  INNER JOIN invoice inv2 ON sbill2.bill_gid = inv2.invoice_gid
+  WHERE jorj2.job_gid = j.job_gid)))
+  finance_count,
+  (CASE WHEN srem.remark_text = 'true' THEN
+    '1'
+  ELSE
+    '0'
+  END)
+  letter_of_credit,
+  TO_CHAR((SELECT COUNT(DISTINCT gtc.gtm_transaction_gid)
+  FROM job_order_release_join jorj3
+  INNER JOIN s_ship_unit_line ssul3 ON jorj3.order_release_gid = ssul3.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj3 ON ssul3.s_ship_unit_gid = sessuj3.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej3 ON sessuj3.s_equipment_gid = ssej3.s_equipment_gid
+  INNER JOIN shipment s3 ON ssej3.shipment_gid = s3.shipment_gid
+  INNER JOIN gtm_transaction gt ON gt.object_id = s.shipment_gid
+  AND gt.data_query_type_gid ='SHIPMENT'
+  AND gt.gtm_transaction_type ='TRANSACTION'
+  INNER JOIN gtm_transaction_line gtl ON gt.gtm_transaction_gid = gtl.gtm_transaction_gid
+  INNER JOIN gtm_transaction_line gtcl ON gtl.gtm_transaction_line_gid = gtcl.preceding_transaction_line_gid
+  AND gtcl.gtm_transaction_gid != 'SCOULAR.AES_VESSEL'
+  INNER JOIN gtm_transaction gtc ON gtcl.gtm_transaction_gid = gtc.gtm_transaction_gid
+  AND gtc.gtm_consol_criteria_gid = 'SCOULAR/NVO.AES'
+  WHERE jorj3.job_gid = j.job_gid))
+  aes,
+  (CASE WHEN loc1.country_code3_gid = 'JPN' OR loc2.country_code3_gid = 'JPN' THEN
+    '1'
+  ELSE
+    '0'
+  END)
+  japan_two_four,
+  (SELECT LISTAGG(con2.contact_xid,', ')
+  WITHIN GROUP (ORDER BY con2.contact_xid)
+  FROM shipment_involved_party sip2
+  INNER JOIN	contact con2 ON sip2.involved_party_contact_gid = con2.contact_gid  
+  WHERE sip2.shipment_gid = s.shipment_gid
+  AND	sip2.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER')
+  ops_manager
+FROM
+	job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+  s.shipment_type_gid ='TRANSPORT' 
+AND 
+  s.transport_mode_gid='VESSEL-CO' 
+AND
+  s.is_primary='Y' 
+AND
+  s.perspective='B'   
+LEFT OUTER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+LEFT OUTER JOIN
+	charter_voyage cv ON NVL2(sr.shipment_refnum_value,'SCOULAR/NVO.' || sr.shipment_refnum_value, 'SCOULAR/NVO.' || j.attribute2) = cv.charter_voyage_gid
+LEFT OUTER JOIN
+  glogowner.xxscou_booking_revision_tbl brt ON cv.charter_voyage_gid = brt.charter_voyage_gid
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr ON cv.charter_voyage_gid = cvr.charter_voyage_gid
+AND
+	cvr.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_TRANSHIP PORT' 
+LEFT OUTER JOIN
+  location loc1 ON 'SCOULAR.' || cvr.charter_voyage_refnum_value = loc1.location_gid
+LEFT OUTER JOIN
+  location loc2 ON s.dest_location_gid = loc2.location_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip1 ON s.shipment_gid = sip1.shipment_gid
+AND
+	sip1.involved_party_qual_gid = 'BILL-TO'
+LEFT OUTER JOIN
+	contact con1 ON sip1.involved_party_contact_gid = con1.contact_gid
+LEFT OUTER JOIN
+	shipment_involved_party sip2 ON s.shipment_gid = sip2.shipment_gid
+AND
+	sip2.involved_party_qual_gid = 'SHIPPER' 
+LEFT OUTER JOIN
+  location loc3 ON sip2.involved_party_contact_gid = loc3.location_gid  
+LEFT OUTER JOIN
+  job_status js ON j.job_gid = js.job_gid
+AND
+  js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED' 
+LEFT OUTER JOIN
+  job_status js2 ON j.job_gid = js2.job_gid
+AND
+  js2.status_type_gid = 'SCOULAR/NVO.JOB OPEN'   
+AND
+  js2.status_value_gid = 'SCOULAR/NVO.JOB OPEN_CLOSED'
+LEFT OUTER JOIN
+	shipment_remark srem ON s.shipment_gid = srem.shipment_gid
+AND
+	srem.remark_qual_gid = 'SCOULAR/NVO.METRIC_LETTER OF CREDIT'		  
+WHERE
+  j.domain_name = 'SCOULAR/NVO'
+AND
+  ((CASE WHEN js.status_value_gid = 'SCOULAR/NVO.JOB_NOT_CANCELLED' OR js.status_value_gid = 'SCOULAR/NVO.JOB_REINSTATED' THEN
+    TO_DATE(j.attribute_date4,'dd-mm-rr')
+  ELSE
+    TO_DATE(j.attribute_date1,'dd-mm-rr')
+  END) >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  (CASE WHEN js.status_value_gid = 'SCOULAR/NVO.JOB_NOT_CANCELLED' OR js.status_value_gid = 'SCOULAR/NVO.JOB_REINSTATED' THEN
+    TO_DATE(j.attribute_date4,'dd-mm-rr')
+  ELSE
+    TO_DATE(j.attribute_date1,'dd-mm-rr')
+  END) <= TO_DATE(:END_DATE,'YYYY-MM-DD'))
+AND
+  (:LOC IS NULL OR (NOT :LOC IS NULL AND
+  j.attribute4 IN (SELECT TO_NUMBER(xt4.column_value)
+	         FROM XMLTABLE(LTRIM(RTRIM(REGEXP_REPLACE(REGEXP_REPLACE(:LOC,'[^[:digit:]]+', ','),'^,+|,+$'), ','), ',')) xt4)))
+ORDER BY 
+  j.job_xid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

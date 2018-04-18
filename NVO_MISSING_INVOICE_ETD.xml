@@ -12,11 +12,11 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_RUN_DATES"><![CDATA[SELECT
+    <sqlStatement name="Q_DATES"><![CDATA[SELECT
   TO_CHAR(SYSDATE,'fmMM/DD/YY') run_date,
   TO_CHAR(SYSDATE,'fmHH:MI PM') run_time
 FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
   TO_CHAR(TO_DATE(:OP_START_DATE,'YYYY-MM-DD'),'MM/DD/YY') op_s_date,
   TO_CHAR(TO_DATE(:OP_END_DATE,'YYYY-MM-DD'),'MM/DD/YY') op_e_date,
   :P_IMPORT_EXPORT import_export,
@@ -194,11 +194,11 @@ AND
 ORDER BY s_date, house_bill_lading]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_RUN_DATES" source="Q_RUN_DATES">
+    <group name="G_DATES" source="Q_DATES">
       <element name="RUN_DATE" value="RUN_DATE" />
       <element name="RUN_TIME" value="RUN_TIME" />
     </group>
-    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="OP_S_DATE" value="OP_S_DATE"></element>
       <element name="OP_E_DATE" value="OP_E_DATE"></element>
       <element name="IMPORT_EXPORT" value="IMPORT_EXPORT" />

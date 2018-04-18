@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_INVOICES_CREATED" description="NVO Invoices Created" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  :START_DATE start_dt,
+  :END_DATE end_dt
+FROM DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT
+  inv.invoice_xid,
+  glog_util.remove_domain(inv.servprov_gid)
+  carrier,
+  invref1.invoice_refnum_value
+  job_type,
+  invref2.invoice_refnum_value
+  job_id,
+  NVL((SELECT DISTINCT j.attribute2
+  FROM job j
+  INNER JOIN job_order_release_join jorj ON j.job_gid = jorj.job_gid
+  INNER JOIN s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  WHERE ssej.shipment_gid = invs.shipment_gid
+  AND ROWNUM = 1),'N/A')
+  booking_number,
+  glog_util.remove_domain(invs.shipment_gid)
+  shipment_xid,
+  inv.invoice_number,
+  TO_CHAR(inv.net_amount_due,'999,999,990.00')
+  amount_due,
+  TO_CHAR(inv.net_due_date,'MM/DD/YYYY')
+  due_date,
+  TO_CHAR(inv.insert_date,'MM/DD/YYYY')
+  create_date,
+  (SELECT DISTINCT orel.payment_method_code_gid
+  FROM order_release orel
+  INNER JOIN job_order_release_join jorj ON orel.order_release_gid = jorj.order_release_gid
+  INNER JOIN s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+  WHERE ssej.shipment_gid = invs.shipment_gid
+  AND ROWNUM = 1)
+  payment_method
+FROM
+  invoice inv
+INNER JOIN
+  invoice_shipment invs ON inv.invoice_gid = invs.invoice_gid
+LEFT OUTER JOIN
+  invoice_refnum invref1 ON inv.invoice_gid = invref1.invoice_gid
+AND
+  invref1.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBTYPE'
+LEFT OUTER JOIN
+  invoice_refnum invref2 ON inv.invoice_gid = invref2.invoice_gid
+AND
+  invref2.invoice_refnum_qual_gid = 'SCOULAR/NVO.JOBID'
+WHERE
+  inv.domain_name = 'SCOULAR/NVO'
+AND
+  (TO_DATE(inv.insert_date,'DD-MM-RR') >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND
+  TO_DATE(inv.insert_date,'DD-MM-RR') <= TO_DATE(:END_DATE,'YYYY-MM-DD'))]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

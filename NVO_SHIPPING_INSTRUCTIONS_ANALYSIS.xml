@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataTemplate name="NVO_SHIPPING_INSTRUCTIONS_ANALYSIS" description="NVO Shipping Instructions Analysis" dataSourceRef="ORCL" defaultPackage="" version="1.0">
+  <parameters>
+    <parameter name="START_DATE" dataType="character"></parameter>
+    <parameter name="END_DATE" dataType="character"></parameter>
+    <parameter name="CARRIER_ID" dataType="character"></parameter>
+    <parameter name="USER_ID" dataType="character"></parameter>
+  </parameters>
+  <lexicals></lexicals>
+  <dataQuery>
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
+  TO_CHAR(TO_DATE(:START_DATE,'YYYY-MM-DD'),'MM/DD/YYYY')
+  start_dt,
+  TO_CHAR(TO_DATE(:END_DATE,'YYYY-MM-DD'),'MM/DD/YYYY')
+  end_dt
+FROM
+  DUAL]]></sqlStatement>
+    <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
+  a.job_xid
+  job_no,
+  a.charter_voyage_xid
+  booking_no,
+  glog_util.remove_domain(a.servprov_gid)
+  carrier,
+  oref.order_release_refnum_value
+  loc_code,
+  glog_util.remove_domain(sip.involved_party_contact_gid)
+  shipper,
+  DECODE(a.SI_EDI,'Y',TO_CHAR(a.EDI_DATE,'MM/DD/YY'),'N',TO_CHAR(a.MANUAL_DATE,'MM/DD/YY'))
+  submit_date,
+  DECODE(a.SI_EDI,'Y','EDI','N','Manual') 
+  manual_edi,
+  glog_util.remove_domain(a.update_user)
+  submit_user,
+  glog_util.remove_domain(a.source_location_gid)
+  source_loc,
+  glog_util.remove_domain(a.dest_location_gid)
+  dest_loc,
+  cvref.charter_voyage_refnum_value
+  doc_cutoff,
+  TO_CHAR(a.departure_date,'MM/DD/YY')
+  etd,
+  TO_CHAR(a.arrival_date,'MM/DD/YY')
+  eta,  
+  (CASE WHEN js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED' THEN
+    'Cancelled'
+  ELSE
+    'Not Cancelled'
+  END)
+  cancel_ind
+FROM
+(SELECT
+  job_gid,
+  job_xid,
+  charter_voyage_gid,
+  charter_voyage_xid,
+  order_release_gid,
+  shipment_gid,
+  servprov_gid,
+  update_date,
+  update_user,
+  source_location_gid,
+  dest_location_gid,
+  departure_date,
+  arrival_date,
+  SI_EDI,
+  EDI_DATE,
+  SI_MANUAL,
+  MANUAL_DATE
+FROM
+(SELECT
+  j.job_gid,
+  j.job_xid,
+  cv.charter_voyage_gid,
+  cv.charter_voyage_xid,
+  ssul.order_release_gid,
+  s.shipment_gid,
+  s.servprov_gid,
+  ss1.update_date,
+  DECODE(ss1.status_value_gid, 'SCOULAR/NVO.SHIPPING INSTRUCTIONS_SENT',ss1.update_user,ss2.update_user) 
+  update_user,
+  cv.source_location_gid,
+  cv.dest_location_gid,
+  cv.departure_date,
+  cv.arrival_date,
+  DECODE(ss1.status_value_gid, 'SCOULAR/NVO.SHIPPING INSTRUCTIONS_SENT', 'Y', 'N') SI_EDI,
+  TRUNC(ss1.update_date) EDI_DATE,
+  DECODE(ss2.status_value_gid, 'SCOULAR/NVO.SHIPPING_INSTRUCTIONS_MANUAL_SENT', 'Y','N') SI_MANUAL,
+  TRUNC(ss2.update_date) MANUAL_DATE
+FROM 
+  job j
+INNER JOIN
+  job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON sessuj.s_ship_unit_gid = ssul.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
+INNER JOIN
+  shipment s ON ssej.shipment_gid = s.shipment_gid
+AND
+	s.shipment_type_gid = 'TRANSPORT'
+AND
+	s.transport_mode_gid = 'VESSEL-CO'
+AND
+	s.is_primary = 'Y'
+AND
+  s.perspective = 'B'  
+INNER JOIN
+  shipment_status ss1 ON s.shipment_gid = ss1.shipment_gid
+AND
+  ss1.status_type_gid = 'SCOULAR/NVO.SHIPPING INSTRUCTIONS'
+INNER JOIN
+  shipment_status ss2 ON s.shipment_gid = ss2.shipment_gid
+AND
+  ss2.status_type_gid = 'SCOULAR/NVO.SHIPPING_INSTRUCTIONS_MANUAL'
+INNER JOIN
+	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
+AND
+	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
+INNER JOIN
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid 
+WHERE
+  (ss1.status_value_gid = 'SCOULAR/NVO.SHIPPING INSTRUCTIONS_SENT'
+OR 
+  ss2.status_value_gid = 'SCOULAR/NVO.SHIPPING_INSTRUCTIONS_MANUAL_SENT')
+AND (:CARRIER_ID IS NULL
+  OR
+  (NOT :CARRIER_ID IS NULL
+AND
+  s.servprov_gid = :CARRIER_ID))
+AND
+  (:USER_ID IS NULL
+OR
+  (NOT :USER_ID IS NULL
+AND
+  s.update_user = :USER_ID)))
+WHERE  
+  DECODE(SI_EDI||SI_MANUAL,'YY',EDI_DATE,'YN',EDI_DATE,'NY',MANUAL_DATE) >= TO_DATE(:START_DATE,'YYYY-MM-DD')
+AND 
+  DECODE(SI_EDI||SI_MANUAL,'YY',EDI_DATE,'YN',EDI_DATE,'NY',MANUAL_DATE) <= TO_DATE(:END_DATE,'YYYY-MM-DD')) a
+LEFT OUTER JOIN
+  charter_voyage_refnum cvref ON a.charter_voyage_gid = cvref.charter_voyage_gid
+AND
+  cvref.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_DOC CLOSING TIME'
+LEFT OUTER JOIN
+  order_release_refnum oref ON a.order_release_gid = oref.order_release_gid
+AND
+  oref.order_release_refnum_qual_gid = 'SCOULAR.LOC_CODE'
+LEFT OUTER JOIN
+  shipment_involved_party sip ON a.shipment_gid = sip.shipment_gid
+AND
+  sip.involved_party_qual_gid = 'SHIPPER'
+LEFT OUTER JOIN
+  job_status js ON a.job_gid = js.job_gid
+AND
+  js.status_type_gid = 'SCOULAR/NVO.JOB_CANCELLED'  
+ORDER BY
+  a.job_xid]]></sqlStatement>
+  </dataQuery>
+</dataTemplate>

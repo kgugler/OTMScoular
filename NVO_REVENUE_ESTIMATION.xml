@@ -2,28 +2,15 @@
 <dataTemplate name="NVO_REVENUE_ESTIMATION" description="NVO Revenue Estimation" dataSourceRef="ORCL" defaultPackage="" version="1.0">
   <parameters>
     <parameter name="JOB_ID" dataType="character" />
-    <parameter name="P_RUN" dataType="character" />
-    <parameter name="P_REPORT_GID" dataType="character" />
-    <parameter name="P_DISPLAY_NAME" dataType="character" />
-    <parameter name="P_DOMAIN" dataType="character" />
-    <parameter name="P_GL_USER" dataType="character"></parameter>
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_DRAFT_FINAL"><![CDATA[SELECT :P_RUN draft_final FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_MAIN"><![CDATA[SELECT DISTINCT
-  j.attribute5 master_bl_num,
-  j.job_xid bl_num,
-  j.attribute4 loc_num,
   c1.first_name || ' ' || c1.last_name manager_name,
   glogowner.xxscou_nvo_report_functions.loc_city_country(q.origin_location_gid) origin_location,
   TO_CHAR(s.sail_date,'fmMM/DD/YYYY') sail_date,
   glogowner.xxscou_nvo_report_functions.loc_city_country(q.destination_location_gid) destination_location,
   TO_CHAR(cv.arrival_date,'fmMM/DD/YYYY') eta_date,
-  (CASE WHEN j.attribute_date2 IS NULL THEN ''
-  ELSE 'Closed as of' END) open_closed,
-  (CASE WHEN j.attribute_date2 IS NULL THEN 'OPEN'
-  ELSE TO_CHAR(j.attribute_date2,'fmMM/DD/YYYY') END) closed_date,
   TRIM(TO_CHAR(s.total_ship_unit_count,'999,999,990')) container_count,
   (SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
   FROM shipment_stop_d ssd 
@@ -53,10 +40,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -82,84 +73,19 @@ AND
 LEFT OUTER JOIN
 	contact c1 ON	sip.involved_party_contact_gid = c1.contact_gid
 WHERE
-	j.job_gid = :JOB_ID
-AND
-  :P_RUN = 'FINAL'
-UNION
-SELECT DISTINCT
-  NVL(j.attribute5,'Data Missing in System') master_bl_num,
-  NVL(j.job_xid,'Data Missing in System') bl_num,
-  NVL(j.attribute4,'Data Missing in System') loc_num,
-  NVL(TRIM(c1.first_name || ' ' || c1.last_name),'Data Missing in System') manager_name,
-  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(q.origin_location_gid),'Data Missing in System') origin_location,
-  NVL(TO_CHAR(s.sail_date,'fmMM/DD/YYYY'),'Data Missing in System') sail_date,
-  NVL(glogowner.xxscou_nvo_report_functions.loc_city_country(q.destination_location_gid),'Data Missing in System') destination_location,
-  NVL(TO_CHAR(cv.arrival_date,'fmMM/DD/YYYY'),'Data Missing in System') eta_date,
+	j.job_gid = :JOB_ID]]></sqlStatement>
+    <sqlStatement name="Q_JOB"><![CDATA[SELECT 
+  j.attribute5 master_bl_num,
+  j.job_xid bl_num,
+  j.attribute4 loc_num,
   (CASE WHEN j.attribute_date2 IS NULL THEN ''
   ELSE 'Closed as of' END) open_closed,
   (CASE WHEN j.attribute_date2 IS NULL THEN 'OPEN'
-  ELSE NVL(TO_CHAR(j.attribute_date2,'fmMM/DD/YYYY'),'Data Missing in System') END) closed_date,
-  NVL(TRIM(TO_CHAR(s.total_ship_unit_count,'999,999,990')),'Data Missing in System') container_count,
-  NVL((SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
-  FROM shipment_stop_d ssd 
-  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
-  AND sus.length = 20
-  WHERE ssd.shipment_gid = s.shipment_gid
-  AND stop_num = 1),'Data Missing in System') twenty_count,
-  NVL((SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
-  FROM shipment_stop_d ssd 
-  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
-  AND sus.length = 40
-  WHERE ssd.shipment_gid = s.shipment_gid
-  AND stop_num = 1),'Data Missing in System') forty_count,
-  NVL((SELECT TRIM(TO_CHAR(COUNT(ssu.s_ship_unit_gid),'999,999,990'))
-  FROM shipment_stop_d ssd 
-  INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
-  INNER JOIN ship_unit_spec sus ON ssu.transport_handling_unit_gid = sus.ship_unit_spec_gid
-  AND sus.length = 45
-  WHERE ssd.shipment_gid = s.shipment_gid
-  AND stop_num = 1),'Data Missing in System') forty_five_count,
-  NVL(TRIM(TO_CHAR(s.total_net_weight,'999,999,990.0')) || ' ' || s.total_net_weight_uom_code,'Data Missing in System') total_weight,
-  NVL((CASE WHEN s.total_net_volume = 0 THEN 'N/A' ELSE
-  TRIM(TO_CHAR(s.total_net_volume,'999,999,990.0')) || ' ' || s.total_net_volume_uom_code END),'Data Missing in System') total_volume
+  ELSE TO_CHAR(j.attribute_date2,'fmMM/DD/YYYY') END) closed_date  
 FROM
-	job j
-INNER JOIN
-  job_order_release_join jorj ON j.job_gid = jorj.job_gid
-INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
-AND
-	s.shipment_type_gid = 'TRANSPORT'
-AND
-	s.transport_mode_gid = 'VESSEL-CO'
-AND
-	s.is_primary = 'Y'
-AND
-  s.perspective = 'B'
-LEFT OUTER JOIN
-	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
-AND
-	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
-LEFT OUTER JOIN
-	charter_voyage cv ON sr.shipment_refnum_value = cv.charter_voyage_xid
-LEFT OUTER JOIN
-  order_release orel ON jorj.order_release_gid = orel.order_release_gid
-LEFT OUTER JOIN
-  quote q ON orel.quote_gid = q.quote_gid
-LEFT OUTER JOIN
-	shipment_involved_party sip ON s.shipment_gid = sip.shipment_gid
-AND
-	sip.involved_party_qual_gid = 'SCOULAR/NVO.OPS MANAGER'
-LEFT OUTER JOIN
-	contact c1 ON	sip.involved_party_contact_gid = c1.contact_gid
+  job j
 WHERE
-	j.job_gid = :JOB_ID
-AND
-  :P_RUN = 'DRAFT']]></sqlStatement>
+  j.job_gid = :JOB_ID]]></sqlStatement>
     <sqlStatement name="Q_SUMMARY"><![CDATA[SELECT
   TRIM(TO_CHAR(ROUND(d.planned_revenue,2),'999,999,990.00')) planned_revenue,
   TRIM(TO_CHAR(ROUND(d.planned_expense,2),'999,999,990.00')) planned_expense,
@@ -201,10 +127,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.perspective = 'S'
 INNER JOIN
@@ -256,10 +186,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.perspective = 'B'
 INNER JOIN
@@ -318,10 +252,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.perspective = 'S'
 INNER JOIN
@@ -431,10 +369,14 @@ FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.perspective = 'B'
 INNER JOIN
@@ -449,26 +391,25 @@ WHERE
   j.job_gid = :JOB_ID]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_DRAFT_FINAL" source="Q_DRAFT_FINAL">
-      <element name="DRAFT_FINAL" value="DRAFT_FINAL" />
-    </group>
     <group name="G_MAIN" source="Q_MAIN">
-      <element name="MASTER_BL_NUM" value="MASTER_BL_NUM" />
-      <element name="BL_NUM" value="BL_NUM" />
-      <element name="LOC_NUM" value="LOC_NUM" />
       <element name="MANAGER_NAME" value="MANAGER_NAME" />
       <element name="ORIGIN_LOCATION" value="ORIGIN_LOCATION" />
       <element name="SAIL_DATE" value="SAIL_DATE"></element>
       <element name="DESTINATION_LOCATION" value="DESTINATION_LOCATION"></element>
       <element name="ETA_DATE" value="ETA_DATE"></element>
-      <element name="OPEN_CLOSED" value="OPEN_CLOSED" />
-      <element name="CLOSED_DATE" value="CLOSED_DATE"></element>
       <element name="CONTAINER_COUNT" value="CONTAINER_COUNT"></element>
       <element name="TWENTY_COUNT" value="TWENTY_COUNT" />
       <element name="FORTY_COUNT" value="FORTY_COUNT"></element>
       <element name="FORTY_FIVE_COUNT" value="FORTY_FIVE_COUNT" />
       <element name="TOTAL_WEIGHT" value="TOTAL_WEIGHT" />
       <element name="TOTAL_VOLUME" value="TOTAL_VOLUME" />
+    </group>
+    <group name="G_JOB" source="Q_JOB">
+      <element name="MASTER_BL_NUM" value="MASTER_BL_NUM" />
+      <element name="BL_NUM" value="BL_NUM" />
+      <element name="LOC_NUM" value="LOC_NUM" />
+      <element name="OPEN_CLOSED" value="OPEN_CLOSED"></element>
+      <element name="CLOSED_DATE" value="CLOSED_DATE"></element>
     </group>
     <group name="G_SUMMARY" source="Q_SUMMARY">
       <element name="PLANNED_REVENUE" value="PLANNED_REVENUE" />

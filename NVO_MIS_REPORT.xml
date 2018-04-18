@@ -12,7 +12,7 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
 :P_IMPORT_EXPORT import_export,
 :P_SAIL_STATUS sail_status,
 :P_FROM_DATE from_date,
@@ -62,8 +62,8 @@ FROM
   WHEN sc.payment_method_code_gid = 'COL' OR (sc.payment_method_code_gid IS NULL AND a.payment_method_code_gid = 'COL') THEN 'COL'
   ELSE '' END) base_rate_terms,
   a.sell_base_rate_terms,
-  (CASE WHEN sh.perspective = 'S' THEN sc.cost ELSE 0 END) sell_cost,
-  (CASE WHEN sh.perspective = 'B' THEN sc.cost ELSE 0 END) buy_cost
+  (CASE WHEN shp.perspective = 'S' THEN sc.cost ELSE 0 END) sell_cost,
+  (CASE WHEN shp.perspective = 'B' THEN sc.cost ELSE 0 END) buy_cost
 FROM
 (SELECT DISTINCT
   j.job_gid,
@@ -97,29 +97,28 @@ FROM
   job j
 INNER JOIN 
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-  shipment ship ON vsor.shipment_gid = ship.shipment_gid
+  shipment ship ON ssej.shipment_gid = ship.shipment_gid
 AND
   ship.is_primary = 'Y'
 INNER JOIN
   shipment_status sstat ON ship.shipment_gid = sstat.shipment_gid
 AND
   sstat.status_type_gid = 'SCOULAR/NVO.ENROUTE'
-INNER JOIN
-  view_shipment_order_release vsor1 ON jorj.order_release_gid = vsor1.order_release_gid  
-AND
-  vsor1.shipment_gid IN (
-  SELECT ship1.shipment_gid
-  FROM shipment ship1
-  WHERE vsor1.shipment_gid = ship1.shipment_gid
-  AND ship1.shipment_type_gid = 'TRANSPORT'
-  AND ship1.transport_mode_gid = 'VESSEL-CO'
-  AND ship1.perspective = 'B'
-  AND ship1.is_primary = 'Y')    
-INNER JOIN
-  shipment s ON vsor1.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid 
+INNER JOIN 
+  shipment s ON ssej1.shipment_gid = s.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -144,19 +143,14 @@ INNER JOIN
   contact c1 ON sip1.involved_party_contact_gid = c1.contact_gid
 AND
   c1.contact_xid IN ('CRESTU','CRESJO','CRESMU','TSCCRST','CRESDU','CRESRA')  
-LEFT OUTER JOIN
-  view_shipment_order_release vsor2 ON jorj.order_release_gid = vsor2.order_release_gid  
-AND
-  vsor2.shipment_gid IN (
-  SELECT ship2.shipment_gid
-  FROM shipment ship2
-  WHERE vsor2.shipment_gid = ship2.shipment_gid
-  AND ship2.shipment_type_gid = 'TRANSPORT'
-  AND ship2.transport_mode_gid = 'VESSEL-CO'
-  AND ship2.perspective = 'S'
-  AND ship2.is_primary = 'Y')    
-LEFT OUTER JOIN
-  shipment sh ON vsor2.shipment_gid = sh.shipment_gid
+LEFT OUTER JOIN 
+  s_ship_unit_line ssul2 ON jorj.order_release_gid = ssul2.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid 
+LEFT OUTER JOIN 
+  shipment sh ON ssej2.shipment_gid = sh.shipment_gid
 AND
   sh.shipment_type_gid = 'TRANSPORT'
 AND
@@ -165,8 +159,6 @@ AND
   sh.is_primary = 'Y'
 AND
   sh.perspective = 'S'  
-LEFT OUTER JOIN 
-  shipment_cost sc ON sh.shipment_gid = sc.shipment_gid  
 LEFT OUTER JOIN
 	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
 AND
@@ -179,8 +171,6 @@ LEFT OUTER JOIN
   shipment_remark srem ON s.shipment_gid = srem.shipment_gid
 AND
   srem.remark_qual_gid = 'SCOULAR/NVO.HBL DESCRIPTION OF CARGO'
-AND
-  srem.remark_sequence = 1
 WHERE
   j.move_perspective_gid = 'EXPORT'
 AND
@@ -228,29 +218,28 @@ FROM
   job j
 INNER JOIN 
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-  shipment ship ON vsor.shipment_gid = ship.shipment_gid
+  shipment ship ON ssej.shipment_gid = ship.shipment_gid
 AND
   ship.is_primary = 'Y'
 INNER JOIN
   shipment_status sstat ON ship.shipment_gid = sstat.shipment_gid
 AND
   sstat.status_type_gid = 'SCOULAR/NVO.ENROUTE'
-INNER JOIN
-  view_shipment_order_release vsor1 ON jorj.order_release_gid = vsor1.order_release_gid  
-AND
-  vsor1.shipment_gid IN (
-  SELECT ship1.shipment_gid
-  FROM shipment ship1
-  WHERE vsor1.shipment_gid = ship1.shipment_gid
-  AND ship1.shipment_type_gid = 'TRANSPORT'
-  AND ship1.transport_mode_gid = 'VESSEL-CO'
-  AND ship1.perspective = 'B'
-  AND ship1.is_primary = 'Y')    
-INNER JOIN
-  shipment s ON vsor1.shipment_gid = s.shipment_gid
+INNER JOIN 
+  s_ship_unit_line ssul1 ON jorj.order_release_gid = ssul1.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj1 ON ssul1.s_ship_unit_gid = sessuj1.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej1 ON sessuj1.s_equipment_gid = ssej1.s_equipment_gid 
+INNER JOIN 
+  shipment s ON ssej1.shipment_gid = s.shipment_gid
 AND
   s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -263,19 +252,14 @@ INNER JOIN
   location loc1 ON s.source_location_gid = loc1.location_gid
 AND
   loc1.country_code3_gid = 'IND'  
-LEFT OUTER JOIN
-  view_shipment_order_release vsor2 ON jorj.order_release_gid = vsor2.order_release_gid  
-AND
-  vsor2.shipment_gid IN (
-  SELECT ship2.shipment_gid
-  FROM shipment ship2
-  WHERE vsor2.shipment_gid = ship2.shipment_gid
-  AND ship2.shipment_type_gid = 'TRANSPORT'
-  AND ship2.transport_mode_gid = 'VESSEL-CO'
-  AND ship2.perspective = 'S'
-  AND ship2.is_primary = 'Y')    
-LEFT OUTER JOIN
-  shipment sh ON vsor2.shipment_gid = sh.shipment_gid
+LEFT OUTER JOIN 
+  s_ship_unit_line ssul2 ON jorj.order_release_gid = ssul2.order_release_gid
+LEFT OUTER JOIN 
+  s_equipment_s_ship_unit_join sessuj2 ON ssul2.s_ship_unit_gid = sessuj2.s_ship_unit_gid
+LEFT OUTER JOIN 
+  shipment_s_equipment_join ssej2 ON sessuj2.s_equipment_gid = ssej2.s_equipment_gid 
+LEFT OUTER JOIN 
+  shipment sh ON ssej2.shipment_gid = sh.shipment_gid
 AND
   sh.shipment_type_gid = 'TRANSPORT'
 AND
@@ -284,8 +268,6 @@ AND
   sh.is_primary = 'Y'
 AND
   sh.perspective = 'S'  
-LEFT OUTER JOIN 
-  shipment_cost sc ON sh.shipment_gid = sc.shipment_gid  
 LEFT OUTER JOIN
 	shipment_refnum sr ON s.shipment_gid = sr.shipment_gid
 AND
@@ -298,8 +280,6 @@ LEFT OUTER JOIN
   shipment_remark srem ON s.shipment_gid = srem.shipment_gid
 AND
   srem.remark_qual_gid = 'SCOULAR/NVO.HBL DESCRIPTION OF CARGO'
-AND
-  srem.remark_sequence = 1
 WHERE
   j.move_perspective_gid = 'IMPORT'
 AND
@@ -320,22 +300,19 @@ ORDER BY hbl_num) a
 INNER JOIN 
   job_order_release_join jorjoin ON a.job_gid = jorjoin.job_gid  
 INNER JOIN 
-  view_shipment_order_release vsorel ON jorjoin.order_release_gid = vsorel.order_release_gid
-AND 
-  vsorel.shipment_gid IN (
-                    SELECT ship.shipment_gid
-                    FROM shipment ship
-                    WHERE vsorel.shipment_gid = ship.shipment_gid
-                    AND ship.shipment_type_gid = 'TRANSPORT'
-                    AND ship.transport_mode_gid = 'VESSEL-CO')  
+  s_ship_unit_line ssul3 ON jorjoin.order_release_gid = ssul3.order_release_gid
 INNER JOIN 
-  shipment sh ON vsorel.shipment_gid = sh.shipment_gid
-AND 
-  sh.shipment_type_gid = 'TRANSPORT'
-AND 
-  sh.transport_mode_gid = 'VESSEL-CO' 
+  s_equipment_s_ship_unit_join sessuj3 ON ssul3.s_ship_unit_gid = sessuj3.s_ship_unit_gid
 INNER JOIN 
-  shipment_cost sc ON sh.shipment_gid = sc.shipment_gid
+  shipment_s_equipment_join ssej3 ON sessuj3.s_equipment_gid = ssej3.s_equipment_gid
+INNER JOIN
+  shipment shp ON ssej3.shipment_gid = shp.shipment_gid
+AND 
+  shp.shipment_type_gid = 'TRANSPORT'
+AND 
+  shp.transport_mode_gid = 'VESSEL-CO' 
+INNER JOIN 
+  shipment_cost sc ON shp.shipment_gid = sc.shipment_gid
 ORDER BY a.hbl_num) b) c
 GROUP BY
   c.shipper,
@@ -349,7 +326,7 @@ GROUP BY
   c.sell_base_rate_terms]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="IMPORT_EXPORT" value="IMPORT_EXPORT" />
       <element name="SAIL_STATUS" value="SAIL_STATUS" />
       <element name="FROM_DATE" value="FROM_DATE" />

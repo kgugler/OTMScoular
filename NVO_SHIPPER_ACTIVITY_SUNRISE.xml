@@ -5,20 +5,24 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
 TO_CHAR(TO_DATE(SYSDATE - 60,'DD-MM-RR'),'YYYY-MM-DD') lc_start_date,
 TO_CHAR(TO_DATE(SYSDATE,'DD-MM-RR'),'YYYY-MM-DD') lc_end_date
 FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT DISTINCT
   a.*,
-  l.location_name place_of_delivery
+  l.location_name 
+  place_of_delivery
 FROM
 (SELECT DISTINCT
   j.job_gid,
   j.insert_date,
-  TO_CHAR(j.insert_date,'MM/DD/YYYY') job_insert_date,  
-  cv.charter_voyage_xid booking_no,
-  'TSC' || j.job_xid job_no,
+  TO_CHAR(j.insert_date,'MM/DD/YYYY') 
+  job_insert_date,  
+  cvr6.charter_voyage_refnum_value 
+  booking_no,
+  'TSC' || j.job_xid 
+  job_no,
   TRIM(TO_CHAR((SELECT COUNT(ssu.s_ship_unit_gid)
   FROM	shipment_stop_d ssd
   INNER JOIN s_ship_unit ssu ON ssd.s_ship_unit_gid = ssu.s_ship_unit_gid
@@ -89,26 +93,24 @@ FROM
   AND ssd.stop_num = 1
   WHERE ssd.shipment_gid = s.shipment_gid))
   containers,  
-  loc4.location_name shipper,
-  loc5.location_name consignee,
-  loc6.location_name notify_party
+  loc4.location_name 
+  shipper,
+  loc5.location_name 
+  consignee,
+  loc6.location_name 
+  notify_party
 FROM
 	job j
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid  
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-AND
-  vsor.shipment_gid IN (
-  SELECT sh.shipment_gid
-  FROM shipment sh
-  WHERE vsor.shipment_gid = sh.shipment_gid
-  AND sh.shipment_type_gid = 'TRANSPORT'
-  AND sh.transport_mode_gid = 'VESSEL-CO'
-  AND sh.is_primary = 'Y'
-  AND sh.perspective = 'B')  
-INNER JOIN
-	shipment s ON vsor.shipment_gid = s.shipment_gid  
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
 	s.shipment_type_gid = 'TRANSPORT'
 AND
@@ -163,6 +165,10 @@ LEFT OUTER JOIN
 	charter_voyage_refnum cvr5 ON cv.charter_voyage_gid = cvr5.charter_voyage_gid
 AND
 	cvr5.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_FEEDER VESSEL NAME' 
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr6 ON cv.charter_voyage_gid = cvr6.charter_voyage_gid
+AND
+	cvr6.charter_voyage_refnum_qual_gid = 'SCOULAR.CURRENT BOOKING NUMBER'   
 LEFT OUTER JOIN
 	location loc1 ON s.servprov_gid = loc1.location_gid    
 LEFT OUTER JOIN
@@ -239,7 +245,7 @@ ORDER BY
   a.insert_date]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="LC_START_DATE" value="LC_START_DATE" />
       <element name="LC_END_DATE" value="LC_END_DATE"></element>
     </group>

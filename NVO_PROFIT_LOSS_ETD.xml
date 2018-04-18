@@ -14,7 +14,7 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT 
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT 
 :OP_START_DATE op_start,
 :OP_END_DATE op_end,
 :INV_PARTY_ID inv_party,
@@ -23,6 +23,7 @@
 FROM DUAL]]></sqlStatement>
     <sqlStatement name="Q_ROWS"><![CDATA[SELECT
   c.file_number,
+  c.booking_no,
   c.account_no,
   c.account_name,
   c.shipper,
@@ -71,7 +72,10 @@ FROM DUAL]]></sqlStatement>
   c.closed_by,
   c.inv_status,
   c.move_perspective_gid job_type,
-  c.haz
+  c.haz,
+  c.vessel_name,
+  c.voyage_number,
+  c.tsc_drayage
 FROM
 (SELECT DISTINCT
   b.*,
@@ -137,6 +141,7 @@ FROM
   ship.is_primary, 
   ship.perspective,   
   j.job_xid file_number,
+  j.attribute2 booking_no,
   loc1.location_xid account_no,
  	con1.company_name account_name, 
   con2.contact_xid shipper,
@@ -218,7 +223,27 @@ FROM
     AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.HAZMAT UN NUMBER'
     WHERE ssd.shipment_gid = s1.shipment_gid
     AND	ssd.stop_num = 1) > 0 THEN 'Y' ELSE 'N' END)
-  haz
+  haz,
+  cv.voyage_name
+  vessel_name,
+  cvr1.charter_voyage_refnum_value
+  voyage_number,
+  (CASE WHEN (SELECT COUNT(s3.shipment_gid)
+  FROM job_order_release_join jorj3
+  INNER JOIN s_ship_unit_line ssul3 ON jorj3.order_release_gid = ssul3.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj3 ON ssul3.s_ship_unit_gid = sessuj3.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej3 ON sessuj3.s_equipment_gid = ssej3.s_equipment_gid
+  INNER JOIN shipment s3 ON ssej3.shipment_gid = s3.shipment_gid 
+  AND s3.shipment_type_gid = 'TRANSPORT'
+  AND s3.transport_mode_gid = 'DRAYAGE'
+  AND s3.is_primary = 'N'
+  AND s3.perspective = 'B'
+  WHERE jorj3.job_gid = j.job_gid) > 0 THEN
+  'Y'
+  ELSE
+  'N'
+  END)
+  tsc_drayage  
 FROM
 	job j
 INNER JOIN
@@ -244,7 +269,11 @@ LEFT OUTER JOIN
 AND
 	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
 LEFT OUTER JOIN
-	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid 
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
 LEFT OUTER JOIN
 	shipment_involved_party sip1 ON s1.shipment_gid = sip1.shipment_gid
 AND
@@ -332,6 +361,7 @@ SELECT DISTINCT
   ship.is_primary, 
   ship.perspective,   
   j.job_xid file_number,
+  j.attribute2 booking_no,
   loc1.location_xid account_no,
  	con1.company_name account_name, 
   con2.contact_xid shipper,
@@ -413,7 +443,27 @@ SELECT DISTINCT
     AND ssur.s_ship_unit_refnum_qual_gid = 'SCOULAR.HAZMAT UN NUMBER'
     WHERE ssd.shipment_gid = s1.shipment_gid
     AND	ssd.stop_num = 1) > 0 THEN 'Y' ELSE 'N' END)
-  haz
+  haz,
+  cv.voyage_name
+  vessel_name,
+  cvr1.charter_voyage_refnum_value
+  voyage_number,
+  (CASE WHEN (SELECT COUNT(s3.shipment_gid)
+  FROM job_order_release_join jorj3
+  INNER JOIN s_ship_unit_line ssul3 ON jorj3.order_release_gid = ssul3.order_release_gid
+  INNER JOIN s_equipment_s_ship_unit_join sessuj3 ON ssul3.s_ship_unit_gid = sessuj3.s_ship_unit_gid
+  INNER JOIN shipment_s_equipment_join ssej3 ON sessuj3.s_equipment_gid = ssej3.s_equipment_gid
+  INNER JOIN shipment s3 ON ssej3.shipment_gid = s3.shipment_gid 
+  AND s3.shipment_type_gid = 'TRANSPORT'
+  AND s3.transport_mode_gid = 'DRAYAGE'
+  AND s3.is_primary = 'N'
+  AND s3.perspective = 'B'
+  WHERE jorj3.job_gid = j.job_gid) > 0 THEN
+  'Y'
+  ELSE
+  'N'
+  END)
+  tsc_drayage
 FROM
 	job j
 INNER JOIN
@@ -439,7 +489,11 @@ LEFT OUTER JOIN
 AND
 	sr.shipment_refnum_qual_gid = 'CHARTER VOYAGE'		
 LEFT OUTER JOIN
-	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid 
+	charter_voyage cv ON 'SCOULAR/NVO.' || sr.shipment_refnum_value = cv.charter_voyage_gid
+LEFT OUTER JOIN
+	charter_voyage_refnum cvr1 ON cv.charter_voyage_gid = cvr1.charter_voyage_gid
+AND
+	cvr1.charter_voyage_refnum_qual_gid = 'SCOULAR.CHARVOY_VOYAGE_NUMBER'  
 LEFT OUTER JOIN
 	shipment_involved_party sip1 ON s1.shipment_gid = sip1.shipment_gid
 AND
@@ -541,6 +595,7 @@ AND
   NOT s3.shipment_gid IS NULL) b) c
 GROUP BY 
   c.file_number,
+  c.booking_no,
   c.account_no,
   c.account_name,
   c.shipper,
@@ -581,7 +636,10 @@ GROUP BY
   c.closed_by,
   c.inv_status,
   c.move_perspective_gid,
-  c.haz
+  c.haz,
+  c.vessel_name,
+  c.voyage_number,
+  c.tsc_drayage
 ORDER BY c.file_number]]></sqlStatement>
   </dataQuery>
   <dataStructure>
@@ -594,6 +652,7 @@ ORDER BY c.file_number]]></sqlStatement>
     </group>
     <group name="G_ROWS" source="Q_ROWS">
       <element name="FILE_NUMBER" value="FILE_NUMBER" />
+      <element name="BOOKING_NO" value="BOOKING_NO"></element>
       <element name="ACCOUNT_NO" value="ACCOUNT_NO"></element>
       <element name="ACCOUNT_NAME" value="ACCOUNT_NAME" />
       <element name="SHIPPER" value="SHIPPER" />
@@ -639,6 +698,9 @@ ORDER BY c.file_number]]></sqlStatement>
       <element name="INV_STATUS" value="INV_STATUS" />
       <element name="JOB_TYPE" value="JOB_TYPE"></element>
       <element name="HAZ" value="HAZ"></element>
+      <element name="VESSEL_NAME" value="VESSEL_NAME" />
+      <element name="VOYAGE_NUMBER" value="VOYAGE_NUMBER" />
+      <element name="TSC_DRAYAGE" value="TSC_DRAYAGE"></element>
     </group>
   </dataStructure>
 </dataTemplate>

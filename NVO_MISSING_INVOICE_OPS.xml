@@ -12,11 +12,11 @@
   </parameters>
   <lexicals></lexicals>
   <dataQuery>
-    <sqlStatement name="Q_RUN_DATES"><![CDATA[SELECT
+    <sqlStatement name="Q_DATES"><![CDATA[SELECT
   TO_CHAR(SYSDATE,'fmMM/DD/YY') run_date,
   TO_CHAR(SYSDATE,'fmHH:MI PM') run_time
 FROM DUAL]]></sqlStatement>
-    <sqlStatement name="Q_PARAMETERS"><![CDATA[SELECT
+    <sqlStatement name="Q_PARAMS"><![CDATA[SELECT
   TO_CHAR(TO_DATE(:OP_START_DATE,'YYYY-MM-DD'),'MM/DD/YY') op_s_date,
   TO_CHAR(TO_DATE(:OP_END_DATE,'YYYY-MM-DD'),'MM/DD/YY') op_e_date,
   :P_IMPORT_EXPORT import_export,
@@ -43,10 +43,14 @@ AND NOT
   jstat.status_value_gid = 'SCOULAR/NVO.JOB_BILL_APPROVED'    
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-  shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.shipment_type_gid ='TRANSPORT' 
 AND 
@@ -93,9 +97,9 @@ AND
   AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
   AND js.job_gid = j.job_gid)
 AND
-  (TO_DATE(cv.departure_date,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+  (TO_DATE(j.insert_date,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
 AND
-  TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
+  TO_DATE(j.insert_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
 AND
   (:P_IMPORT_EXPORT = 'EXPORT' OR :P_IMPORT_EXPORT = 'BOTH')
 AND
@@ -124,10 +128,14 @@ AND NOT
   jstat.status_value_gid = 'SCOULAR/NVO.JOB_BILL_APPROVED'    
 INNER JOIN
   job_order_release_join jorj ON j.job_gid = jorj.job_gid
+INNER JOIN 
+  s_ship_unit_line ssul ON jorj.order_release_gid = ssul.order_release_gid
+INNER JOIN 
+  s_equipment_s_ship_unit_join sessuj ON ssul.s_ship_unit_gid = sessuj.s_ship_unit_gid
+INNER JOIN 
+  shipment_s_equipment_join ssej ON sessuj.s_equipment_gid = ssej.s_equipment_gid
 INNER JOIN
-  view_shipment_order_release vsor ON jorj.order_release_gid = vsor.order_release_gid
-INNER JOIN
-  shipment s ON vsor.shipment_gid = s.shipment_gid
+  shipment s ON ssej.shipment_gid = s.shipment_gid
 AND
   s.shipment_type_gid ='TRANSPORT' 
 AND 
@@ -174,9 +182,9 @@ AND
   AND js.status_value_gid = 'SCOULAR/NVO.JOB_CANCELLED'
   AND js.job_gid = j.job_gid)
 AND
-  (TO_DATE(cv.departure_date,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
+  (TO_DATE(j.insert_date,'dd-mm-rr') >= TO_DATE(:OP_START_DATE,'YYYY-MM-DD')
 AND
-  TO_DATE(cv.departure_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
+  TO_DATE(j.insert_date,'dd-mm-rr') <= TO_DATE(:OP_END_DATE,'YYYY-MM-DD'))
 AND
   (:P_IMPORT_EXPORT = 'IMPORT' OR :P_IMPORT_EXPORT = 'BOTH')
 AND
@@ -186,11 +194,11 @@ AND
 ORDER BY s_date, house_bill_lading]]></sqlStatement>
   </dataQuery>
   <dataStructure>
-    <group name="G_RUN_DATES" source="Q_RUN_DATES">
+    <group name="G_DATES" source="Q_DATES">
       <element name="RUN_DATE" value="RUN_DATE" />
       <element name="RUN_TIME" value="RUN_TIME" />
     </group>
-    <group name="G_PARAMETERS" source="Q_PARAMETERS">
+    <group name="G_PARAMS" source="Q_PARAMS">
       <element name="OP_S_DATE" value="OP_S_DATE"></element>
       <element name="OP_E_DATE" value="OP_E_DATE"></element>
       <element name="IMPORT_EXPORT" value="IMPORT_EXPORT" />
